@@ -1,5 +1,5 @@
 use crate::{
-  batch,
+  batch, config,
   native::{self, Method, Object},
   profile,
   session::Session,
@@ -14,6 +14,7 @@ pub fn install() {
   if !supported_game() {
     return;
   }
+  config::load();
   skyline::install_hooks!(count_ctor, build_text, execute_gacha, draw, create_demo, unload);
 }
 
@@ -56,7 +57,7 @@ fn supported_game() -> bool {
 
 #[skyline::hook(offset = profile::COUNT_CTOR)]
 fn count_ctor(item: Object, times: i32, handler: Object, method: Method) {
-  let times = if times == 10 { batch::DRAWS as i32 } else { times };
+  let times = if times == 10 { config::draw_count() as i32 } else { times };
   // The native constructor calculates total price and affordability from times.
   call_original!(item, times, handler, method);
 }
@@ -82,10 +83,11 @@ fn execute_gacha(sequence: Object, method: Method) {
 #[skyline::hook(offset = profile::DRAW)]
 fn draw(god: Object, times: i32, flags: *mut Object, method: Method) -> Object {
   let active = SESSION.with(|session| session.borrow().executing());
-  if !active || times != 300 {
+  let count = config::draw_count();
+  if !active || times != count as i32 {
     return call_original!(god, times, flags, method);
   }
-  let Some(sequence) = SESSION.with(|session| session.borrow_mut().dispatch(times)) else {
+  let Some(sequence) = SESSION.with(|session| session.borrow_mut().dispatch(times, count)) else {
     return ptr::null_mut();
   };
   let sequence = sequence as Object;
@@ -98,7 +100,7 @@ fn draw(god: Object, times: i32, flags: *mut Object, method: Method) -> Object {
     return unsafe { native::empty_results(sequence) };
   };
   let price = inventory.price();
-  let _outcome = batch::execute(&mut inventory, price);
+  let _outcome = batch::execute(&mut inventory, price, count);
   inventory.results()
 }
 

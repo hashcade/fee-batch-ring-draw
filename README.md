@@ -1,6 +1,6 @@
 # FEE Batch Ring Draw
 
-Create up to **300 Bond Rings in one operation** in **Fire Emblem Engage 2.0.0**, using Cobalt.
+Create a configurable batch of Bond Rings in one operation in **Fire Emblem Engage 2.0.0**, using Cobalt. The default is **300**.
 
 The original **Create One / Create Ten** menu becomes **Create One / Create 300**. The game calculates and displays the normal total price and disables unaffordable selections. The batch skips the result presentation and returns to the menu; inspect acquired rings in the game's ring list.
 
@@ -8,7 +8,7 @@ The original **Create One / Create Ten** menu becomes **Create One / Create 300*
 - Stops before the next result would exceed the native inventory limits. It does not reroll a full result or discard a ring after charging for it.
 - Equipped rings remain equipped. Nothing is automatically melded.
 - Single-ring creation keeps its original behavior and presentation.
-- Menu text follows the game's text language. No configuration, logging, hotkeys, quantity window, or result summary is added.
+- Menu text follows the game's text language and configured count. No logging, hotkeys, quantity window, or result summary is added.
 
 The implementation is compiled and covered by host tests, executable signature checks, and a compiled-NRO startup smoke test. **In-game validation is pending.** See [validation](docs/VALIDATION.md).
 
@@ -29,6 +29,24 @@ Install Cobalt following its instructions, then extract the package's `engage` d
 Install Cobalt for the emulator, then extract `engage` into its **virtual SD card root**, not its per-game mod folder. See [Cobalt mod management](https://github.com/Raytwo/Cobalt/wiki/Managing-your-Mods).
 
 This is independent of [FEE Batch Ring Meld](https://github.com/hashcade/fee-batch-ring-meld). The two plugins hook different menu and transaction entry points.
+
+## Configuration
+
+Like FETH Bench EXP, this plugin reads an optional `.cfg` file at the console's SD card root (or the emulator's virtual SD card root), not alongside the NRO:
+
+```text
+sdmc:/fee-batch-ring-draw.cfg
+```
+
+```ini
+draw_count=300
+```
+
+`draw_count` accepts **2–1000**; 300 is the default. This is a plugin execution safety range, not a game inventory limit. The batch menu label, displayed price, affordability, execution limit, and result-list capacity follow this value. Single-ring creation is unchanged.
+
+Missing, unreadable, malformed, duplicate, unknown, or out-of-range settings use the default. Configuration files larger than 4096 bytes are rejected. Empty lines and `#` comment lines are accepted. The plugin only reads the file; it does not create or overwrite it. A [sample configuration](config/fee-batch-ring-draw.cfg) is provided separately, so extracting an update does not reset existing settings.
+
+Fully restart the game (and the emulator, if used) after changing the file.
 
 ## Development
 

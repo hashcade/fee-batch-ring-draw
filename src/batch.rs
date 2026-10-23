@@ -1,6 +1,6 @@
 //! Bounded transactions. Native execution remains responsible for game state.
 
-pub const DRAWS: u32 = 300;
+use crate::config;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Stock {
@@ -41,16 +41,16 @@ pub trait Inventory {
   fn transact(&mut self, expected: &Self::Expected) -> bool;
 }
 
-pub fn execute<I: Inventory>(inventory: &mut I, cost: i32) -> Outcome {
+pub fn execute<I: Inventory>(inventory: &mut I, cost: i32, draws: u32) -> Outcome {
   let mut outcome = Outcome { completed: 0, stop: Stop::Invalid };
-  if cost <= 0 {
+  if cost <= 0 || !config::valid_count(draws) {
     return outcome;
   }
   let Some(fragments) = inventory.fragments().filter(|value| *value >= 0) else {
     return outcome;
   };
-  // A fragment-refill cheat cannot extend the initial budget or the 300 cap.
-  let budget = DRAWS.min((fragments / cost) as u32);
+  // A fragment-refill cheat cannot extend the initial budget or configured cap.
+  let budget = draws.min((fragments / cost) as u32);
   for _ in 0..budget {
     let Some(expected) = inventory.preview() else { return outcome };
     let Some(before) = inventory.stock(&expected).filter(|stock| stock.valid()) else {
@@ -82,6 +82,6 @@ pub fn execute<I: Inventory>(inventory: &mut I, cost: i32) -> Outcome {
     }
     outcome.completed += 1;
   }
-  outcome.stop = if budget == DRAWS { Stop::Complete } else { Stop::Funds };
+  outcome.stop = if budget == draws { Stop::Complete } else { Stop::Funds };
   outcome
 }

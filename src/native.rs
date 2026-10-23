@@ -2,7 +2,7 @@
 
 use crate::{
   batch::{Inventory, Stock},
-  labels, profile,
+  config, labels, profile,
   random::{self, Rates, State},
 };
 use core::{ffi::c_void, ptr};
@@ -64,7 +64,8 @@ unsafe fn parameter(slot: usize) -> Option<i32> {
 }
 
 pub unsafe fn cost() -> Option<i32> {
-  unsafe { parameter(0x062C2B08) }.filter(|value| *value > 0 && *value <= i32::MAX / 300)
+  unsafe { parameter(0x062C2B08) }
+    .filter(|value| *value > 0 && *value <= i32::MAX / config::MAX_DRAW_COUNT as i32)
 }
 
 unsafe fn string(string: Object) -> Option<Vec<u16>> {
@@ -88,7 +89,8 @@ pub unsafe fn set_count_label(content: Object) {
     return;
   }
   let item: Object = unsafe { field(content, 0x18) };
-  if item.is_null() || unsafe { field::<i32>(item, 0x64) } != 300 {
+  let count = config::draw_count();
+  if item.is_null() || unsafe { field::<i32>(item, 0x64) } != count as i32 {
     return;
   }
   let text: Object = unsafe { field(content, 0x48) };
@@ -97,7 +99,7 @@ pub unsafe fn set_count_label(content: Object) {
   }
   let language: unsafe extern "C" fn(Method) -> i32 =
     unsafe { core::mem::transmute(base() + profile::GET_LANGUAGE) };
-  let units: Vec<u16> = labels::count(unsafe { language(NONE) }).encode_utf16().collect();
+  let units: Vec<u16> = labels::count(unsafe { language(NONE) }, count).encode_utf16().collect();
   let allocate: unsafe extern "C" fn(i32, Method) -> Object =
     unsafe { core::mem::transmute(base() + profile::STRING_NEW_SIZE) };
   let value = unsafe { allocate(units.len() as i32, NONE) };
@@ -137,7 +139,7 @@ unsafe fn list(sequence: Object, boolean: bool) -> Object {
   let value = unsafe { allocate(class) };
   if !value.is_null() {
     unsafe {
-      ctor(value, 300, method);
+      ctor(value, config::draw_count() as i32, method);
       reference(sequence, field_offset, value);
     }
   }

@@ -33,9 +33,12 @@ fn invalid_rates_state_and_empty_candidates_fail_closed() {
 #[test]
 fn labels_cover_all_game_languages_and_fallback() {
   for language in -1..=12 {
-    assert!(fee_batch_ring_draw::labels::count(language).contains("300"));
+    assert!(fee_batch_ring_draw::labels::count(language, 300).contains("300"));
   }
-  assert_eq!(fee_batch_ring_draw::labels::count(10), "精炼300次");
+  assert_eq!(fee_batch_ring_draw::labels::count(10, 300), "精炼300次");
+  for language in -1..=12 {
+    assert!(fee_batch_ring_draw::labels::count(language, 600).contains("600"));
+  }
 }
 
 #[test]

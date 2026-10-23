@@ -1,6 +1,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod batch;
+pub mod config;
 pub mod labels;
 pub mod profile;
 pub mod random;

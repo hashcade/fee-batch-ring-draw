@@ -18,8 +18,12 @@ impl Session {
     true
   }
 
-  pub fn dispatch(&mut self, count: i32) -> Option<usize> {
-    if self.executing == 0 || self.dispatched || count != 300 {
+  pub fn dispatch(&mut self, count: i32, configured: u32) -> Option<usize> {
+    if self.executing == 0
+      || self.dispatched
+      || !crate::config::valid_count(configured)
+      || count != configured as i32
+    {
       return None;
     }
     self.dispatched = true;

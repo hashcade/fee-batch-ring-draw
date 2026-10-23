@@ -11,5 +11,5 @@
 - Preview only a copy of RNG state; never advance or restore the live RNG to skip a full result.
 - Stop before an unaffordable or unrecordable result. Never retry after an attempted transaction.
 - Keep the original outer flow; bypass presentation before changing the scene, background, or title bar.
-- Do not add configuration, logs, hotkeys, result windows, or quantity dialogs.
+- Support the requested draw_count configuration only; do not add logs, hotkeys, result windows, or quantity dialogs.
 - Document Nintendo Switch installation before emulators. Use standard MIT attribution.

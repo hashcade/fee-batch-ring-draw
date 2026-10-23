@@ -1,0 +1,40 @@
+use fee_batch_ring_draw::config::{parse, DEFAULT_DRAW_COUNT, MAX_CONFIG_BYTES};
+
+#[test]
+fn missing_setting_and_comments_keep_300_default() {
+  assert_eq!(DEFAULT_DRAW_COUNT, 300);
+  assert_eq!(parse(""), Ok(300));
+  assert_eq!(parse("# optional config\r\n\n"), Ok(300));
+}
+
+#[test]
+fn accepts_whitespace_and_safe_boundary_values() {
+  for count in [2, 10, 300, 600, 1000] {
+    assert_eq!(parse(&format!("# count\r\n draw_count = {count}\r\n")), Ok(count));
+  }
+}
+
+#[test]
+fn rejects_ambiguous_unknown_or_out_of_range_values() {
+  for value in [
+    "draw_count=0",
+    "draw_count=1",
+    "draw_count=1001",
+    "draw_count=-2",
+    "draw_count=4294967296",
+    "draw_count=1.5",
+    "draw_count=",
+    "draw_count=many",
+    "other=600",
+    "draw_count",
+    "draw_count=600\ndraw_count=500",
+  ] {
+    assert!(parse(value).is_err(), "{value}");
+  }
+  assert!(parse(&" ".repeat(MAX_CONFIG_BYTES + 1)).is_err());
+}
+
+#[test]
+fn sample_configuration_uses_default() {
+  assert_eq!(parse(include_str!("../config/fee-batch-ring-draw.cfg")), Ok(300));
+}

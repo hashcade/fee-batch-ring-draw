@@ -2,10 +2,11 @@
 
 ## Implemented behavior
 
-- Replace the ten-result menu entry with 300; retain single creation.
+- Replace the ten-result menu entry with the configured count (default 300); retain single creation.
 - Use the native constructor for price calculation and affordability.
-- Localize the 300-result label for all twelve game text-language IDs.
-- Snapshot the initial fragment budget and cap execution at 300 transactions.
+- Localize the configured-count label for all twelve game text-language IDs.
+- Read `fee-batch-ring-draw.cfg` once at startup from a private, temporary SD mount. Accept `draw_count=2–1000`, defaulting to 300 for missing or invalid configuration. Close opened files and unmount on all successful-mount paths. Do not write files.
+- Snapshot the initial fragment budget and cap execution at the configured count.
 - Predict the next native result using a **copy** of the four-word RNG state, the game's current rank parameters, and the original RingData list order.
 - Check that exact result with `UnitRingPool.CanAdd`, total stock including equipped copies, and current funds before executing one native transaction.
 - Do not consume or restore live RNG state during prediction. If a result is full, stop before drawing it; no alternative result is selected.
@@ -37,6 +38,7 @@ The native transaction consumes two `Random.GetValue` results: rank modulo 100, 
 - Host tests: bounded execution, normal cost, insufficient funds, full stacks, equipped counts, pool capacity, no rerolls, fragment-refill cheats, failure/no-retry, RNG/rank boundaries, localization, parent-scoped one-shot dispatch, and unload cleanup.
 - Python tests: package paths, checksums, release versions, NSO parsing, NRO structure, and unavailable Cobalt-import rejection.
 - Compiled NRO initialization: supported game registers six hooks; wrong version, Build ID, instruction, or layout registers none. No unsupported `get_program_id` or NRO-loader interface is used.
+- Compiled configuration paths: missing file/mount, empty file, valid low/custom/high counts, invalid UTF-8/value, oversized input, and short reads. Exercise the compiled menu constructor to verify the effective count and unchanged single creation. Unsupported executables do not read configuration.
 - Read-only supplied NSO verification: Build ID, segment checksums, and native instruction signatures.
 
 These tests do not simulate Unity scenes or certify in-game behavior.
@@ -46,6 +48,7 @@ These tests do not simulate Unity scenes or certify in-game behavior.
 Use a disposable test save, not a primary save.
 
 - Confirm the menu shows Create One / Create 300 with correct prices in the selected language.
+- Configure a different count, restart the game, and confirm both the localized label and normal total price change with it.
 - Run 300 creation operations with sufficient funds and free capacity; verify 300 actual inventory additions and the normal total cost.
 - Confirm single creation remains unchanged and batches return promptly without result windows, a hidden header/footer, or a missing background.
 - Repeat batches, switch Emblems, cancel selection, leave and re-enter the room.

@@ -99,10 +99,30 @@ def smoke(data: bytes, case: str) -> int:
       raise ValueError(f"unsupported startup relocation {kind}")
     cpu.mem_write(BASE + target, struct.pack("<Q", value))
   hooks = []
+  replacements = {}
+  selected_counts = []
+  fs_calls = []
+  configs = {"config_low": b"draw_count=2\n", "config_custom": b"draw_count=600\n",
+    "config_high": b"draw_count=1000\n", "config_invalid": b"draw_count=1001\n",
+    "config_utf8": b"\xff", "config_large": b" " * 4097,
+    "config_short": b"draw_count=600\n", "config_empty": b""}
+
+  def string_at(address: int) -> bytes:
+    result = bytearray()
+    for index in range(128):
+      value = cpu.mem_read(address + index, 1)[0]
+      if not value:
+        return bytes(result)
+      result.append(value)
+    raise AssertionError("unterminated SDK path")
 
   def native_call(cpu: Uc, pc: int, size: int, user: object) -> None:
     if pc == STOP:
       cpu.emu_stop()
+      return
+    if pc == GAME + offset("COUNT_CTOR"):
+      selected_counts.append(cpu.reg_read(registers.UC_ARM64_REG_X1))
+      cpu.reg_write(registers.UC_ARM64_REG_PC, cpu.reg_read(registers.UC_ARM64_REG_X30))
       return
     if pc not in names:
       return
@@ -120,7 +140,47 @@ def smoke(data: bytes, case: str) -> int:
       if not BASE <= replacement < BASE + len(data):
         raise AssertionError("hook replacement is outside the plugin")
       hooks.append(argument - GAME)
+      replacements[argument - GAME] = replacement
       cpu.mem_write(cpu.reg_read(registers.UC_ARM64_REG_X2), struct.pack("<Q", argument))
+    elif name == "_ZN2nn2fs11MountSdCardEPKc":
+      assert string_at(argument) == b"feedraw"
+      fs_calls.append("mount")
+      cpu.reg_write(registers.UC_ARM64_REG_X0, 1 if case == "mount_failed" else 0)
+    elif name == "_ZN2nn2fs7UnmountEPKc":
+      assert string_at(argument) == b"feedraw"
+      fs_calls.append("unmount")
+    elif name == "_ZN2nn2fs8OpenFileEPNS0_10FileHandleEPKci":
+      assert string_at(cpu.reg_read(registers.UC_ARM64_REG_X1)) == b"feedraw:/fee-batch-ring-draw.cfg"
+      assert cpu.reg_read(registers.UC_ARM64_REG_X2) == 1
+      fs_calls.append("open")
+      cpu.mem_write(argument, struct.pack("<Q", 42))
+      cpu.reg_write(registers.UC_ARM64_REG_X0, 0 if case in configs else 1)
+    elif name == "_ZN2nn2fs11GetFileSizeEPlNS0_10FileHandleE":
+      cpu.mem_write(argument, struct.pack("<q", len(configs[case])))
+      cpu.reg_write(registers.UC_ARM64_REG_X0, 0)
+    elif name == "_ZN2nn2fs8ReadFileEPmNS0_10FileHandleElPvm":
+      length = cpu.reg_read(registers.UC_ARM64_REG_X4)
+      assert 0 < length <= 4096
+      contents = configs[case][:length]
+      if case == "config_short":
+        contents = contents[:-1]
+      cpu.mem_write(cpu.reg_read(registers.UC_ARM64_REG_X3), contents)
+      cpu.mem_write(argument, struct.pack("<Q", len(contents)))
+      cpu.reg_write(registers.UC_ARM64_REG_X0, 0)
+    elif name == "_ZN2nn2fs9CloseFileENS0_10FileHandleE":
+      assert argument == 42
+      fs_calls.append("close")
+    elif name == "memset":
+      value = cpu.reg_read(registers.UC_ARM64_REG_X1) & 0xFF
+      count = cpu.reg_read(registers.UC_ARM64_REG_X2)
+      assert count <= 4096, "unexpected startup memory initialization"
+      cpu.mem_write(argument, bytes([value]) * count)
+    elif name == "memcmp":
+      other = cpu.reg_read(registers.UC_ARM64_REG_X1)
+      count = cpu.reg_read(registers.UC_ARM64_REG_X2)
+      assert count <= 4096
+      left, right = bytes(cpu.mem_read(argument, count)), bytes(cpu.mem_read(other, count))
+      cpu.reg_write(registers.UC_ARM64_REG_X0, (int(left > right) - int(left < right)) & 0xFFFFFFFFFFFFFFFF)
     else:
       raise AssertionError(f"unexpected initialization import: {name}")
     cpu.reg_write(registers.UC_ARM64_REG_PC, cpu.reg_read(registers.UC_ARM64_REG_X30))
@@ -131,9 +191,27 @@ def smoke(data: bytes, case: str) -> int:
   cpu.emu_start(BASE + main, STOP + 4, count=100_000)
   if cpu.reg_read(registers.UC_ARM64_REG_PC) != STOP:
     raise AssertionError(f"{case}: initialization did not return")
-  expected = expected_hooks if case == "supported" else set()
+  supported = case == "supported" or case == "mount_failed" or case in configs
+  expected = expected_hooks if supported else set()
   if set(hooks) != expected or len(hooks) != len(expected):
     raise AssertionError(f"{case}: incorrect hook registration: {hooks}")
+  if supported:
+    assert fs_calls.count("mount") == 1
+    assert fs_calls.count("unmount") == (case != "mount_failed")
+    assert fs_calls.count("close") == (case in configs)
+    expected_count = {"config_low": 2, "config_custom": 600, "config_high": 1000}.get(case, 300)
+    for count in (10, 1):
+      cpu.reg_write(registers.UC_ARM64_REG_SP, STACK + 0x20000 - 0x20)
+      cpu.reg_write(registers.UC_ARM64_REG_X0, 0)
+      cpu.reg_write(registers.UC_ARM64_REG_X1, count)
+      cpu.reg_write(registers.UC_ARM64_REG_X2, 0)
+      cpu.reg_write(registers.UC_ARM64_REG_X3, 0)
+      cpu.reg_write(registers.UC_ARM64_REG_X30, STOP)
+      cpu.emu_start(replacements[offset("COUNT_CTOR")], STOP + 4, count=10_000)
+      assert cpu.reg_read(registers.UC_ARM64_REG_PC) == STOP
+    assert selected_counts == [expected_count, 1], (case, selected_counts)
+  else:
+    assert not fs_calls, "unsupported executables must not read configuration"
   return len(hooks)
 
 
@@ -142,7 +220,9 @@ def main() -> None:
   parser.add_argument("nro", type=Path)
   args = parser.parse_args()
   verify_nro(args.nro)
-  for case in ("supported", "wrong_version", "wrong_build_id", "wrong_instruction", "wrong_segment_layout"):
+  for case in ("supported", "wrong_version", "wrong_build_id", "wrong_instruction", "wrong_segment_layout",
+    "mount_failed", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
+    "config_large", "config_short", "config_empty"):
     count = smoke(args.nro.read_bytes(), case)
     print(f"{case}: initialization returned normally; {count} hooks; no unavailable API call")
 
