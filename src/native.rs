@@ -1,0 +1,320 @@
+//! Version-pinned IL2CPP calls. No mutable inventory entries are cached.
+
+use crate::{
+  batch::{Inventory, Stock},
+  labels, profile,
+  random::{self, Rates, State},
+};
+use core::{ffi::c_void, ptr};
+
+pub type Object = *mut c_void;
+pub type Method = *const c_void;
+pub type Draw = unsafe extern "C" fn(Object, i32, *mut Object, Method) -> Object;
+const NONE: Method = ptr::null();
+
+pub fn base() -> usize {
+  unsafe { skyline::hooks::getRegionAddress(skyline::hooks::Region::Text) as usize }
+}
+
+pub unsafe fn field<T: Copy>(object: Object, offset: usize) -> T {
+  unsafe { object.cast::<u8>().add(offset).cast::<T>().read_unaligned() }
+}
+
+unsafe fn metadata(offset: usize) -> Object {
+  let cell = unsafe { ((base() + offset) as *const Object).read() };
+  if cell.is_null() {
+    return ptr::null_mut();
+  }
+  let initialize: unsafe extern "C" fn(Object) =
+    unsafe { core::mem::transmute(base() + profile::INITIALIZE_METADATA) };
+  unsafe {
+    initialize(cell);
+    cell.cast::<Object>().read()
+  }
+}
+
+unsafe fn reference(object: Object, offset: usize, value: Object) {
+  let slot = unsafe { object.cast::<u8>().add(offset).cast::<Object>() };
+  let barrier: unsafe extern "C" fn(*mut Object, Object) =
+    unsafe { core::mem::transmute(base() + profile::WRITE_BARRIER) };
+  unsafe {
+    slot.write(value);
+    barrier(slot, value);
+  }
+}
+
+unsafe fn user_data() -> Object {
+  let method = unsafe { metadata(0x062840F0) };
+  if method.is_null() {
+    return ptr::null_mut();
+  }
+  let get: unsafe extern "C" fn(Method) -> Object =
+    unsafe { core::mem::transmute(base() + profile::SINGLETON_GET) };
+  unsafe { get(method) }
+}
+
+unsafe fn parameter(slot: usize) -> Option<i32> {
+  let key = unsafe { metadata(slot) };
+  if key.is_null() {
+    return None;
+  }
+  let get: unsafe extern "C" fn(Object, Method) -> i32 =
+    unsafe { core::mem::transmute(base() + profile::PARAMETER) };
+  Some(unsafe { get(key, NONE) })
+}
+
+pub unsafe fn cost() -> Option<i32> {
+  unsafe { parameter(0x062C2B08) }.filter(|value| *value > 0 && *value <= i32::MAX / 300)
+}
+
+unsafe fn string(string: Object) -> Option<Vec<u16>> {
+  if string.is_null() {
+    return None;
+  }
+  let count: i32 = unsafe { field(string, 0x10) };
+  if !(0..=4096).contains(&count) {
+    return None;
+  }
+  Some(
+    unsafe {
+      core::slice::from_raw_parts(string.cast::<u8>().add(0x14).cast::<u16>(), count as usize)
+    }
+    .to_vec(),
+  )
+}
+
+pub unsafe fn set_count_label(content: Object) {
+  if content.is_null() {
+    return;
+  }
+  let item: Object = unsafe { field(content, 0x18) };
+  if item.is_null() || unsafe { field::<i32>(item, 0x64) } != 300 {
+    return;
+  }
+  let text: Object = unsafe { field(content, 0x48) };
+  if text.is_null() {
+    return;
+  }
+  let language: unsafe extern "C" fn(Method) -> i32 =
+    unsafe { core::mem::transmute(base() + profile::GET_LANGUAGE) };
+  let units: Vec<u16> = labels::count(unsafe { language(NONE) }).encode_utf16().collect();
+  let allocate: unsafe extern "C" fn(i32, Method) -> Object =
+    unsafe { core::mem::transmute(base() + profile::STRING_NEW_SIZE) };
+  let value = unsafe { allocate(units.len() as i32, NONE) };
+  if value.is_null() {
+    return;
+  }
+  unsafe {
+    ptr::copy_nonoverlapping(
+      units.as_ptr(),
+      value.cast::<u8>().add(0x14).cast::<u16>(),
+      units.len(),
+    );
+  }
+  let class: Object = unsafe { field(text, 0) };
+  let set: unsafe extern "C" fn(Object, Object, Method) = unsafe { field(class, 0x558) };
+  let method: Method = unsafe { field(class, 0x560) };
+  unsafe {
+    set(text, value, method);
+  }
+}
+
+unsafe fn list(sequence: Object, boolean: bool) -> Object {
+  let (class_slot, ctor_slot, ctor_offset, field_offset) = if boolean {
+    (0x062B5148, 0x062C2AE8, profile::BOOL_LIST_CTOR, 0xA0)
+  } else {
+    (0x062AB780, 0x062AB788, profile::LIST_CTOR, 0x98)
+  };
+  let class = unsafe { metadata(class_slot) };
+  let method = unsafe { metadata(ctor_slot) };
+  if class.is_null() || method.is_null() {
+    return ptr::null_mut();
+  }
+  let allocate: unsafe extern "C" fn(Object) -> Object =
+    unsafe { core::mem::transmute(base() + profile::ALLOCATE_OBJECT) };
+  let ctor: unsafe extern "C" fn(Object, i32, Method) =
+    unsafe { core::mem::transmute(base() + ctor_offset) };
+  let value = unsafe { allocate(class) };
+  if !value.is_null() {
+    unsafe {
+      ctor(value, 300, method);
+      reference(sequence, field_offset, value);
+    }
+  }
+  value
+}
+
+unsafe fn list_count(list: Object) -> Option<usize> {
+  if list.is_null() {
+    return None;
+  }
+  let count: i32 = unsafe { field(list, 0x18) };
+  let array: Object = unsafe { field(list, 0x10) };
+  if !(0..=10000).contains(&count) || array.is_null() {
+    return None;
+  }
+  let capacity: usize = unsafe { field(array, 0x18) };
+  if count as usize > capacity || capacity > 10000 {
+    return None;
+  }
+  Some(count as usize)
+}
+
+unsafe fn object_at(list: Object, index: usize) -> Option<Object> {
+  if index >= unsafe { list_count(list) }? {
+    return None;
+  }
+  let array: Object = unsafe { field(list, 0x10) };
+  let object: Object = unsafe { field(array, 0x20 + index * 8) };
+  (!object.is_null()).then_some(object)
+}
+
+#[derive(Clone, Copy)]
+pub struct Expected {
+  data: Object,
+  state: State,
+}
+
+pub struct GameInventory {
+  god: Object,
+  original: Draw,
+  rings: Object,
+  flags: Object,
+  candidates: [Vec<Object>; 4],
+  price: i32,
+}
+
+impl GameInventory {
+  pub unsafe fn new(sequence: Object, god: Object, original: Draw) -> Option<Self> {
+    let rings = unsafe { list(sequence, false) };
+    let flags = unsafe { list(sequence, true) };
+    let mut value = Self { god, original, rings, flags, candidates: Default::default(), price: 0 };
+    if rings.is_null() || flags.is_null() || god.is_null() {
+      return None;
+    }
+    value.price = unsafe { cost() }?;
+    let method = unsafe { metadata(0x06287110) };
+    if method.is_null() {
+      return None;
+    }
+    let get: unsafe extern "C" fn(Method) -> Object =
+      unsafe { core::mem::transmute(base() + profile::RING_LIST) };
+    let entries = unsafe { get(method) };
+    let gid = unsafe { string(field(god, 0x20)) }?;
+    for index in 0..unsafe { list_count(entries) }? {
+      let data = unsafe { object_at(entries, index) }?;
+      if unsafe { string(field(data, 0x38)) }.as_ref() != Some(&gid) {
+        continue;
+      }
+      let rank: i32 = unsafe { field(data, 0x4C) };
+      if !(0..=3).contains(&rank) || unsafe { field::<i32>(data, 0x48) } != 0 {
+        return None;
+      }
+      value.candidates[rank as usize].push(data);
+    }
+    // Every native draw chooses from ten characters at the selected rank.
+    if value.candidates.iter().any(|rank| rank.len() != 10) {
+      return None;
+    }
+    Some(value)
+  }
+
+  pub fn price(&self) -> i32 {
+    self.price
+  }
+  pub fn results(&self) -> Object {
+    self.rings
+  }
+
+  unsafe fn state() -> Option<State> {
+    let get: unsafe extern "C" fn(Method) -> Object =
+      unsafe { core::mem::transmute(base() + profile::GAME_RANDOM) };
+    let rng = unsafe { get(NONE) };
+    if rng.is_null() {
+      return None;
+    }
+    Some(State(unsafe { field(rng, 0x10) }))
+  }
+}
+
+impl Inventory for GameInventory {
+  type Expected = Expected;
+
+  fn fragments(&mut self) -> Option<i32> {
+    let user = unsafe { user_data() };
+    if user.is_null() {
+      return None;
+    }
+    Some(unsafe { field(user, 0x6C) })
+  }
+
+  fn preview(&mut self) -> Option<Expected> {
+    if unsafe { cost() }? != self.price {
+      return None;
+    }
+    let rates = Rates {
+      s: u32::try_from(unsafe { parameter(0x062C2AF0) }?).ok()?,
+      a: u32::try_from(unsafe { parameter(0x062C2B00) }?).ok()?,
+      b: u32::try_from(unsafe { parameter(0x062C2AF8) }?).ok()?,
+    };
+    let (rank, index, state) =
+      random::preview(unsafe { Self::state() }?, rates, self.candidates.each_ref().map(Vec::len))?;
+    Some(Expected { data: self.candidates[rank][index], state })
+  }
+
+  fn stock(&mut self, expected: &Expected) -> Option<Stock> {
+    let total: unsafe extern "C" fn(Object, Method) -> i32 =
+      unsafe { core::mem::transmute(base() + profile::ALL_COUNT) };
+    let equipped: unsafe extern "C" fn(Object, bool, Method) -> i32 =
+      unsafe { core::mem::transmute(base() + profile::STOCK_COUNT) };
+    let can_add: unsafe extern "C" fn(Object, i32, Method) -> bool =
+      unsafe { core::mem::transmute(base() + profile::CAN_ADD) };
+    let rnid: Object = unsafe { field(expected.data, 0x20) };
+    if rnid.is_null() {
+      return None;
+    }
+    Some(Stock {
+      total: unsafe { total(expected.data, NONE) },
+      equipped: unsafe { equipped(expected.data, true, NONE) },
+      fragments: self.fragments()?,
+      can_add: unsafe { can_add(rnid, 1, NONE) },
+    })
+  }
+
+  fn transact(&mut self, expected: &Expected) -> bool {
+    let mut flags = ptr::null_mut();
+    let results = unsafe { (self.original)(self.god, 1, &mut flags, NONE) };
+    if unsafe { list_count(results) } != Some(1) || unsafe { list_count(flags) } != Some(1) {
+      return false;
+    }
+    let Some(ring) = (unsafe { object_at(results, 0) }) else {
+      return false;
+    };
+    // Preserve actual acquired results for the original outer achievement pass.
+    let array: Object = unsafe { field(flags, 0x10) };
+    let new: bool = unsafe { field(array, 0x20) };
+    let add: unsafe extern "C" fn(Object, Object, Method) =
+      unsafe { core::mem::transmute(base() + profile::LIST_ADD) };
+    let add_bool: unsafe extern "C" fn(Object, bool, Method) =
+      unsafe { core::mem::transmute(base() + profile::BOOL_LIST_ADD) };
+    let ring_method = unsafe { metadata(0x062AB790) };
+    let flag_method = unsafe { metadata(0x062B5110) };
+    if ring_method.is_null() || flag_method.is_null() {
+      return false;
+    }
+    unsafe {
+      add(self.rings, ring, ring_method);
+      add_bool(self.flags, new, flag_method);
+    }
+    unsafe { field::<Object>(ring, 0x20) == expected.data && Self::state() == Some(expected.state) }
+  }
+}
+
+pub unsafe fn empty_results(sequence: Object) -> Object {
+  let rings: Object = unsafe { field(sequence, 0x98) };
+  if rings.is_null() {
+    unsafe { list(sequence, false) }
+  } else {
+    rings
+  }
+}

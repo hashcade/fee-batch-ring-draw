@@ -1,0 +1,120 @@
+use crate::{
+  batch,
+  native::{self, Method, Object},
+  profile,
+  session::Session,
+};
+use core::{cell::RefCell, ptr};
+
+std::thread_local! {
+  static SESSION: RefCell<Session> = RefCell::new(Session::default());
+}
+
+pub fn install() {
+  if !supported_game() {
+    return;
+  }
+  skyline::install_hooks!(count_ctor, build_text, execute_gacha, draw, create_demo, unload);
+}
+
+fn supported_game() -> bool {
+  // Cobalt 1.31 does not provide Skyline's get_program_id export.
+  let mut version = skyline::nn::oe::DisplayVersion { name: [0; 16] };
+  unsafe {
+    skyline::nn::oe::GetDisplayVersion(&mut version);
+  }
+  if version.name[..6] != [b'2', b'.', b'0', b'.', b'0', 0] {
+    return false;
+  }
+  let base = native::base();
+  let rodata = unsafe { skyline::hooks::getRegionAddress(skyline::hooks::Region::Rodata) as usize };
+  let data = unsafe { skyline::hooks::getRegionAddress(skyline::hooks::Region::Data) as usize };
+  if base == 0
+    || rodata.checked_sub(base) != Some(profile::RODATA_OFFSET)
+    || data <= rodata
+    || data - base < profile::BUILD_ID_OFFSET + 16
+  {
+    return false;
+  }
+  let id =
+    unsafe { core::slice::from_raw_parts((base + profile::BUILD_ID_OFFSET) as *const u8, 16) };
+  if id != profile::BUILD_ID {
+    return false;
+  }
+  for &(offset, words) in profile::TEXT_SIGNATURES {
+    if offset + 16 > profile::RODATA_OFFSET {
+      return false;
+    }
+    for (index, expected) in words.iter().enumerate() {
+      if unsafe { ((base + offset + index * 4) as *const u32).read_volatile() } != *expected {
+        return false;
+      }
+    }
+  }
+  true
+}
+
+#[skyline::hook(offset = profile::COUNT_CTOR)]
+fn count_ctor(item: Object, times: i32, handler: Object, method: Method) {
+  let times = if times == 10 { batch::DRAWS as i32 } else { times };
+  // The native constructor calculates total price and affordability from times.
+  call_original!(item, times, handler, method);
+}
+
+#[skyline::hook(offset = profile::BUILD_TEXT)]
+fn build_text(content: Object, method: Method) {
+  call_original!(content, method);
+  unsafe {
+    native::set_count_label(content);
+  }
+}
+
+#[skyline::hook(offset = profile::EXECUTE_GACHA)]
+fn execute_gacha(sequence: Object, method: Method) {
+  if !SESSION.with(|session| session.borrow_mut().begin(sequence as usize)) {
+    return;
+  }
+  // Retain original result assignment, footer refresh, and outer state machine.
+  call_original!(sequence, method);
+  SESSION.with(|session| session.borrow_mut().end());
+}
+
+#[skyline::hook(offset = profile::DRAW)]
+fn draw(god: Object, times: i32, flags: *mut Object, method: Method) -> Object {
+  let active = SESSION.with(|session| session.borrow().executing());
+  if !active || times != 300 {
+    return call_original!(god, times, flags, method);
+  }
+  let Some(sequence) = SESSION.with(|session| session.borrow_mut().dispatch(times)) else {
+    return ptr::null_mut();
+  };
+  let sequence = sequence as Object;
+  // This exact out-parameter is rooted by the original sequence's managed field.
+  if flags != unsafe { sequence.cast::<u8>().add(0xA0).cast::<Object>() } {
+    return ptr::null_mut();
+  }
+  let Some(mut inventory) = (unsafe { native::GameInventory::new(sequence, god, original!()) })
+  else {
+    return unsafe { native::empty_results(sequence) };
+  };
+  let price = inventory.price();
+  let _outcome = batch::execute(&mut inventory, price);
+  inventory.results()
+}
+
+#[skyline::hook(offset = profile::CREATE_DEMO)]
+fn create_demo(sequence: Object, method: Method) {
+  if SESSION.with(|session| session.borrow_mut().presentation(sequence as usize)) {
+    // This entry only hides the header/footer, unbinds the background, and
+    // creates the presentation child. Skip BEFORE any of those state changes.
+    // Native AddAchieveOfRefineRing and UnloadResourcesForRefineRing remain.
+    return;
+  }
+  call_original!(sequence, method);
+}
+
+#[skyline::hook(offset = profile::UNLOAD)]
+fn unload(sequence: Object, method: Method) {
+  SESSION.with(|session| session.borrow_mut().clear());
+  call_original!(sequence, method);
+}
