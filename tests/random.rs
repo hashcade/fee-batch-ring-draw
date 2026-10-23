@@ -37,3 +37,33 @@ fn labels_cover_all_game_languages_and_fallback() {
   }
   assert_eq!(fee_batch_ring_draw::labels::count(10), "精炼300次");
 }
+
+#[test]
+fn native_instruction_vectors_match_300_draws_including_high_bits() {
+  // Golden vectors executed from the supplied NSO's Random.GetValue machine
+  // code in Unicorn, using alternating moduli 100 and 10 (two calls per ring).
+  let cases = [
+    ([1, 2, 3, 4], 0x23725ddb5cf4ddc8_u64, [4259486305, 1074253361, 466384795, 3333082406]),
+    (
+      [123456789, 362436069, 521288629, 88675123],
+      0xec02af7437887973,
+      [1531322273, 3778893239, 634599342, 4055889606],
+    ),
+    (
+      [0xffffffff, 0x80000000, 0x12345678, 0x87654321],
+      0xa7a51b287aa06f96,
+      [525393096, 3918500895, 2384445792, 3355973262],
+    ),
+  ];
+  for (seed, expected_hash, expected_state) in cases {
+    let mut state = State(seed);
+    let mut hash = 0xcbf29ce484222325_u64;
+    for _ in 0..300 {
+      for modulus in [100, 10] {
+        hash = (hash ^ state.value(modulus).unwrap() as u64).wrapping_mul(0x100000001b3);
+      }
+    }
+    assert_eq!(hash, expected_hash);
+    assert_eq!(state.0, expected_state);
+  }
+}
