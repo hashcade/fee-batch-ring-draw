@@ -1,21 +1,24 @@
 # FEE Better Somniel
 
-Create a configurable batch of Bond Rings in one operation in **Fire Emblem Engage 2.0.0**, using Cobalt. The default is **300**.
+Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **Cobalt 1.31.0**.
 
-The original **Create One / Create Ten** menu becomes **Create One / Create 300**. The game calculates and displays the normal total price and disables unaffordable selections. The batch skips the result presentation and returns to the menu; inspect acquired rings in the game's ring list.
+## Features
 
-- Normal prices, rank probabilities, random sequence, acquisition records, and achievements are retained.
-- Stops before the next result would exceed the native inventory limits. It does not reroll a full result or discard a ring after charging for it.
-- Equipped rings remain equipped. Nothing is automatically melded.
-- Single-ring creation keeps its original behavior and presentation.
-- Menu text follows the game's text language and configured count. No logging, hotkeys, quantity window, or result summary is added.
-- Long batch prices use exact, language-independent `k` notation (`30k`, `99.9k`, `100k`). The original icons and layout are untouched. Confirmation and charging retain the full native amount.
+- **Batch Bond Ring creation:** replace Create Ten with a configurable batch, defaulting to **300**. Keep normal prices, probabilities, RNG progression, acquisition records, and achievements. Skip the batch result presentation and inspect acquired rings in the original ring list.
+- **Batch Bond Ring melding:** after the original confirmation, meld as many copies of the selected kind and current rank as materials, fragments, and capacity allow. Keep normal costs, preserve equipped copies, and do not chain ranks. Automatically skip the batch result animation; pressing + is unnecessary.
+- **Fast ring and bracelet cleaning:** finish the current cleaning through the original flow after one effective cleaning action.
+- **Fast fishing:** shorten the bite wait and simplify landing the fish. Keep the original fishing allowance, catches, and reward flow.
+- **Fast perfect strength training:** retain the existing quick/perfect behavior for push-ups, sit-ups, and squats without increasing the training allowance.
+- **Repeatable cooking and food selection:** remove the meal-use limit and the existing food-list stock restriction. Do not force a meal rating or replace native settlement.
+- **Inventory-free ordinary gifts:** show normal gift items even at zero stock and do not consume them. Keep recipient preferences, support settlement, and the original ordinary-gift category filter.
 
-The implementation is compiled and covered by host tests, executable signature checks, and a compiled-NRO startup smoke test. **In-game validation is pending.** See [validation](docs/VALIDATION.md).
+All features are enabled together. No feature switches, hotkeys, extra menus, logs, result windows, or quantity dialogs are added. The optional configuration only controls the ring creation batch size.
+
+Resources, shop stock, arena allowances, battle saving, and rewind limits are not changed by this plugin. An optional [companion cheat file](cheats/8C08B9719E085F91.txt) keeps those separate; Battle Save is its final entry.
 
 ## Installation
 
-Requires [Cobalt](https://github.com/Raytwo/Cobalt). Runtime imports are checked against Cobalt **1.31.0** and Engage **2.0.0**, Build ID `8C08B9719E085F91847B5E0F935D9488`. Other executable versions are rejected before hooks are installed.
+Requires [Cobalt](https://github.com/Raytwo/Cobalt). Supported executable: Engage **2.0.0**, Build ID `8C08B9719E085F91847B5E0F935D9488`. A version, instruction, or conflicting-patch mismatch prevents initialization.
 
 ```text
 engage/mods/fee_better_somniel/fee_better_somniel.nro
@@ -29,11 +32,19 @@ Install Cobalt following its instructions, then extract the package's `engage` d
 
 Install Cobalt for the emulator, then extract `engage` into its **virtual SD card root**, not its per-game mod folder. See [Cobalt mod management](https://github.com/Raytwo/Cobalt/wiki/Managing-your-Mods).
 
-This repository replaces FEE Batch Ring Draw. Remove the old draw plugin before installing this package. The remaining Somniel features are being integrated here; this rename does not enable them yet.
+### Replacing the previous plugins and cheats
+
+Remove **both** `fee_batch_ring_draw.nro` and `fee_batch_ring_meld.nro` before using this combined plugin. The old plugins must not run alongside it.
+
+Disable/remove **Unlimited Cooking**, **Fast Fishing**, **Perfect Strength Training**, and **Fast Ring Cleaning**. The companion file already excludes them. Do not enable a separate all-gifts or gift-consumption code alongside this plugin.
+
+Keep desired resource, stock, arena, battle-save, and rewind cheats. Fully restart the game (and emulator, if used) after changing plugins or cheats.
+
+The plugin adds no custom item IDs, save fields, or inventory catalog entries. Its gift feature does not place free gifts into the player's inventory.
 
 ## Configuration
 
-Like FETH Bench EXP, this plugin reads an optional `.cfg` file at the console's SD card root (or the emulator's virtual SD card root), not alongside the NRO:
+An optional configuration file is read once at startup from the SD card root:
 
 ```text
 sdmc:/fee-better-somniel.cfg
@@ -43,42 +54,41 @@ sdmc:/fee-better-somniel.cfg
 draw_count=300
 ```
 
-`draw_count` accepts **2–1000**; 300 is the default. This is a plugin execution safety range, not a game inventory limit. The batch menu label, displayed price, affordability, execution limit, and result-list capacity follow this value. Single-ring creation is unchanged.
+`draw_count` accepts **2–1000**, defaulting to **300** when absent or invalid. This is a plugin execution safety range, not an inventory cap. The batch label, price, affordability, execution limit, and result capacity follow the value. Single-ring creation remains unchanged.
 
-Missing, unreadable, malformed, duplicate, unknown, or out-of-range settings use the default. Configuration files larger than 4096 bytes are rejected. Empty lines and `#` comment lines are accepted. The plugin only reads the file; it does not create or overwrite it. A [sample configuration](config/fee-better-somniel.cfg) is provided separately, so extracting an update does not reset existing settings.
+Batch prices use exact, language-independent `k` notation (`30k`, `99.9k`, `100k`); native confirmation and charging retain full amounts. Draw labels and meld confirmations follow the game's current text language.
 
-Fully restart the game (and the emulator, if used) after changing the file.
+Rename an existing `fee-batch-ring-draw.cfg` to `fee-better-somniel.cfg` to keep a custom count. The [sample configuration](config/fee-better-somniel.cfg) is distributed separately; the plugin never writes it. Missing, unreadable, malformed, duplicate, unknown, oversized, or out-of-range settings use the default. Fully restart after editing it.
 
 ## Development
 
 ```sh
 cargo test --locked
 cargo skyline build --release -- --locked
-python3 scripts/package.py target/aarch64-skyline-switch/release/libfee_better_somniel.nro --version 0.1.0
+python3 scripts/verify_game.py /path/to/main
+python3 scripts/package.py target/aarch64-skyline-switch/release/libfee_better_somniel.nro --version "$(python3 scripts/release.py --check)"
 uv run --with unicorn==2.1.4 python scripts/smoke_startup.py dist/fee_better_somniel.nro
 ```
 
-Optionally validate a locally supplied executable without writing extracted files:
-
-```sh
-python3 scripts/verify_game.py /path/to/main
-```
+Executable analysis is read-only. See [implementation](docs/IMPLEMENTATION.md) for native boundaries and [validation](docs/VALIDATION.md) for verification and remaining game checks.
 
 ## Releases
 
-CI validates and builds the plugin. Tagged releases use **changelogithub** and publish the NRO, installable ZIP, and `SHA256SUMS`, then download and verify the published artifacts.
+CI validates and builds the plugin. Tagged releases use **changelogithub** and publish the NRO, installable ZIP, and `SHA256SUMS`, then download and verify published artifacts.
 
 ```sh
 python3 scripts/release.py --current
 python3 scripts/release.py --bump patch
 ```
 
-Only release when explicitly requested, from a clean `main` synchronized with GitHub. The release script does not repeat the CI build locally.
+Release only when explicitly requested, from a clean `main` synchronized with GitHub. The release script does not repeat the CI build locally.
 
 ## References
 
 - [Cobalt](https://github.com/Raytwo/Cobalt) and the [plugin development hub](https://github.com/DivineDragonFanClub/plugin_hub).
-- [engage-il2cpp 0.1.0](https://github.com/DivineDragonFanClub/engage-il2cpp/tree/0.1.0) for native interface definitions, cross-checked against the supplied executable.
+- [engage-il2cpp 0.1.0](https://github.com/DivineDragonFanClub/engage-il2cpp/tree/0.1.0), cross-checked against the supplied executable.
+- **KaitoB / 怪盗B**, whose Engage cheat set provides the original activity and full-gift patch references: [author's publication](https://tekqart.com/thread-327061-1-1.html), [public code listing](https://gbatemp.net/threads/fire-emblem-engage-save-editor.624990/page-4). The activity instructions are migrated from the user's existing file; gift consumption is suppressed only at its confirmed gift-specific call site.
+- Batch melding retains this project's former `fee-batch-ring-meld` v0.2.0 implementation (`d92aed4`); the source is preserved under `src/meld/`.
 
 No game binaries, extracted assets, or save files are included.
 

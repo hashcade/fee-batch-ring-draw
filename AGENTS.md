@@ -13,5 +13,7 @@
 - Keep the original outer flow; bypass presentation before changing the scene, background, or title bar.
 - Support the requested draw_count configuration only; do not add logs, hotkeys, result windows, or quantity dialogs.
 - Integrate batch ring creation, batch melding, fast ring cleaning, fast fishing, fast perfect strength training, and repeatable cooking in one plugin. These features are always enabled; do not add feature toggles or increase activity allowances.
+- Include the explicitly requested food-list stock bypass and inventory-free ordinary gifts. Scope gift changes to the original ordinary-gift menu and settlement; never bypass global item inventory, special relationship prerequisites, or plot checks.
+- Confirmed batch melds skip presentation before header/footer/background changes. Preserve native settlement and outer resource cleanup; do not synthesize skip-button input.
 - Leave arena training, battle saves, rewind limits, resource refills, and shop stock to cheats. Do not install or release without an explicit request.
 - Document Nintendo Switch installation before emulators. Use standard MIT attribution.

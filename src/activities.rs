@@ -1,4 +1,4 @@
-//! One-time executable patches migrated from the user's Engage 2.0.0 cheats.
+//! One-time activity patches and scoped gift extensions for Engage 2.0.0.
 //! No inventory polling, allowance changes, or feature switches are added.
 
 /// Main-relative offset, original instruction, replacement instruction.
