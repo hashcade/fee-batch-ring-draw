@@ -1,6 +1,6 @@
 # Optional companion cheats
 
-`8C08B9719E085F91.txt` retains nine entries from the user's Engage 2.0.0 file, with Battle Save last. Retained instruction bodies are unchanged.
+`8C08B9719E085F91.txt` contains six entries, with Battle Save last. Max Resources combines the original Max Gold, Max Bond Fragments, Max Forging Materials, and Max Crystals instruction bodies in that order, without changing their guards or refill limits. Max SP remains separate, immediately before Infinite Shop Stock.
 
 Unlimited Cooking, Fast Fishing, Perfect Strength Training, and Fast Ring Cleaning are implemented by the plugin and removed from this file. Keep their old entries disabled if using a different cheat collection. The existing cooking entry contains both the meal-use patch and a separate food-list stock check; both are retained in the plugin.
 
