@@ -12,7 +12,6 @@
 - A compiled failed-write case restores the original instructions, returns normally, and installs no hooks.
 - Configuration cases cover missing/malformed/oversized/invalid UTF-8/short reads, mount failure, and batch counts 2, 300, 600, and 1000. The filesystem is read-only; handles/mounts are released.
 - Compiled draw text fixtures cover supported text languages, exact compact prices, unchanged actual native prices, and unchanged single-row behavior.
-- Companion cheat checks cover the six entries, unchanged combined resource instructions, independent Max SP, Battle Save last, and no direct-write overlap with the plugin activity sites.
 
 These tests model loader/native boundaries. They do not run Unity, render the game UI, or prove in-game state-machine completion.
 
@@ -32,9 +31,3 @@ Use a temporary test save or the user's explicitly chosen test environment. Do n
 - Gift an ordinary item with zero, one, and multiple owned copies; confirm visibility/selectability, no count change, normal recipient response/support, and no global inventory effect.
 - Confirm special relationship/plot restrictions and non-gift item use are unchanged.
 - Save and reload; remove the plugin and reload a test save to verify no custom IDs or schema dependency was introduced.
-
-## Companion cheat migration
-
-The shared FEE cheat file is reorganized only after the combined NRO passes build, import, and startup checks. Exactly four entries move to the plugin: Unlimited Cooking, Fast Fishing, Perfect Strength Training, and Fast Ring Cleaning. The retained instruction bodies remain unchanged. Max Resources combines gold, bond fragments, forging materials, and crystals; Max SP follows it as a separate entry. Battle Save follows Infinite Time Rewind as the final entry.
-
-The companion file alone does not provide the migrated effects. A game still running the old plugin set must not be treated as if this combined plugin were installed. Fully restart after changing the active plugin/cheat set.
