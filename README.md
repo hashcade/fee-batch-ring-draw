@@ -50,6 +50,16 @@ draw_count=300
 
 A [sample configuration](config/fee-better-somniel.cfg) is provided separately. Fully restart the game after changing it.
 
+## Credits
+
+- [Cobalt](https://github.com/Raytwo/Cobalt) — Engage plugin loader and runtime.
+- [skyline-rs](https://github.com/ultimate-research/skyline-rs) — plugin runtime bindings.
+- [engage-il2cpp](https://github.com/DivineDragonFanClub/engage-il2cpp) — native interface references.
+- [KaitoB](https://tekqart.com/thread-327061-1-1.html) — original activity and gift patch references.
+
+Fire Emblem and related names are trademarks of Nintendo and Intelligent Systems.
+This unofficial fan project is not affiliated with or endorsed by them.
+
 ## License
 
 [MIT](LICENSE) License © [jinghaihan](https://github.com/jinghaihan)

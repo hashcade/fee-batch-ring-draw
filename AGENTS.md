@@ -1,7 +1,7 @@
 # Project guidelines
 
 - Write source, comments, scripts, and documentation in English.
-- Keep README focused on this mod's current features, requirements, installation, configuration, and standard license. Do not include cheat lists, companion-cheat guidance, predecessor migration history, development/release workflows, or implementation provenance; keep engineering details and attribution in the existing docs instead.
+- Keep README focused on this mod's current features, requirements, installation, configuration, Credits, and standard license. Do not include personal cheat lists, companion-cheat guidance, predecessor migration history, development/release workflows, or detailed implementation notes; keep engineering details in the existing docs instead. Preserve concise, accurate author/dependency attribution in Credits, following the other mods. Never remove Credits or License when simplifying README.
 - Do not add personal cheat files, companion cheat directories, their tests, or their maintenance documentation to this mod repository. When the user requests changes to an external shared cheat file, edit that file only; do not copy it into the repository or release packages.
 - Keep commits atomic. Do not release or install unless explicitly requested.
 - Retain the existing ring transaction safety checks and Cobalt 1.31 ABI conventions.
