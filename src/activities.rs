@@ -23,6 +23,7 @@ pub const PATCHES: &[(usize, u32, u32)] = &[
   (0x02DD10E0, 0x36000068, 0xD503201F),
   (0x02DD1C88, 0xB941EE69, 0xB941B269),
   (0x02DD2D28, 0xB941EE69, 0xB941B269),
+  (0x0241F920, 0x4B130108, 0x2A1F03E8),
 ];
 
 /// Pin the surrounding instructions as well as each replaced instruction.
@@ -47,6 +48,7 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x02DD10E0, [0x36000068, 0xAA1303E0, 0x97FFFC0A, 0xFD4063E8]),
   (0x02DD1C88, [0xB941EE69, 0x1B087D28, 0xB941DA6A, 0xB941F26B]),
   (0x02DD2D28, [0xB941EE69, 0x1B087D28, 0xB941DA6A, 0xB941F26B]),
+  (0x0241F920, [0x4B130108, 0x0AA87D13, 0x7100011F, 0x5400020C]),
 ];
 
 pub trait CodeMemory {
