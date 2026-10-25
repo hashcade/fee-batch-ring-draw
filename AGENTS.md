@@ -1,6 +1,7 @@
 # Project guidelines
 
 - Write source, comments, scripts, and documentation in English.
+- Keep README focused on this mod's current features, requirements, installation, configuration, and standard license. Do not include cheat lists, companion-cheat guidance, predecessor migration history, development/release workflows, or implementation provenance; keep engineering details and attribution in the existing docs instead.
 - Keep commits atomic. Do not release or install unless explicitly requested.
 - Retain the existing ring transaction safety checks and Cobalt 1.31 ABI conventions.
 - Scope local verification to the change; CI owns full regression checks.
