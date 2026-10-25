@@ -35,3 +35,12 @@ fn absolute_edge_correction_does_not_accumulate_on_refresh() {
   }
   assert_eq!(position, Point { x: 100.0, y: 30.0, z: 1.0 });
 }
+
+#[test]
+fn settled_geometry_does_not_dirty_the_canvas() {
+  let point = Point { x: 200.0, y: 30.0, z: 1.0 };
+  assert!(point.is_close(point));
+  assert!(point.is_close(Point { x: 200.005, ..point }));
+  assert!(!point.is_close(Point { x: 201.0, ..point }));
+  assert!(!point.is_close(Point { x: f32::NAN, ..point }));
+}

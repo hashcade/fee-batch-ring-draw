@@ -59,7 +59,7 @@ def smoke(data: bytes, case: str) -> int:
   id_values = re.search(r"pub const BUILD_ID:.*?=\s*\[(.*?)\];", profile, re.S).group(1)
   build_id = bytes(int(word, 16) for word in re.findall(r"0x[0-9A-Fa-f]+", id_values))
   expected_hooks = {offset(name) for name in (
-    "COUNT_CTOR", "BUILD_TEXT", "EXECUTE_GACHA", "UNLOAD", "DRAW", "CREATE_DEMO"
+    "COUNT_CTOR", "BUILD_TEXT", "MENU_UPDATE", "EXECUTE_GACHA", "UNLOAD", "DRAW", "CREATE_DEMO"
   )}
   symbols, relocations = metadata(data)
   main = next(value for name, section, value in symbols if name == "main" and section)
@@ -215,8 +215,10 @@ def smoke(data: bytes, case: str) -> int:
       assert cpu.reg_read(registers.UC_ARM64_REG_PC) == STOP
     assert selected_counts == [expected_count, 1], (case, selected_counts)
     if case in ("supported", "config_low", "config_custom", "config_high"):
-      layout.exercise(replacements[offset("BUILD_TEXT")], STOP, STACK + 0x20000 - 0x20,
+      layout.exercise(replacements[offset("MENU_UPDATE")], STOP, STACK + 0x20000 - 0x20,
         expected_count)
+      print(f"{case}: compiled menu updates recovered delayed binding/fonts and native resets; "
+        "icons aligned; settled/unrelated menus unchanged")
   else:
     assert not fs_calls, "unsupported executables must not read configuration"
   return len(hooks)

@@ -19,6 +19,12 @@ pub struct Point {
 }
 
 impl Point {
+  pub fn is_close(self, other: Self) -> bool {
+    (self.x - other.x).abs() < 0.01
+      && (self.y - other.y).abs() < 0.01
+      && (self.z - other.z).abs() < 0.01
+  }
+
   pub fn translated(self, from: Self, to: Self) -> Self {
     Self { x: self.x + to.x - from.x, y: self.y + to.y - from.y, z: self.z + to.z - from.z }
   }

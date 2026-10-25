@@ -10,12 +10,18 @@ class LayoutFixture:
   def __init__(self, cpu, game, stub, write, offset):
     self.cpu, self.game, self.write = cpu, game, write
     self.addresses = {game + offset(name): name for name in (
-      "BUILD_TEXT", "TMP_RECT", "PREFERRED_VALUES", "RECT", "SET_WIDTH",
+      "MENU_UPDATE", "TMP_RECT", "PREFERRED_VALUES", "RECT", "SET_WIDTH",
       "GET_POSITION", "SET_POSITION", "TRANSFORM_POINT", "INVERSE_POINT")}
     self.addresses[stub] = "ICON_RECT"
     root = game + 0x06400000
     self.menu, items, array, image_class = (root + i * 0x1000 for i in range(4))
     self.write(image_class, bytes(0x600))
+    self.content, self.menu_class = root + 0x18000, root + 0x19000
+    self.write(self.menu_class, bytes(0x600))
+    self.qword(self.menu_class + 0x138 + 30 * 16, game + offset("DRAW_MENU_NAME"))
+    self.qword(self.menu, self.menu_class)
+    self.qword(self.menu + 0x70, self.content)
+    self.qword(self.content + 0x28, self.menu)
     self.qword(image_class + 0x138 + 30 * 16, stub)
     self.qword(self.menu + 0x78, items)
     self.qword(items + 0x10, array)
@@ -23,6 +29,8 @@ class LayoutFixture:
     self.qword(array + 0x18, 2)
     self.rows, self.rects, self.text_rects, self.icon_rects, self.widths = [], {}, {}, {}, {}
     self.writes = 0
+    self.update_calls = 0
+    self.reset_icons = False
     for index in range(2):
       item, view, text, image, amount, icon = (
         root + 0x4000 + index * 0x6000 + j * 0x1000 for j in range(6))
@@ -60,7 +68,13 @@ class LayoutFixture:
     if name is None:
       return False
     obj = self.cpu.reg_read(registers.UC_ARM64_REG_X0)
-    if name == "TMP_RECT":
+    if name == "MENU_UPDATE":
+      self.update_calls += 1
+      if self.reset_icons:
+        for _, _, _, _, icon in self.rows:
+          self.rects[icon]["position"][0] = 300.0
+        self.reset_icons = False
+    elif name == "TMP_RECT":
       self.cpu.reg_write(registers.UC_ARM64_REG_X0, self.text_rects[obj])
     elif name == "ICON_RECT":
       self.cpu.reg_write(registers.UC_ARM64_REG_X0, self.icon_rects[obj])
@@ -85,7 +99,6 @@ class LayoutFixture:
       else:
         result = [(p - origin) / state["scale"] for p, origin in zip(point, state["position"])]
       self.floats(result)
-    # BUILD_TEXT is the native builder trampoline, whose text is modeled above.
     self.cpu.reg_write(registers.UC_ARM64_REG_PC, self.cpu.reg_read(registers.UC_ARM64_REG_X30))
     return True
 
@@ -95,17 +108,32 @@ class LayoutFixture:
 
     def call():
       self.cpu.reg_write(registers.UC_ARM64_REG_SP, stack)
-      self.cpu.reg_write(registers.UC_ARM64_REG_X0, self.rows[0][1])
+      self.cpu.reg_write(registers.UC_ARM64_REG_X0, self.content)
       self.cpu.reg_write(registers.UC_ARM64_REG_X1, 0)
       self.cpu.reg_write(registers.UC_ARM64_REG_X30, stop)
       self.cpu.emu_start(replacement, stop + 4, count=100_000)
       assert self.cpu.reg_read(registers.UC_ARM64_REG_PC) == stop
 
+    # During the native BuildText call the current row's reverse link is not
+    # populated yet (main+0x02459008 writes it afterward). Recover on later frames.
+    self.qword(self.rows[1][0] + 0x18, 0)
+    self.widths = {row[2]: 0.0 for row in self.rows}
+    call()
+    assert self.writes == 0
+    self.qword(self.rows[1][0] + 0x18, self.rows[1][1])
+    call()
+    assert self.writes == 0, "zero-width fonts must be retried, not applied"
+
     # No cached maximum: both growing and shrinking glyph widths must take effect.
     for widths in ([42.0, 96.25], [42.0, 131.5], [40.0, 55.2]):
       self.widths = {row[2]: width for row, width in zip(self.rows, widths)}
       expected = math.ceil(max(widths)) + 2.0
-      for _ in range(20):
+      for frame in range(20):
+        writes = self.writes
+        if frame == 10:
+          # A native update/animation can restore prefab geometry. The hook
+          # must run afterward, not before, and repair it in this same frame.
+          self.reset_icons = True
         call()
         icon_edges = []
         for _, _, _, amount, icon in self.rows:
@@ -119,6 +147,8 @@ class LayoutFixture:
           assert abs(image["position"][1] - number["position"][1] - 3.0) < 0.001
           icon_edges.append(edge)
         assert abs(icon_edges[0] - icon_edges[1]) < 0.001, "row icons are misaligned"
+        if frame not in (0, 10):
+          assert self.writes == writes, "unchanged frames dirtied the canvas"
     writes = self.writes
     self.widths[self.rows[1][2]] = float("nan")
     call()
@@ -126,3 +156,9 @@ class LayoutFixture:
     self.qword(self.rows[1][0] + 0x18, 0)
     call()
     assert self.writes == writes, "partially bound rows changed geometry"
+    self.qword(self.rows[1][0] + 0x18, self.rows[1][1])
+    self.widths = {row[2]: 300.0 for row in self.rows}
+    self.qword(self.menu_class + 0x138 + 30 * 16, 0)
+    call()
+    assert self.writes == writes, "unrelated menus changed geometry"
+    assert self.update_calls == 65, "the original menu update was skipped"

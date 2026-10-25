@@ -15,7 +15,15 @@ pub fn install() {
     return;
   }
   config::load();
-  skyline::install_hooks!(count_ctor, build_text, execute_gacha, draw, create_demo, unload);
+  skyline::install_hooks!(
+    count_ctor,
+    build_text,
+    menu_update,
+    execute_gacha,
+    draw,
+    create_demo,
+    unload
+  );
 }
 
 fn supported_game() -> bool {
@@ -67,6 +75,13 @@ fn build_text(content: Object, method: Method) {
   call_original!(content, method);
   unsafe {
     native::set_count_label(content);
+  }
+}
+
+#[skyline::hook(offset = profile::MENU_UPDATE)]
+fn menu_update(content: Object, method: Method) {
+  call_original!(content, method);
+  unsafe {
     menu_layout::refresh(content);
   }
 }

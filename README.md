@@ -9,7 +9,7 @@ The original **Create One / Create Ten** menu becomes **Create One / Create 300*
 - Equipped rings remain equipped. Nothing is automatically melded.
 - Single-ring creation keeps its original behavior and presentation.
 - Menu text follows the game's text language and configured count. No logging, hotkeys, quantity window, or result summary is added.
-- Both prices share a dynamically measured column, keeping fragment icons aligned and separated from longer amounts such as `30,000` or `100,000`.
+- Both prices share a dynamically measured column, keeping fragment icons aligned and separated from longer amounts such as `30,000` or `100,000`. The draw menu retries layout after native menu updates while its controls or fonts are loading; settled geometry is not rewritten.
 
 The implementation is compiled and covered by host tests, executable signature checks, and a compiled-NRO startup smoke test. **In-game validation is pending.** See [validation](docs/VALIDATION.md).
 

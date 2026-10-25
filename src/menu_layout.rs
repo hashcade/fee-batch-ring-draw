@@ -1,4 +1,4 @@
-//! Adjust only this menu's two price columns, after native text construction.
+//! Maintain this menu's price columns after native per-frame menu updates.
 
 use crate::{
   config,
@@ -68,18 +68,27 @@ impl Row {
     let set_position: unsafe extern "C" fn(Object, Point, Method) =
       unsafe { core::mem::transmute(base() + profile::SET_POSITION) };
     unsafe {
-      let old_right = transform(self.amount, get_rect(self.amount, NONE).right(), NONE);
-      set_width(self.amount, 0, width, NONE);
-      let rect = get_rect(self.amount, NONE);
-      let new_right = transform(self.amount, rect.right(), NONE);
-      set_position(self.amount, position(self.amount, NONE).translated(new_right, old_right), NONE);
+      let mut rect = get_rect(self.amount, NONE);
+      if (rect.width - width).abs() >= 0.01 {
+        let old_right = transform(self.amount, rect.right(), NONE);
+        set_width(self.amount, 0, width, NONE);
+        rect = get_rect(self.amount, NONE);
+        let new_right = transform(self.amount, rect.right(), NONE);
+        set_position(
+          self.amount,
+          position(self.amount, NONE).translated(new_right, old_right),
+          NONE,
+        );
+      }
 
       // Convert through the amount's coordinates: preserve vertical placement,
       // even when the image and text have different parents, pivots, or scales.
       let icon_right = transform(self.icon, get_rect(self.icon, NONE).right(), NONE);
       let edge = inverse(self.amount, icon_right, NONE);
       let target = transform(self.amount, rect.icon_edge(edge), NONE);
-      set_position(self.icon, position(self.icon, NONE).translated(icon_right, target), NONE);
+      if !icon_right.is_close(target) {
+        set_position(self.icon, position(self.icon, NONE).translated(icon_right, target), NONE);
+      }
     }
   }
 }
@@ -88,12 +97,17 @@ pub unsafe fn refresh(content: Object) {
   if content.is_null() {
     return;
   }
-  let item: Object = unsafe { field(content, 0x18) };
-  if item.is_null() {
+  let menu: Object = unsafe { field(content, 0x28) };
+  if menu.is_null() {
     return;
   }
-  let menu: Object = unsafe { field(item, 0x10) };
-  if menu.is_null() {
+  // BasicMenuContent.Update is shared. Match this menu's unique GetName
+  // implementation before reading any draw-menu-specific item fields.
+  let class: Object = unsafe { field(menu, 0) };
+  if class.is_null()
+    || unsafe { field::<usize>(class, 0x138 + 30 * 16) } != base() + profile::DRAW_MENU_NAME
+    || unsafe { field::<Object>(menu, 0x70) } != content
+  {
     return;
   }
   let items: Object = unsafe { field(menu, 0x78) };
@@ -107,11 +121,13 @@ pub unsafe fn refresh(content: Object) {
     if unsafe { field::<i32>(entry, 0x64) } != expected {
       return;
     }
-    let view = if entry == item { content } else { unsafe { field(entry, 0x18) } };
+    let view: Object = unsafe { field(entry, 0x18) };
+    if view.is_null() || unsafe { field::<Object>(view, 0x18) } != entry {
+      return;
+    }
     *row = unsafe { Row::new(view) };
   }
-  // Initial binding can construct the first row before the second exists.
-  // The second BuildText call then lays out both freshly built prices together.
+  // Retry on the next native update if binding or font loading is incomplete.
   let [Some(first), Some(second)] = rows else { return };
   let Some(width) = layout::column_width(unsafe { [first.width(), second.width()] }) else {
     return;

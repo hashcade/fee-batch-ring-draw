@@ -8,6 +8,8 @@ pub const BUILD_ID: [u8; 16] =
 
 pub const COUNT_CTOR: usize = 0x02957110;
 pub const BUILD_TEXT: usize = 0x02957B20;
+pub const MENU_UPDATE: usize = 0x024656C0;
+pub const DRAW_MENU_NAME: usize = 0x02957460;
 pub const EXECUTE_GACHA: usize = 0x0233A170;
 pub const UNLOAD: usize = 0x0233A660;
 pub const DRAW: usize = 0x02952990;
@@ -39,6 +41,8 @@ pub const INVERSE_POINT: usize = 0x037923C0;
 
 // Entry points, RNG instructions, and transaction/presentation call sites.
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
+  (0x024656C0, [0xA9BB7BFD, 0xA90167FA, 0x910003FD, 0xA9025FF8]),
+  (0x02957460, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xF001CE13]),
   (0x02830A70, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
   (0x02838F30, [0xFC1D0FE8, 0xA9017BFD, 0x910043FD, 0xA9024FF4]),
   (0x02F7C3F0, [0xD100C3FF, 0xA9017BFD, 0x910043FD, 0xA9024FF4]),
