@@ -6,7 +6,7 @@
 - Use the native constructor for price calculation and affordability.
 - Localize the configured-count label for all twelve game text-language IDs.
 - After the original row text builder, abbreviate the batch price from the item's existing total into exact, language-independent `k` notation. `30,000` becomes `30k`, `99,900` becomes `99.9k`, and `100,000` becomes `100k`. No rounding, price recalculation, geometry writes, font measurements, or per-frame layout hook. Native colors, icons, confirmation, affordability, and charging are retained.
-- Read `fee-batch-ring-draw.cfg` once at startup from a private, temporary SD mount. Accept `draw_count=2–1000`, defaulting to 300 for missing or invalid configuration. Close opened files and unmount on all successful-mount paths. Do not write files.
+- Read `fee-better-somniel.cfg` once at startup from a private, temporary SD mount. Accept `draw_count=2–1000`, defaulting to 300 for missing or invalid configuration. Close opened files and unmount on all successful-mount paths. Do not write files.
 - Snapshot the initial fragment budget and cap execution at the configured count.
 - Predict the next native result using a **copy** of the four-word RNG state, the game's current rank parameters, and the original RingData list order.
 - Check that exact result with `UnitRingPool.CanAdd`, total stock including equipped copies, and current funds before executing one native transaction.

@@ -147,14 +147,14 @@ def smoke(data: bytes, case: str) -> int:
       replacements[argument - GAME] = replacement
       cpu.mem_write(cpu.reg_read(registers.UC_ARM64_REG_X2), struct.pack("<Q", argument))
     elif name == "_ZN2nn2fs11MountSdCardEPKc":
-      assert string_at(argument) == b"feedraw"
+      assert string_at(argument) == b"feesomniel"
       fs_calls.append("mount")
       cpu.reg_write(registers.UC_ARM64_REG_X0, 1 if case == "mount_failed" else 0)
     elif name == "_ZN2nn2fs7UnmountEPKc":
-      assert string_at(argument) == b"feedraw"
+      assert string_at(argument) == b"feesomniel"
       fs_calls.append("unmount")
     elif name == "_ZN2nn2fs8OpenFileEPNS0_10FileHandleEPKci":
-      assert string_at(cpu.reg_read(registers.UC_ARM64_REG_X1)) == b"feedraw:/fee-batch-ring-draw.cfg"
+      assert string_at(cpu.reg_read(registers.UC_ARM64_REG_X1)) == b"feesomniel:/fee-better-somniel.cfg"
       assert cpu.reg_read(registers.UC_ARM64_REG_X2) == 1
       fs_calls.append("open")
       cpu.mem_write(argument, struct.pack("<Q", 42))

@@ -88,8 +88,8 @@ class ToolsTests(unittest.TestCase):
         release.write_version("0.2.0")
         self.assertEqual(release.version(), "0.2.0")
       self.assertEqual((root / "Cargo.lock").read_text(), previous_lock.replace(
-        f'name = "fee-batch-ring-draw"\nversion = "{current}"',
-        'name = "fee-batch-ring-draw"\nversion = "0.2.0"'))
+        f'name = "fee-better-somniel"\nversion = "{current}"',
+        'name = "fee-better-somniel"\nversion = "0.2.0"'))
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-use fee_batch_ring_draw::session::Session;
+use fee_better_somniel::session::Session;
 
 #[test]
 fn dispatch_and_presentation_are_parent_scoped_and_once_only() {

@@ -1,4 +1,4 @@
-use fee_batch_ring_draw::batch::{execute, Inventory, Stock, Stop};
+use fee_better_somniel::batch::{execute, Inventory, Stock, Stop};
 
 struct Pool {
   values: [i32; 40],

@@ -35,10 +35,10 @@ jobs:
           restore-keys: skyline-${{ runner.os }}-
       - run: cargo skyline build --release -- --locked
       - name: Verify Cobalt imports and package NRO
-        run: python3 scripts/package.py target/aarch64-skyline-switch/release/libfee_batch_ring_draw.nro --version "$(tr -d '[:space:]' < VERSION)"
+        run: python3 scripts/package.py target/aarch64-skyline-switch/release/libfee_better_somniel.nro --version "$(tr -d '[:space:]' < VERSION)"
       - uses: actions/upload-artifact@v7
         with:
-          name: fee-batch-ring-draw
+          name: fee-better-somniel
           path: dist/*
           if-no-files-found: error
           retention-days: 14
@@ -53,9 +53,9 @@ jobs:
           python-version: '3.12'
       - uses: actions/download-artifact@v8
         with:
-          name: fee-batch-ring-draw
+          name: fee-better-somniel
           path: dist
       - name: Install AArch64 smoke-test runtime
         run: python3 -m pip install 'unicorn==2.1.4'
       - name: Verify compiled initialization paths
-        run: python3 scripts/smoke_startup.py dist/fee_batch_ring_draw.nro
+        run: python3 scripts/smoke_startup.py dist/fee_better_somniel.nro

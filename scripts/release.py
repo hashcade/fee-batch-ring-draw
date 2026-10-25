@@ -23,7 +23,7 @@ def version() -> str:
   manifest = (ROOT / "Cargo.toml").read_text(encoding="utf-8")
   match = re.search(r'(?m)^version = "(\d+\.\d+\.\d+)"$', manifest)
   lock = (ROOT / "Cargo.lock").read_text(encoding="utf-8")
-  locked = re.search(r'name = "fee-batch-ring-draw"\nversion = "([^"]+)"', lock)
+  locked = re.search(r'name = "fee-better-somniel"\nversion = "([^"]+)"', lock)
   if match is None or match.group(1) != value or locked is None or locked.group(1) != value:
     raise ValueError("VERSION, Cargo.toml, and Cargo.lock must agree")
   return value
@@ -44,7 +44,7 @@ def write_version(selected: str) -> None:
   # Only change this package's version; dependencies are not resolved again.
   for name, pattern in (
     ("Cargo.toml", r'(?m)^(version = ")\d+\.\d+\.\d+("$)'),
-    ("Cargo.lock", r'(name = "fee-batch-ring-draw"\nversion = ")[^"]+("\n)'),
+    ("Cargo.lock", r'(name = "fee-better-somniel"\nversion = ")[^"]+("\n)'),
   ):
     path = ROOT / name
     updated, count = re.subn(pattern, lambda m: m[1] + selected + m[2],

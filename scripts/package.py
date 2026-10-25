@@ -10,8 +10,8 @@ import zipfile
 from verify_nro import verify_nro
 
 
-NRO_NAME = "fee_batch_ring_draw.nro"
-INSTALL_PATH = f"engage/mods/fee_batch_ring_draw/{NRO_NAME}"
+NRO_NAME = "fee_better_somniel.nro"
+INSTALL_PATH = f"engage/mods/fee_better_somniel/{NRO_NAME}"
 
 
 def package(nro: Path, version: str, output: Path) -> list[Path]:
@@ -22,7 +22,7 @@ def package(nro: Path, version: str, output: Path) -> list[Path]:
   artifact = output / NRO_NAME
   if artifact.resolve() != nro.resolve():
     shutil.copyfile(nro, artifact)
-  archive = output / f"fee-batch-ring-draw-v{version}.zip"
+  archive = output / f"fee-better-somniel-v{version}.zip"
   with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
     bundle.write(artifact, INSTALL_PATH)
   hashes = output / "SHA256SUMS"

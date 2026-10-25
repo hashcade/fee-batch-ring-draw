@@ -1,4 +1,4 @@
-# FEE Batch Ring Draw
+# FEE Better Somniel
 
 Create a configurable batch of Bond Rings in one operation in **Fire Emblem Engage 2.0.0**, using Cobalt. The default is **300**.
 
@@ -18,7 +18,7 @@ The implementation is compiled and covered by host tests, executable signature c
 Requires [Cobalt](https://github.com/Raytwo/Cobalt). Runtime imports are checked against Cobalt **1.31.0** and Engage **2.0.0**, Build ID `8C08B9719E085F91847B5E0F935D9488`. Other executable versions are rejected before hooks are installed.
 
 ```text
-engage/mods/fee_batch_ring_draw/fee_batch_ring_draw.nro
+engage/mods/fee_better_somniel/fee_better_somniel.nro
 ```
 
 ### Nintendo Switch
@@ -29,14 +29,14 @@ Install Cobalt following its instructions, then extract the package's `engage` d
 
 Install Cobalt for the emulator, then extract `engage` into its **virtual SD card root**, not its per-game mod folder. See [Cobalt mod management](https://github.com/Raytwo/Cobalt/wiki/Managing-your-Mods).
 
-This is independent of [FEE Batch Ring Meld](https://github.com/hashcade/fee-batch-ring-meld). The two plugins hook different menu and transaction entry points.
+This repository replaces FEE Batch Ring Draw. Remove the old draw plugin before installing this package. The remaining Somniel features are being integrated here; this rename does not enable them yet.
 
 ## Configuration
 
 Like FETH Bench EXP, this plugin reads an optional `.cfg` file at the console's SD card root (or the emulator's virtual SD card root), not alongside the NRO:
 
 ```text
-sdmc:/fee-batch-ring-draw.cfg
+sdmc:/fee-better-somniel.cfg
 ```
 
 ```ini
@@ -45,7 +45,7 @@ draw_count=300
 
 `draw_count` accepts **2–1000**; 300 is the default. This is a plugin execution safety range, not a game inventory limit. The batch menu label, displayed price, affordability, execution limit, and result-list capacity follow this value. Single-ring creation is unchanged.
 
-Missing, unreadable, malformed, duplicate, unknown, or out-of-range settings use the default. Configuration files larger than 4096 bytes are rejected. Empty lines and `#` comment lines are accepted. The plugin only reads the file; it does not create or overwrite it. A [sample configuration](config/fee-batch-ring-draw.cfg) is provided separately, so extracting an update does not reset existing settings.
+Missing, unreadable, malformed, duplicate, unknown, or out-of-range settings use the default. Configuration files larger than 4096 bytes are rejected. Empty lines and `#` comment lines are accepted. The plugin only reads the file; it does not create or overwrite it. A [sample configuration](config/fee-better-somniel.cfg) is provided separately, so extracting an update does not reset existing settings.
 
 Fully restart the game (and the emulator, if used) after changing the file.
 
@@ -54,8 +54,8 @@ Fully restart the game (and the emulator, if used) after changing the file.
 ```sh
 cargo test --locked
 cargo skyline build --release -- --locked
-python3 scripts/package.py target/aarch64-skyline-switch/release/libfee_batch_ring_draw.nro --version 0.1.0
-uv run --with unicorn==2.1.4 python scripts/smoke_startup.py dist/fee_batch_ring_draw.nro
+python3 scripts/package.py target/aarch64-skyline-switch/release/libfee_better_somniel.nro --version 0.1.0
+uv run --with unicorn==2.1.4 python scripts/smoke_startup.py dist/fee_better_somniel.nro
 ```
 
 Optionally validate a locally supplied executable without writing extracted files:

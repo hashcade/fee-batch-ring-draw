@@ -24,7 +24,7 @@ jobs:
         run: test "$GITHUB_REF_NAME" = "v$(python3 scripts/release.py --check)"
       - uses: actions/download-artifact@v8
         with:
-          name: fee-batch-ring-draw
+          name: fee-better-somniel
           path: dist
       - name: Verify checksums
         working-directory: dist

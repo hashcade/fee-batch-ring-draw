@@ -44,8 +44,8 @@ pub fn parse(contents: &str) -> Result<u32, &'static str> {
 #[cfg(target_os = "switch")]
 pub fn load() {
   use skyline::nn::fs;
-  const MOUNT: &[u8] = b"feedraw\0";
-  const PATH: &[u8] = b"feedraw:/fee-batch-ring-draw.cfg\0";
+  const MOUNT: &[u8] = b"feesomniel\0";
+  const PATH: &[u8] = b"feesomniel:/fee-better-somniel.cfg\0";
 
   fn read() -> Option<u32> {
     let mut handle = fs::FileHandle { handle: 0 };

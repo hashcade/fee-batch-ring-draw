@@ -13,7 +13,7 @@ mod native;
 mod plugin;
 
 #[cfg(target_os = "switch")]
-#[skyline::main(name = "feedraw")]
+#[skyline::main(name = "feesomniel")]
 pub fn skyline_main() {
   plugin::install();
 }

@@ -1,4 +1,4 @@
-use fee_batch_ring_draw::labels::price;
+use fee_better_somniel::labels::price;
 
 #[test]
 fn thousands_use_the_same_exact_short_notation_in_every_language() {

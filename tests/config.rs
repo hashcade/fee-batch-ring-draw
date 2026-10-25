@@ -1,4 +1,4 @@
-use fee_batch_ring_draw::config::{parse, DEFAULT_DRAW_COUNT, MAX_CONFIG_BYTES};
+use fee_better_somniel::config::{parse, DEFAULT_DRAW_COUNT, MAX_CONFIG_BYTES};
 
 #[test]
 fn missing_setting_and_comments_keep_300_default() {
@@ -36,5 +36,5 @@ fn rejects_ambiguous_unknown_or_out_of_range_values() {
 
 #[test]
 fn sample_configuration_uses_default() {
-  assert_eq!(parse(include_str!("../config/fee-batch-ring-draw.cfg")), Ok(300));
+  assert_eq!(parse(include_str!("../config/fee-better-somniel.cfg")), Ok(300));
 }

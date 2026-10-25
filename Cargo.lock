@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "fee-batch-ring-draw"
+name = "fee-better-somniel"
 version = "0.1.3"
 dependencies = [
  "skyline",
