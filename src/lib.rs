@@ -1,5 +1,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
+pub mod activities;
 pub mod batch;
 pub mod config;
 pub mod labels;

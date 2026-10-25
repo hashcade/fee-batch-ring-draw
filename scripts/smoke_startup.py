@@ -50,13 +50,17 @@ def metadata(data: bytes) -> tuple[list[tuple], list[tuple]]:
 def smoke(data: bytes, case: str) -> int:
   profile = (ROOT / "src/profile.rs").read_text(encoding="utf-8")
   meld_profile = (ROOT / "src/meld/profile.rs").read_text(encoding="utf-8")
+  activities = (ROOT / "src/activities.rs").read_text(encoding="utf-8")
+  patches = [(int(address, 16), int(original, 16), int(replacement, 16))
+    for address, original, replacement in re.findall(
+      r"\((0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+)\)", activities)]
 
   def offset(name: str) -> int:
     return int(re.search(rf"pub const {name}: usize = (0x[0-9A-Fa-f]+)", profile).group(1), 16)
 
   signatures = [(int(address, 16), b"".join(
     struct.pack("<I", int(word, 16)) for word in re.findall(r"0x[0-9A-Fa-f]+", words)
-  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile)]
+  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities)]
   id_values = re.search(r"pub const BUILD_ID:.*?=\s*\[(.*?)\];", profile, re.S).group(1)
   build_id = bytes(int(word, 16) for word in re.findall(r"0x[0-9A-Fa-f]+", id_values))
   expected_hooks = {offset(name) for name in (
@@ -88,6 +92,8 @@ def smoke(data: bytes, case: str) -> int:
   write_game(GAME + offset("BUILD_ID_OFFSET"), build_id if case != "wrong_build_id" else bytes(16))
   if case == "wrong_instruction":
     write_game(GAME + signatures[0][0], bytes(4))
+  if case == "wrong_activity_instruction":
+    write_game(GAME + patches[0][0], bytes(4))
   stubs = {name: STUB + index * 16 for index, name in enumerate(sorted(required_imports(data)))}
   names = {address: name for name, address in stubs.items()}
   for target, info, addend in relocations:
@@ -108,6 +114,8 @@ def smoke(data: bytes, case: str) -> int:
   replacements = {}
   selected_counts = []
   fs_calls = []
+  patch_calls = []
+  patch_failed = False
   configs = {"config_low": b"draw_count=2\n", "config_custom": b"draw_count=600\n",
     "config_high": b"draw_count=1000\n", "config_invalid": b"draw_count=1001\n",
     "config_utf8": b"\xff", "config_large": b" " * 4097,
@@ -124,6 +132,7 @@ def smoke(data: bytes, case: str) -> int:
     raise AssertionError("unterminated SDK path")
 
   def native_call(cpu: Uc, pc: int, size: int, user: object) -> None:
+    nonlocal patch_failed
     if pc == STOP:
       cpu.emu_stop()
       return
@@ -144,6 +153,16 @@ def smoke(data: bytes, case: str) -> int:
       cpu.reg_write(registers.UC_ARM64_REG_X0, GAME + delta)
     elif name == "_ZN2nn2oe17GetDisplayVersionEPNS0_14DisplayVersionE":
       cpu.mem_write(argument, b"1.3.0\0" if case == "wrong_version" else b"2.0.0\0")
+    elif name == "sky_memcpy":
+      length = cpu.reg_read(registers.UC_ARM64_REG_X2)
+      assert length == 4 and argument - GAME in {p[0] for p in patches}
+      word = bytes(cpu.mem_read(cpu.reg_read(registers.UC_ARM64_REG_X1), length))
+      patch_calls.append((argument - GAME, struct.unpack("<I", word)[0]))
+      fail = case == "patch_failed" and len(patch_calls) == 2 and not patch_failed
+      patch_failed |= fail
+      if not fail:
+        cpu.mem_write(argument, word)
+      cpu.reg_write(registers.UC_ARM64_REG_X0, 1 if fail else 0)
     elif name == "A64HookFunction":
       replacement = cpu.reg_read(registers.UC_ARM64_REG_X1)
       if not BASE <= replacement < BASE + len(data):
@@ -225,6 +244,16 @@ def smoke(data: bytes, case: str) -> int:
       print(f"{case}: compiled row text uses exact k prices; native geometry and single row unchanged")
   else:
     assert not fs_calls, "unsupported executables must not read configuration"
+  if supported:
+    assert patch_calls == [(address, replacement) for address, _, replacement in patches]
+    for address, _, replacement in patches:
+      assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == replacement
+  elif case == "patch_failed":
+    assert patch_failed and patch_calls
+    for address, original, _ in patches:
+      assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == original
+  else:
+    assert not patch_calls, "unsupported executables must not be modified"
   return len(hooks)
 
 
@@ -234,6 +263,7 @@ def main() -> None:
   args = parser.parse_args()
   verify_nro(args.nro)
   for case in ("supported", "wrong_version", "wrong_build_id", "wrong_instruction", "wrong_segment_layout",
+    "wrong_activity_instruction", "patch_failed",
     "mount_failed", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
     "config_large", "config_short", "config_empty"):
     count = smoke(args.nro.read_bytes(), case)

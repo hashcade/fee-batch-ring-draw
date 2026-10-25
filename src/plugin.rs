@@ -14,6 +14,9 @@ pub fn install() {
   if !supported_game() {
     return;
   }
+  if !crate::activities::install() {
+    return;
+  }
   config::load();
   skyline::install_hooks!(count_ctor, build_text, execute_gacha, draw, create_demo, unload);
   crate::meld::plugin::install();
@@ -44,8 +47,10 @@ fn supported_game() -> bool {
     return false;
   }
   // Validate every module before any hook changes the original instructions.
-  for &(offset, words) in
-    profile::TEXT_SIGNATURES.iter().chain(crate::meld::profile::TEXT_SIGNATURES)
+  for &(offset, words) in profile::TEXT_SIGNATURES
+    .iter()
+    .chain(crate::meld::profile::TEXT_SIGNATURES)
+    .chain(crate::activities::TEXT_SIGNATURES)
   {
     if offset + 16 > profile::RODATA_OFFSET {
       return false;

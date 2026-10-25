@@ -95,7 +95,8 @@ def verify_game(path: Path) -> int:
   if rodata[note:note + 16] != build_id:
     raise ValueError("loaded GNU Build ID does not match the NSO header")
   meld_profile = (ROOT / "src/meld/profile.rs").read_text(encoding="utf-8")
-  signatures = re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile)
+  activities = (ROOT / "src/activities.rs").read_text(encoding="utf-8")
+  signatures = re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities)
   if not signatures:
     raise ValueError("no instruction signatures found")
   for address, values in signatures:
