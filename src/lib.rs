@@ -3,6 +3,7 @@
 pub mod batch;
 pub mod config;
 pub mod labels;
+pub mod meld;
 pub mod profile;
 pub mod random;
 pub mod session;

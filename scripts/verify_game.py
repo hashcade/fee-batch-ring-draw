@@ -94,7 +94,8 @@ def verify_game(path: Path) -> int:
     raise ValueError("GNU Build ID note is missing")
   if rodata[note:note + 16] != build_id:
     raise ValueError("loaded GNU Build ID does not match the NSO header")
-  signatures = re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile)
+  meld_profile = (ROOT / "src/meld/profile.rs").read_text(encoding="utf-8")
+  signatures = re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile)
   if not signatures:
     raise ValueError("no instruction signatures found")
   for address, values in signatures:
