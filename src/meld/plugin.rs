@@ -2,7 +2,7 @@ use super::{
   batch::{self, Cost},
   native::{self, Method, Object},
   profile,
-  session::{Dispatch, Execution, Session},
+  session::{Dispatch, Execution, Presentation, Session},
 };
 use core::{
   cell::{Cell, RefCell},
@@ -14,6 +14,7 @@ std::thread_local! {
   static DISPLAYING: Cell<bool> = const { Cell::new(false) };
   static EXECUTION: RefCell<Execution> = RefCell::new(Execution::default());
   static IN_TRANSACTION: Cell<bool> = const { Cell::new(false) };
+  static PRESENTATION: RefCell<Presentation> = RefCell::new(Presentation::default());
 }
 
 pub fn install() {
@@ -24,6 +25,7 @@ pub fn install() {
     on_cancel,
     destroy_menu,
     execute_merge,
+    create_demo,
     unload,
     meld_one,
     yes_no_dialog
@@ -33,6 +35,7 @@ pub fn install() {
 #[skyline::hook(offset = profile::ON_SELECT)]
 fn on_select(menu: Object, ring: Object, method: Method) {
   SESSION.with(|s| s.borrow_mut().clear());
+  PRESENTATION.with(|p| p.borrow_mut().clear());
   call_original!(menu, ring, method);
 }
 
@@ -86,6 +89,7 @@ fn on_yes(menu: Object, method: Method) {
 #[skyline::hook(offset = profile::ON_CANCEL)]
 fn on_cancel(menu: Object, method: Method) {
   SESSION.with(|s| s.borrow_mut().clear());
+  PRESENTATION.with(|p| p.borrow_mut().clear());
   call_original!(menu, method);
 }
 
@@ -98,13 +102,29 @@ fn destroy_menu(menu: Object, method: Method) {
 #[skyline::hook(offset = profile::EXECUTE_MERGE)]
 fn execute_merge(sequence: Object, method: Method) {
   let plan = SESSION.with(|s| s.borrow_mut().take_confirmed());
+  let batch = plan.is_some();
   // Nested execution is not another opportunity to consume inventory.
   if !EXECUTION.with(|e| e.borrow_mut().begin(plan)) {
     return;
   }
+  PRESENTATION.with(|p| p.borrow_mut().clear());
   // Keep footer refresh, acquisition state, and the original outer flow.
   call_original!(sequence, method);
   EXECUTION.with(|e| e.borrow_mut().end());
+  if batch {
+    PRESENTATION.with(|p| p.borrow_mut().arm(sequence as usize));
+  }
+}
+
+#[skyline::hook(offset = profile::CREATE_DEMO)]
+fn create_demo(sequence: Object, method: Method) {
+  if PRESENTATION.with(|p| p.borrow_mut().take(sequence as usize)) {
+    // Skip before HideHeader, HideFooter, background unbinding, and the child
+    // RingSynthesisSequence are created. ExecuteRingMerge has already settled
+    // costs, records, and footer state; the outer resource unload still runs.
+    return;
+  }
+  call_original!(sequence, method);
 }
 
 #[skyline::hook(offset = profile::MELD_ONE)]
@@ -137,5 +157,6 @@ fn meld_one(rnid: Object, rings: i32, fragments: i32, method: Method) -> bool {
 fn unload(sequence: Object, method: Method) {
   SESSION.with(|s| s.borrow_mut().clear());
   EXECUTION.with(|e| e.borrow_mut().end());
+  PRESENTATION.with(|p| p.borrow_mut().clear());
   call_original!(sequence, method);
 }

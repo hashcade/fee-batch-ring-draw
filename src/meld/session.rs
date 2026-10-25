@@ -67,6 +67,30 @@ pub enum Dispatch {
   Suppress,
 }
 
+/// A confirmed batch may bypass its own presentation exactly once.
+#[derive(Default)]
+pub struct Presentation {
+  sequence: Option<usize>,
+}
+
+impl Presentation {
+  pub fn arm(&mut self, sequence: usize) {
+    self.sequence = (sequence != 0).then_some(sequence);
+  }
+
+  pub fn take(&mut self, sequence: usize) -> bool {
+    if self.sequence != Some(sequence) {
+      return false;
+    }
+    self.clear();
+    true
+  }
+
+  pub fn clear(&mut self) {
+    self.sequence = None;
+  }
+}
+
 impl Execution {
   pub fn begin(&mut self, selection: Option<Selection>) -> bool {
     if self.running {

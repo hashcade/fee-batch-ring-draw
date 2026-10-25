@@ -65,7 +65,7 @@ def smoke(data: bytes, case: str) -> int:
   expected_hooks.update(int(re.search(
     rf"pub const {name}: usize = (0x[0-9A-Fa-f]+)", meld_profile).group(1), 16)
     for name in ("ON_SELECT", "ON_DECIDE", "ON_YES", "ON_CANCEL", "DESTROY_MENU",
-      "EXECUTE_MERGE", "UNLOAD", "MELD_ONE", "YES_NO_DIALOG"))
+      "EXECUTE_MERGE", "CREATE_DEMO", "UNLOAD", "MELD_ONE", "YES_NO_DIALOG"))
   symbols, relocations = metadata(data)
   main = next(value for name, section, value in symbols if name == "main" and section)
   cpu = Uc(UC_ARCH_ARM64, UC_MODE_ARM)
