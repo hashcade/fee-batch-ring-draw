@@ -24,6 +24,11 @@ pub const PATCHES: &[(usize, u32, u32)] = &[
   (0x02DD1C88, 0xB941EE69, 0xB941B269),
   (0x02DD2D28, 0xB941EE69, 0xB941B269),
   (0x0241F920, 0x4B130108, 0x2A1F03E8),
+  // Ordinary gift menu/confirmation only; never change ItemData globally.
+  (0x025245A8, 0x540002EB, 0xD503201F),
+  (0x02524E6C, 0x54FFFC8B, 0xD503201F),
+  // Keep owned counts unchanged as well as allowing zero-stock gifts.
+  (0x025245F8, 0x940A358E, 0xD503201F),
 ];
 
 /// Pin the surrounding instructions as well as each replaced instruction.
@@ -49,6 +54,9 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x02DD1C88, [0xB941EE69, 0x1B087D28, 0xB941DA6A, 0xB941F26B]),
   (0x02DD2D28, [0xB941EE69, 0x1B087D28, 0xB941DA6A, 0xB941F26B]),
   (0x0241F920, [0x4B130108, 0x0AA87D13, 0x7100011F, 0x5400020C]),
+  (0x025245A8, [0x540002EB, 0x2A1F03E0, 0xAA1F03E1, 0x97DCBF33]),
+  (0x02524E6C, [0x54FFFC8B, 0xF9400340, 0x977DB4DF, 0xAA1703E1]),
+  (0x025245F8, [0x940A358E, 0x12000297, 0x14000002, 0x2A1F03F7]),
 ];
 
 pub trait CodeMemory {
