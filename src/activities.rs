@@ -82,6 +82,11 @@ pub fn apply(memory: &mut impl CodeMemory) -> bool {
 
 #[cfg(target_os = "switch")]
 pub(crate) fn install() -> bool {
+  // Import only Cobalt's verified memory writer. Pulling in Skyline's broader
+  // patching module also links NRO-loader APIs that Cobalt 1.31 does not export.
+  extern "C" {
+    fn sky_memcpy(destination: *const core::ffi::c_void, source: *const u32, size: usize) -> u32;
+  }
   struct NativeCode;
 
   impl CodeMemory for NativeCode {
@@ -90,7 +95,7 @@ pub(crate) fn install() -> bool {
     }
 
     fn write(&mut self, offset: usize, word: u32) -> bool {
-      skyline::patching::Patch::in_text(offset).data(word).is_ok()
+      unsafe { sky_memcpy((crate::native::base() + offset) as *const _, &word, 4) == 0 }
     }
   }
 
