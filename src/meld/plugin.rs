@@ -19,28 +19,28 @@ std::thread_local! {
 
 pub fn install() {
   skyline::install_hooks!(
-    on_select,
-    on_decide,
-    on_yes,
-    on_cancel,
-    destroy_menu,
-    execute_merge,
-    create_demo,
-    unload,
+    meld_on_select,
+    meld_on_decide,
+    meld_on_yes,
+    meld_on_cancel,
+    meld_destroy_menu,
+    meld_execute_merge,
+    meld_create_demo,
+    meld_unload,
     meld_one,
-    yes_no_dialog
+    meld_yes_no_dialog
   );
 }
 
 #[skyline::hook(offset = profile::ON_SELECT)]
-fn on_select(menu: Object, ring: Object, method: Method) {
+fn meld_on_select(menu: Object, ring: Object, method: Method) {
   SESSION.with(|s| s.borrow_mut().clear());
   PRESENTATION.with(|p| p.borrow_mut().clear());
   call_original!(menu, ring, method);
 }
 
 #[skyline::hook(offset = profile::ON_DECIDE)]
-fn on_decide(
+fn meld_on_decide(
   menu: Object,
   ring: Object,
   rings: i32,
@@ -59,7 +59,7 @@ fn on_decide(
 }
 
 #[skyline::hook(offset = profile::YES_NO_DIALOG)]
-fn yes_no_dialog(
+fn meld_yes_no_dialog(
   parent: Object,
   message: Object,
   yes: Object,
@@ -81,26 +81,26 @@ fn yes_no_dialog(
 }
 
 #[skyline::hook(offset = profile::ON_YES)]
-fn on_yes(menu: Object, method: Method) {
+fn meld_on_yes(menu: Object, method: Method) {
   SESSION.with(|s| s.borrow_mut().confirm(menu as usize));
   call_original!(menu, method);
 }
 
 #[skyline::hook(offset = profile::ON_CANCEL)]
-fn on_cancel(menu: Object, method: Method) {
+fn meld_on_cancel(menu: Object, method: Method) {
   SESSION.with(|s| s.borrow_mut().clear());
   PRESENTATION.with(|p| p.borrow_mut().clear());
   call_original!(menu, method);
 }
 
 #[skyline::hook(offset = profile::DESTROY_MENU)]
-fn destroy_menu(menu: Object, method: Method) {
+fn meld_destroy_menu(menu: Object, method: Method) {
   SESSION.with(|s| s.borrow_mut().destroy_menu(menu as usize));
   call_original!(menu, method);
 }
 
 #[skyline::hook(offset = profile::EXECUTE_MERGE)]
-fn execute_merge(sequence: Object, method: Method) {
+fn meld_execute_merge(sequence: Object, method: Method) {
   let plan = SESSION.with(|s| s.borrow_mut().take_confirmed());
   let batch = plan.is_some();
   // Nested execution is not another opportunity to consume inventory.
@@ -117,11 +117,11 @@ fn execute_merge(sequence: Object, method: Method) {
 }
 
 #[skyline::hook(offset = profile::CREATE_DEMO)]
-fn create_demo(sequence: Object, method: Method) {
+fn meld_create_demo(sequence: Object, method: Method) {
   if PRESENTATION.with(|p| p.borrow_mut().take(sequence as usize)) {
     // Skip before HideHeader, HideFooter, background unbinding, and the child
     // RingSynthesisSequence are created. ExecuteRingMerge has already settled
-    // costs, records, and footer state; the outer resource unload still runs.
+    // costs, records, and footer state; the outer resource meld_unload still runs.
     return;
   }
   call_original!(sequence, method);
@@ -154,7 +154,7 @@ fn meld_one(rnid: Object, rings: i32, fragments: i32, method: Method) -> bool {
 }
 
 #[skyline::hook(offset = profile::UNLOAD)]
-fn unload(sequence: Object, method: Method) {
+fn meld_unload(sequence: Object, method: Method) {
   SESSION.with(|s| s.borrow_mut().clear());
   EXECUTION.with(|e| e.borrow_mut().end());
   PRESENTATION.with(|p| p.borrow_mut().clear());
