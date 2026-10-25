@@ -146,7 +146,7 @@ unsafe fn list(sequence: Object, boolean: bool) -> Object {
   value
 }
 
-unsafe fn list_count(list: Object) -> Option<usize> {
+pub(crate) unsafe fn list_count(list: Object) -> Option<usize> {
   if list.is_null() {
     return None;
   }
@@ -162,7 +162,7 @@ unsafe fn list_count(list: Object) -> Option<usize> {
   Some(count as usize)
 }
 
-unsafe fn object_at(list: Object, index: usize) -> Option<Object> {
+pub(crate) unsafe fn object_at(list: Object, index: usize) -> Option<Object> {
   if index >= unsafe { list_count(list) }? {
     return None;
   }

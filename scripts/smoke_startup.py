@@ -13,6 +13,7 @@ from unicorn import Uc, UC_ARCH_ARM64, UC_MODE_ARM, UC_HOOK_CODE
 from unicorn import arm64_const as registers
 from nro_imports import required_imports
 from verify_nro import verify_nro
+from layout_fixture import LayoutFixture
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -106,6 +107,7 @@ def smoke(data: bytes, case: str) -> int:
     "config_high": b"draw_count=1000\n", "config_invalid": b"draw_count=1001\n",
     "config_utf8": b"\xff", "config_large": b" " * 4097,
     "config_short": b"draw_count=600\n", "config_empty": b""}
+  layout = LayoutFixture(cpu, GAME, STUB + 0xE000, write_game, offset)
 
   def string_at(address: int) -> bytes:
     result = bytearray()
@@ -119,6 +121,8 @@ def smoke(data: bytes, case: str) -> int:
   def native_call(cpu: Uc, pc: int, size: int, user: object) -> None:
     if pc == STOP:
       cpu.emu_stop()
+      return
+    if layout.handle(pc):
       return
     if pc == GAME + offset("COUNT_CTOR"):
       selected_counts.append(cpu.reg_read(registers.UC_ARM64_REG_X1))
@@ -210,6 +214,9 @@ def smoke(data: bytes, case: str) -> int:
       cpu.emu_start(replacements[offset("COUNT_CTOR")], STOP + 4, count=10_000)
       assert cpu.reg_read(registers.UC_ARM64_REG_PC) == STOP
     assert selected_counts == [expected_count, 1], (case, selected_counts)
+    if case in ("supported", "config_low", "config_custom", "config_high"):
+      layout.exercise(replacements[offset("BUILD_TEXT")], STOP, STACK + 0x20000 - 0x20,
+        expected_count)
   else:
     assert not fs_calls, "unsupported executables must not read configuration"
   return len(hooks)

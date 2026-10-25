@@ -3,10 +3,13 @@
 pub mod batch;
 pub mod config;
 pub mod labels;
+pub mod layout;
 pub mod profile;
 pub mod random;
 pub mod session;
 
+#[cfg(target_os = "switch")]
+mod menu_layout;
 #[cfg(target_os = "switch")]
 mod native;
 #[cfg(target_os = "switch")]

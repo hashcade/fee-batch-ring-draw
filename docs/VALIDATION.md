@@ -5,6 +5,7 @@
 - Replace the ten-result menu entry with the configured count (default 300); retain single creation.
 - Use the native constructor for price calculation and affordability.
 - Localize the configured-count label for all twelve game text-language IDs.
+- Measure both native price texts with TextMesh Pro on menu rebuilds. Use the larger glyph width for both amount rectangles, preserve their right edges, and align fragment-icon right edges with an eight-UI-unit gap. Resolve transforms afresh; do not cache managed UI objects or accumulate position offsets.
 - Read `fee-batch-ring-draw.cfg` once at startup from a private, temporary SD mount. Accept `draw_count=2–1000`, defaulting to 300 for missing or invalid configuration. Close opened files and unmount on all successful-mount paths. Do not write files.
 - Snapshot the initial fragment budget and cap execution at the configured count.
 - Predict the next native result using a **copy** of the four-word RNG state, the game's current rank parameters, and the original RingData list order.
@@ -40,6 +41,7 @@ The native transaction consumes two `Random.GetValue` results: rank modulo 100, 
 - Compiled NRO initialization: supported game registers six hooks; wrong version, Build ID, instruction, or layout registers none. No unsupported `get_program_id` or NRO-loader interface is used.
 - Compiled configuration paths: missing file/mount, empty file, valid low/custom/high counts, invalid UTF-8/value, oversized input, and short reads. Exercise the compiled menu constructor to verify the effective count and unchanged single creation. Unsupported executables do not read configuration.
 - Read-only supplied NSO verification: Build ID, segment checksums, and native instruction signatures.
+- Compiled menu layout with modeled Unity calls: shared widths, longer/shorter glyph metrics, fractional advances, different pivots/scales, repeated refreshes without drift, fixed right edges and vertical placement, invalid metrics, and partially bound rows. Exercise default, low, custom, and maximum configured counts. This checks native call ABI/control flow, not real font rendering.
 
 These tests do not simulate Unity scenes or certify in-game behavior.
 
@@ -49,6 +51,7 @@ Use a disposable test save, not a primary save.
 
 - Confirm the menu shows Create One / Create 300 with correct prices in the selected language.
 - Configure a different count, restart the game, and confirm both the localized label and normal total price change with it.
+- Check `30,000` and `100,000`: both icons should align, remain clear of the amounts, and retain the original selected/unselected and insufficient-funds colors. Confirm after menu re-entry and language changes.
 - Run 300 creation operations with sufficient funds and free capacity; verify 300 actual inventory additions and the normal total cost.
 - Confirm single creation remains unchanged and batches return promptly without result windows, a hidden header/footer, or a missing background.
 - Repeat batches, switch Emblems, cancel selection, leave and re-enter the room.

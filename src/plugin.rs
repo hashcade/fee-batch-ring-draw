@@ -1,5 +1,5 @@
 use crate::{
-  batch, config,
+  batch, config, menu_layout,
   native::{self, Method, Object},
   profile,
   session::Session,
@@ -67,6 +67,7 @@ fn build_text(content: Object, method: Method) {
   call_original!(content, method);
   unsafe {
     native::set_count_label(content);
+    menu_layout::refresh(content);
   }
 }
 
