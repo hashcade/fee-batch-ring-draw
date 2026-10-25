@@ -5,7 +5,7 @@
 - Replace the ten-result menu entry with the configured count (default 300); retain single creation.
 - Use the native constructor for price calculation and affordability.
 - Localize the configured-count label for all twelve game text-language IDs.
-- After native `BasicMenuContent.Update`, match the draw menu's unique `GetName` virtual entry before accessing its rows. Retry if either row is not fully bound or TextMesh Pro returns a nonpositive/nonfinite width. Measure both native price texts, use the larger glyph width for both amount rectangles, preserve their right edges, and align fragment-icon right edges with an eight-UI-unit gap. Resolve transforms afresh; do not cache managed UI objects or accumulate position offsets. Only write geometry when it differs by at least 0.01 UI/world units, as appropriate.
+- After the original row text builder, abbreviate the batch price from the item's existing total into exact, language-independent `k` notation. `30,000` becomes `30k`, `99,900` becomes `99.9k`, and `100,000` becomes `100k`. No rounding, price recalculation, geometry writes, font measurements, or per-frame layout hook. Native colors, icons, confirmation, affordability, and charging are retained.
 - Read `fee-batch-ring-draw.cfg` once at startup from a private, temporary SD mount. Accept `draw_count=2–1000`, defaulting to 300 for missing or invalid configuration. Close opened files and unmount on all successful-mount paths. Do not write files.
 - Snapshot the initial fragment budget and cap execution at the configured count.
 - Predict the next native result using a **copy** of the four-word RNG state, the game's current rank parameters, and the original RingData list order.
@@ -23,8 +23,6 @@ All addresses are relative to the supported main module.
 | --- | --- |
 | RefineRingTimesSelectMenuItem constructor | `0x02957110` |
 | RefineRingTimesSelectMenuItemContent.BuildText | `0x02957B20` |
-| BasicMenuContent.Update | `0x024656C0` |
-| RefineRingTimesSelectMenu.GetName (identity check only) | `0x02957460` |
 | GodRoomPedestalSequence.ExecuteRingGacha | `0x0233A170` |
 | RefineRingExecute.Do | `0x02952990` |
 | GodRoomPedestalSequence.CreateRingGachaDemoSequence | `0x0233A380` |
@@ -32,9 +30,15 @@ All addresses are relative to the supported main module.
 | Random.get_Game | `0x02374C70` |
 | Random.GetValue(max) | `0x02375170` |
 
-The native label builder explicitly handles only 1 and 10; unsupported counts otherwise produce blank text. The plugin replaces that label after the original builder runs, keeping native cost formatting and colors.
+The native label builder explicitly handles only 1 and 10; unsupported counts otherwise produce blank text. The plugin replaces that label after the original builder runs and abbreviates only the configured batch row's price. `BuildText` reads the item's total at `+0x68`; the plugin reads that same field without writing it. The native TMP setter is also shared by the label and price. Small prices and single creation keep their original display.
 
-The native row builder invokes `BuildText` at `0x02458FEC`, then writes the row back-reference at `0x02459008`. Text construction alone is not a readiness/completion signal. Version 0.1.2 moves geometry out of the `BuildText` hook into the later native menu-update path and keeps retrying without retaining managed UI pointers. This addresses the missing retry path; the exact cause of the reported 0.1.1 screenshot has not been confirmed by live instrumentation.
+User hardware screenshots showed overlapping prices after the previous geometry
+attempts. Those attempts and their modeled geometry tests are removed rather
+than retained as a fallback. The new approach only replaces text through the
+same row builder that already supplies the working localized count label; it
+does not depend on late binding, font metrics, transforms, or a shared menu's
+per-frame update. Screenshots established the symptom, not its exact engine-side
+cause. Actual rendering still needs in-game confirmation.
 
 The native transaction consumes two `Random.GetValue` results: rank modulo 100, then character index modulo the selected rank's candidate count. No preview transaction is run against the save. Native RNG instructions and relevant transaction call sites are pinned in the profile.
 
@@ -42,10 +46,11 @@ The native transaction consumes two `Random.GetValue` results: rank modulo 100, 
 
 - Host tests: bounded execution, normal cost, insufficient funds, full stacks, equipped counts, pool capacity, no rerolls, fragment-refill cheats, failure/no-retry, RNG/rank boundaries, localization, parent-scoped one-shot dispatch, and unload cleanup.
 - Python tests: package paths, checksums, release versions, NSO parsing, NRO structure, and unavailable Cobalt-import rejection.
-- Compiled NRO initialization: supported game registers seven hooks; wrong version, Build ID, instruction, or layout registers none. No unsupported `get_program_id` or NRO-loader interface is used.
+- Compiled NRO initialization: supported game registers six hooks; wrong version, Build ID, instruction, or layout registers none. No unsupported `get_program_id` or NRO-loader interface is used.
 - Compiled configuration paths: missing file/mount, empty file, valid low/custom/high counts, invalid UTF-8/value, oversized input, and short reads. Exercise the compiled menu constructor to verify the effective count and unchanged single creation. Unsupported executables do not read configuration.
 - Read-only supplied NSO verification: Build ID, segment checksums, and native instruction signatures.
-- Compiled menu layout with modeled Unity calls: delayed binding, initially zero-width fonts followed by valid metrics, recovery after native geometry resets, no writes on settled frames, unrelated-menu rejection, shared widths, longer/shorter glyph metrics, fractional advances, different pivots/scales, repeated refreshes without drift, fixed right edges and vertical placement, invalid metrics, and partially bound rows. Exercise default, low, custom, and maximum configured counts. Verify the original update always runs. This checks native call ABI/control flow, not real font rendering.
+- Host price tests: exact notation without floating point or rounding, every supported count at the vanilla 100-fragment cost, fractional thousands, small/invalid values, and integer bounds.
+- Compiled row text hook with modeled TMP setters: all twelve language IDs, default/low/custom/maximum configured counts, `30k`, `99.9k`, `100k`, exact non-round values, small prices, missing price objects, and unchanged single creation. Check that the original builder always runs and the item, content, and price-object storage are untouched apart from modeled text assignment. This verifies native call/control flow, not Unity rendering.
 
 These tests do not simulate Unity scenes or certify in-game behavior.
 
@@ -55,7 +60,7 @@ Use a disposable test save, not a primary save.
 
 - Confirm the menu shows Create One / Create 300 with correct prices in the selected language.
 - Configure a different count, restart the game, and confirm both the localized label and normal total price change with it.
-- Check `30,000` and `100,000`: both icons should align, remain clear of the amounts, and retain the original selected/unselected and insufficient-funds colors. Confirm after menu re-entry and language changes.
+- Check `30k`, `99.9k`, and `100k`: original icons should stay aligned and clear of the shorter amounts. Verify selected/unselected and insufficient-funds colors, full amounts in confirmation, menu re-entry, and language changes.
 - Run 300 creation operations with sufficient funds and free capacity; verify 300 actual inventory additions and the normal total cost.
 - Confirm single creation remains unchanged and batches return promptly without result windows, a hidden header/footer, or a missing background.
 - Repeat batches, switch Emblems, cancel selection, leave and re-enter the room.

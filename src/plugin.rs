@@ -1,5 +1,5 @@
 use crate::{
-  batch, config, menu_layout,
+  batch, config,
   native::{self, Method, Object},
   profile,
   session::Session,
@@ -15,15 +15,7 @@ pub fn install() {
     return;
   }
   config::load();
-  skyline::install_hooks!(
-    count_ctor,
-    build_text,
-    menu_update,
-    execute_gacha,
-    draw,
-    create_demo,
-    unload
-  );
+  skyline::install_hooks!(count_ctor, build_text, execute_gacha, draw, create_demo, unload);
 }
 
 fn supported_game() -> bool {
@@ -74,15 +66,7 @@ fn count_ctor(item: Object, times: i32, handler: Object, method: Method) {
 fn build_text(content: Object, method: Method) {
   call_original!(content, method);
   unsafe {
-    native::set_count_label(content);
-  }
-}
-
-#[skyline::hook(offset = profile::MENU_UPDATE)]
-fn menu_update(content: Object, method: Method) {
-  call_original!(content, method);
-  unsafe {
-    menu_layout::refresh(content);
+    native::set_menu_text(content);
   }
 }
 

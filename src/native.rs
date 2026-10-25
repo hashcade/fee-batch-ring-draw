@@ -84,7 +84,7 @@ unsafe fn string(string: Object) -> Option<Vec<u16>> {
   )
 }
 
-pub unsafe fn set_count_label(content: Object) {
+pub unsafe fn set_menu_text(content: Object) {
   if content.is_null() {
     return;
   }
@@ -93,13 +93,26 @@ pub unsafe fn set_count_label(content: Object) {
   if item.is_null() || unsafe { field::<i32>(item, 0x64) } != count as i32 {
     return;
   }
-  let text: Object = unsafe { field(content, 0x48) };
+  let language: unsafe extern "C" fn(Method) -> i32 =
+    unsafe { core::mem::transmute(base() + profile::GET_LANGUAGE) };
+  unsafe {
+    set_text(field(content, 0x48), &labels::count(language(NONE), count));
+  }
+  // The original constructor owns the full price and affordability. Only the
+  // menu's display text is abbreviated; confirmation and charging stay native.
+  let price: i32 = unsafe { field(item, 0x68) };
+  if let Some(price) = labels::price(price) {
+    unsafe {
+      set_text(field(content, 0x50), &price);
+    }
+  }
+}
+
+unsafe fn set_text(text: Object, value: &str) {
   if text.is_null() {
     return;
   }
-  let language: unsafe extern "C" fn(Method) -> i32 =
-    unsafe { core::mem::transmute(base() + profile::GET_LANGUAGE) };
-  let units: Vec<u16> = labels::count(unsafe { language(NONE) }, count).encode_utf16().collect();
+  let units: Vec<u16> = value.encode_utf16().collect();
   let allocate: unsafe extern "C" fn(i32, Method) -> Object =
     unsafe { core::mem::transmute(base() + profile::STRING_NEW_SIZE) };
   let value = unsafe { allocate(units.len() as i32, NONE) };
@@ -114,6 +127,9 @@ pub unsafe fn set_count_label(content: Object) {
     );
   }
   let class: Object = unsafe { field(text, 0) };
+  if class.is_null() {
+    return;
+  }
   let set: unsafe extern "C" fn(Object, Object, Method) = unsafe { field(class, 0x558) };
   let method: Method = unsafe { field(class, 0x560) };
   unsafe {
