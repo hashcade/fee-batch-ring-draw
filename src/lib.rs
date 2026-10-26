@@ -8,6 +8,7 @@ pub mod meld;
 pub mod profile;
 pub mod random;
 pub mod session;
+pub mod wyvern;
 
 #[cfg(target_os = "switch")]
 mod native;

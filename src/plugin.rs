@@ -20,6 +20,7 @@ pub fn install() {
   config::load();
   skyline::install_hooks!(count_ctor, build_text, execute_gacha, draw, create_demo, unload);
   crate::meld::plugin::install();
+  crate::wyvern::native::install();
 }
 
 fn supported_game() -> bool {
@@ -51,6 +52,7 @@ fn supported_game() -> bool {
     .iter()
     .chain(crate::meld::profile::TEXT_SIGNATURES)
     .chain(crate::activities::TEXT_SIGNATURES)
+    .chain(crate::wyvern::TEXT_SIGNATURES)
   {
     if offset + 16 > profile::RODATA_OFFSET {
       return false;

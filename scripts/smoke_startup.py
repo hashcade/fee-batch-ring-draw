@@ -14,6 +14,7 @@ from unicorn import arm64_const as registers
 from nro_imports import required_imports
 from verify_nro import verify_nro
 from text_fixture import TextFixture
+from wyvern_fixture import WyvernFixture
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -51,6 +52,7 @@ def smoke(data: bytes, case: str) -> int:
   profile = (ROOT / "src/profile.rs").read_text(encoding="utf-8")
   meld_profile = (ROOT / "src/meld/profile.rs").read_text(encoding="utf-8")
   activities = (ROOT / "src/activities.rs").read_text(encoding="utf-8")
+  wyvern = (ROOT / "src/wyvern.rs").read_text(encoding="utf-8")
   patches = [(int(address, 16), int(original, 16), int(replacement, 16))
     for address, original, replacement in re.findall(
       r"\((0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+)\)", activities)]
@@ -60,7 +62,7 @@ def smoke(data: bytes, case: str) -> int:
 
   signatures = [(int(address, 16), b"".join(
     struct.pack("<I", int(word, 16)) for word in re.findall(r"0x[0-9A-Fa-f]+", words)
-  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities)]
+  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern)]
   id_values = re.search(r"pub const BUILD_ID:.*?=\s*\[(.*?)\];", profile, re.S).group(1)
   build_id = bytes(int(word, 16) for word in re.findall(r"0x[0-9A-Fa-f]+", id_values))
   expected_hooks = {offset(name) for name in (
@@ -70,6 +72,8 @@ def smoke(data: bytes, case: str) -> int:
     rf"pub const {name}: usize = (0x[0-9A-Fa-f]+)", meld_profile).group(1), 16)
     for name in ("ON_SELECT", "ON_DECIDE", "ON_YES", "ON_CANCEL", "DESTROY_MENU",
       "EXECUTE_MERGE", "CREATE_DEMO", "UNLOAD", "MELD_ONE", "YES_NO_DIALOG"))
+  wyvern_main = int(re.search(r"pub const MAIN: usize = (0x[0-9A-Fa-f]+)", wyvern).group(1), 16)
+  expected_hooks.add(wyvern_main)
   symbols, relocations = metadata(data)
   main = next(value for name, section, value in symbols if name == "main" and section)
   cpu = Uc(UC_ARCH_ARM64, UC_MODE_ARM)
@@ -94,6 +98,8 @@ def smoke(data: bytes, case: str) -> int:
     write_game(GAME + signatures[0][0], bytes(4))
   if case == "wrong_activity_instruction":
     write_game(GAME + patches[0][0], bytes(4))
+  if case == "wrong_wyvern_instruction":
+    write_game(GAME + wyvern_main, bytes(4))
   stubs = {name: STUB + index * 16 for index, name in enumerate(sorted(required_imports(data)))}
   names = {address: name for name, address in stubs.items()}
   for target, info, addend in relocations:
@@ -121,6 +127,7 @@ def smoke(data: bytes, case: str) -> int:
     "config_utf8": b"\xff", "config_large": b" " * 4097,
     "config_short": b"draw_count=600\n", "config_empty": b""}
   text = TextFixture(cpu, GAME, STUB + 0xE000, write_game, offset)
+  wyvern_game = WyvernFixture(cpu, GAME, write_game, wyvern)
 
   def string_at(address: int) -> bytes:
     result = bytearray()
@@ -135,6 +142,8 @@ def smoke(data: bytes, case: str) -> int:
     nonlocal patch_failed
     if pc == STOP:
       cpu.emu_stop()
+      return
+    if wyvern_game.handle(pc):
       return
     if text.handle(pc, names.get(pc)):
       return
@@ -242,6 +251,9 @@ def smoke(data: bytes, case: str) -> int:
       text.exercise(replacements[offset("BUILD_TEXT")], STOP, STACK + 0x20000 - 0x20,
         expected_count)
       print(f"{case}: compiled row text uses exact k prices; native geometry and single row unchanged")
+    if case == "supported":
+      wyvern_game.exercise(replacements[wyvern_main], STOP, STACK + 0x20000 - 0x20)
+      print("supported: compiled Wyvern hook uses per-difficulty SSS boundaries; guarded fallbacks and native tick preserved")
   else:
     assert not fs_calls, "unsupported executables must not read configuration"
   if supported:
@@ -263,7 +275,7 @@ def main() -> None:
   args = parser.parse_args()
   verify_nro(args.nro)
   for case in ("supported", "wrong_version", "wrong_build_id", "wrong_instruction", "wrong_segment_layout",
-    "wrong_activity_instruction", "patch_failed",
+    "wrong_activity_instruction", "wrong_wyvern_instruction", "patch_failed",
     "mount_failed", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
     "config_large", "config_short", "config_empty"):
     count = smoke(args.nro.read_bytes(), case)

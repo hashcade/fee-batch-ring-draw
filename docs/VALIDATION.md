@@ -4,14 +4,15 @@
 
 - Build the combined Switch NRO with the pinned Skyline dependency.
 - Verify actual relocation-backed imports against Cobalt 1.31.0 / Engage 2.0.0. No unavailable `get_program_id`, NRO-load/unload hook, or plugin-address API is accepted.
-- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **98** draw/meld/activity instruction signatures.
+- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **118** draw/meld/activity/Wyvern instruction signatures.
 - Focused meld planning/session/confirmation tests retain cost, capacity, equipped-copy, repeated-dispatch, and fragment-refill protections.
 - Presentation-session tests cover matching owner, one-shot consumption, cancellation/cleanup, stale ownership, and null ownership.
 - Activity tests cover all **24** instruction replacements, whole-set preflight, readback, each possible failed write and restoration, and separation from arena/rewind/resource code.
-- Compiled-NRO AArch64 startup smoke checks: supported game registers **16 hooks** and writes precisely the activity replacements; wrong game/version/layout/instruction and conflicting activity instruction register none and write nothing.
+- Compiled-NRO AArch64 startup smoke checks: supported game registers **17 hooks** and writes precisely the activity replacements; wrong game/version/layout/instruction and conflicting activity/Wyvern instructions register none and write nothing.
 - A compiled failed-write case restores the original instructions, returns normally, and installs no hooks.
 - Configuration cases cover missing/malformed/oversized/invalid UTF-8/short reads, mount failure, and batch counts 2, 300, 600, and 1000. The filesystem is read-only; handles/mounts are released.
 - Compiled draw text fixtures cover supported text languages, exact compact prices, unchanged actual native prices, and unchanged single-row behavior.
+- Focused Wyvern tests cover difficulty-to-config mapping, dynamic SSS boundaries, and malformed arrays. The compiled-hook fixture covers all three difficulties, native tick/finish/score ordering, pending score additions, repeated dispatch, opening/event/test/pause/retirement guards, null pointers, and invalid difficulty/config/native-rank fallbacks.
 
 These tests model loader/native boundaries. They do not run Unity, render the game UI, or prove in-game state-machine completion.
 
@@ -26,6 +27,7 @@ Use a temporary test save or the user's explicitly chosen test environment. Do n
 - Clean a dirty ring and a bracelet through one effective action; confirm the original completion and bond settlement.
 - Fish with different rods/fish; confirm quick bite/landing, catch inventory, records, rewards, and unchanged allowance.
 - Run each exercise at available difficulties; confirm quick/perfect result, native reward, and unchanged allowance.
+- Run Wyvern Ride on each unlocked difficulty, with and without Sommie. Confirm opening, quick ending, SSS score/rank, correct rewards and unchanged eligibility, higher existing records, consecutive visits, cancellation/retirement, and return to the hub. Hit statistics are not fabricated; confirm the original result screen remains usable. These Unity/state-machine checks require in-game verification and are not proven by the modeled fixture.
 - Repeat cooking with different companions/recipes; inspect ingredient handling, support results, meal effects, and packed-lunch behavior.
 - Open the food list at zero and positive stock; inspect Sommie feeding, native inventory handling, and the normal return flow.
 - Gift an ordinary item with zero, one, and multiple owned copies; confirm visibility/selectability, no count change, normal recipient response/support, and no global inventory effect.
