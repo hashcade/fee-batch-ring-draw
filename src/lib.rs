@@ -2,6 +2,7 @@
 
 pub mod activities;
 pub mod batch;
+pub mod collector;
 pub mod config;
 pub mod labels;
 pub mod meld;

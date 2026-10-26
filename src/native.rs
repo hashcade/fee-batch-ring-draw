@@ -20,7 +20,7 @@ pub unsafe fn field<T: Copy>(object: Object, offset: usize) -> T {
   unsafe { object.cast::<u8>().add(offset).cast::<T>().read_unaligned() }
 }
 
-unsafe fn metadata(offset: usize) -> Object {
+pub(crate) unsafe fn metadata(offset: usize) -> Object {
   let cell = unsafe { ((base() + offset) as *const Object).read() };
   if cell.is_null() {
     return ptr::null_mut();
@@ -33,7 +33,7 @@ unsafe fn metadata(offset: usize) -> Object {
   }
 }
 
-unsafe fn reference(object: Object, offset: usize, value: Object) {
+pub(crate) unsafe fn reference(object: Object, offset: usize, value: Object) {
   let slot = unsafe { object.cast::<u8>().add(offset).cast::<Object>() };
   let barrier: unsafe extern "C" fn(*mut Object, Object) =
     unsafe { core::mem::transmute(base() + profile::WRITE_BARRIER) };
@@ -43,7 +43,7 @@ unsafe fn reference(object: Object, offset: usize, value: Object) {
   }
 }
 
-unsafe fn user_data() -> Object {
+pub(crate) unsafe fn user_data() -> Object {
   let method = unsafe { metadata(0x062840F0) };
   if method.is_null() {
     return ptr::null_mut();
