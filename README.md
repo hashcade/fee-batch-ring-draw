@@ -12,6 +12,7 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 - **Fast SSS Wyvern Ride:** after the opening, finish at the selected difficulty's SSS score threshold and continue through the original result and reward flow. Keep difficulty unlocks and reward eligibility unchanged.
 - **Repeatable cooking and food selection:** cook multiple times between battles and select food without the usual stock restriction.
 - **Inventory-free ordinary gifts:** give normal gifts even at zero stock without consuming owned copies. Keep the original recipient preferences and support gains.
+- **Collect exploration rewards:** use the first entry in the original exploration menu to collect generated ground items, farm products, eligible animals, and available ordinary villager gifts in the Somniel or after battle. Keep donation bonuses, adoption requirements, and inventory limits; leave rewards that do not fit unclaimed.
 
 All features are enabled automatically. Ring creation labels and melding confirmations follow the game's text language.
 
@@ -57,6 +58,7 @@ A [sample configuration](config/fee-better-somniel.cfg) is provided separately. 
 - [skyline-rs](https://github.com/ultimate-research/skyline-rs) — plugin runtime bindings.
 - [engage-il2cpp](https://github.com/DivineDragonFanClub/engage-il2cpp) — native interface references.
 - [KaitoB](https://tekqart.com/thread-327061-1-1.html) — original activity and gift patch references.
+- [Triabolical / MyCodeMods](https://github.com/triabolicals/triabolical-code-mods) — collection-menu behavior reference.
 
 Fire Emblem and related names are trademarks of Nintendo and Intelligent Systems.
 This unofficial fan project is not affiliated with or endorsed by them.

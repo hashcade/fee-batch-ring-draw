@@ -19,4 +19,6 @@
 - Ordinary Wyvern Ride finishes after its opening at the current difficulty's native SSS boundary. Retain the original ending, record updates, rewards and eligibility. Do not fabricate target counts, perfect scores, unlocks, or additional attempts; preserve event/test/pause/retirement paths.
 - Confirmed batch melds skip presentation before header/footer/background changes. Preserve native settlement and outer resource cleanup; do not synthesize skip-button input.
 - Leave arena training, battle saves, rewind limits, resource refills, and shop stock to cheats. Do not install or release without an explicit request.
+- Exploration collection uses the original menu on its game thread. Collect only generated pending sources, retain donation/adoption rules and shared capacity budgets, and never mark unrelated interactions complete. Ordinary villager gifts must pass the native result-index/access-count gate; only their native conversation counter is consumed. Do not skip story/support conversations or generate new drops.
+- CommonRewardSequence.CalcRewardItemList grants inventory; CommonRewardDialog.CreateBind displays the returned dictionary. Never follow CalcRewardItemList with another reward-granting sequence.
 - Document Nintendo Switch installation before emulators. Use standard MIT attribution.

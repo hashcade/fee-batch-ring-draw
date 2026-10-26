@@ -8,7 +8,7 @@ One entry point validates the display version, mapped segment layout, loaded Bui
 
 Activities use 24 one-time instruction replacements. All original words must match before the first write. Each write is read back; a failure triggers restoration of startup writes and no hooks are registered. The memory writer imports only Cobalt's `sky_memcpy` ABI, not Skyline's NRO-loader APIs.
 
-Draw, meld, and Wyvern Ride hooks are installed only after this preflight and patch application succeed. The ring modules have separate thread-local sessions and uniquely named exported hook symbols. No repeating timer or background inventory writer is used.
+Draw, meld, Wyvern Ride, and collection hooks are installed only after this preflight and patch application succeed. The ring modules have separate thread-local sessions and uniquely named exported hook symbols. No repeating timer or background inventory writer is used.
 
 ## Ring transactions and presentation
 
@@ -73,3 +73,61 @@ The plugin additionally suppresses only the gift-specific `ItemData.AddInventory
 The original recipient/support operation at `0x025245E4` remains. The plugin does not change support preferences, global `ItemData.GetInventory`/`AddInventory`, shops, battle items, or special relationship/plot prerequisites. No free gift copies or custom IDs are inserted into saves.
 
 References: [KaitoB's publication](https://tekqart.com/thread-327061-1-1.html), [public 2.0.0 code listing](https://gbatemp.net/threads/fire-emblem-engage-save-editor.624990/page-4), and the [generated native interfaces](https://github.com/DivineDragonFanClub/engage-il2cpp/tree/0.1.0). Every replacement is independently checked against the supplied executable.
+
+## Exploration collection
+
+One hook appends an independently implemented item to `HubMenu.CreateBind`
+(`0x028B6EF0`) and moves it to the first position with managed write barriers.
+Its four callbacks live in one process-lifetime private copy of BasicMenuItem's
+vtable; original classes and MethodInfo structures are not modified. Labels
+come from the game's existing message table. The entry is hidden when nothing
+eligible fits, and dispatch rechecks the live source list. There is no automatic
+entry trigger, polling, configuration, or hotkey.
+
+The current scene's native HubAccessManager is selected through HubSequence.
+Only sequence 4 (Somniel) or 5 (post-battle exploration) can collect. Existing
+generated sources are the sole input; ungenerated IDs, disabled nodes, claimed
+flags, missing data and unrelated interaction types are ignored. Types 6 and 9
+use `HubUtil.GetItemCountWithBonus` (`0x02A629C0`); type 8 already contains its
+native quantity and does not receive a second donation multiplier. Farm drops
+are collected through these same generated pickup nodes, not by generating
+another copy from pasture variables.
+
+Post-battle animals require the original barn-complete flag and
+`HubUtil.IsCaptureAnimal` (`0x02A622C0`). Capture uses the native increment
+(`0x02A62640`) and verifies a one-copy increase before claiming the source.
+The native setter clamps each species at 99; shared reservations exclude
+animals that would exceed this bound. Existing Somniel pasture animals are
+never adopted again.
+
+Ordinary villager gifts must contain a current TalkItem and pass the same
+result-talk-index/access-count comparison as `HubPlayTalk.ExecEventAfter`
+(`0x023DC35C`–`0x023DC374`). Story, support, Emblem, party and animal dialogue
+sources are excluded. After granting, only that conversation's existing native
+access-count variable advances by one, and its cached TalkItem is cleared.
+This consumes that ordinary gift conversation; other dialogue and recruitment
+flags are not bulk-completed. Rebuilding the access data cannot make the old
+talk index eligible again. Pickup done flags are not used as a substitute for
+the NPC conversation counter.
+
+The host-tested reservation planner deduplicates claim identities and shares
+budgets for each quantity item/species, convoy slots, money and fragments.
+Each source fits in full or remains pending. Native quantity limits and the
+999-slot transporter layout are read before granting. The managed ItemData
+list is bounded to 8,192 copies per dispatch; excess sources remain pending.
+
+`CommonRewardSequence.CalcRewardItemList` (`0x025343B0`) synchronously grants
+the selected ItemData list using native inventory/transport/resource calls.
+After settlement, `CommonRewardDialog.CreateBind` (`0x0252FF50`) displays its
+returned dictionary once. It does not grant again. Adoption-only batches use
+the original decide sound and menu close, without an empty result dialog.
+Only settled pickup/animal nodes have their loaded markers/effects disabled;
+unrelated NPCs and sources that did not fit are left alone.
+
+The reference behavior was researched in
+[Triabolical's collection menu](https://github.com/triabolicals/triabolical-code-mods).
+No source was copied: the repository supplied no source license granting reuse.
+Native layouts were checked against generated interfaces, the
+[Unity IL2CPP ABI](https://github.com/DivineDragonFanClub/unity-nx/tree/0.1.2/src/il2cpp),
+and the read-only supplied Engage executable. The compiled fixture models these
+boundaries, not Unity's actual dialogue, animation, minimap or save/reload flow.
