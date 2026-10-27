@@ -22,6 +22,8 @@ from cleaning_fixture import CleaningFixture
 from arena_fixture import ArenaFixture
 from bond_talk_fixture import BondTalkFixture
 from settings_fixture import SettingsFixture
+from convenience_fixture import ConvenienceFixture
+from facility_fixture import FacilityFixture
 from well_fixture import WellFixture
 
 
@@ -67,6 +69,9 @@ def smoke(data: bytes, case: str) -> int:
   bond_talk = (ROOT / "src/bond_talk.rs").read_text(encoding="utf-8")
   settings_profile = (ROOT / "src/settings.rs").read_text(encoding="utf-8")
   well_profile = (ROOT / "src/well.rs").read_text(encoding="utf-8")
+  cooking_profile = (ROOT / "src/cooking.rs").read_text(encoding="utf-8")
+  support_profile = (ROOT / "src/supports.rs").read_text(encoding="utf-8")
+  facility_profile = (ROOT / "src/facilities.rs").read_text(encoding="utf-8")
   patches = [(int(address, 16), int(original, 16), int(replacement, 16))
     for address, original, replacement in re.findall(
       r"\((0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+)\)", activities)]
@@ -76,12 +81,21 @@ def smoke(data: bytes, case: str) -> int:
 
   signatures = [(int(address, 16), b"".join(
     struct.pack("<I", int(word, 16)) for word in re.findall(r"0x[0-9A-Fa-f]+", words)
-  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings_profile + well_profile)]
+  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings_profile + well_profile + cooking_profile + support_profile + facility_profile)]
+  expected_cooking_hooks = {int(value, 16) for name, value in re.findall(
+    r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cooking_profile)
+    if name in ("CURRENT_CHEF", "GET_COOK_DATA", "COOK", "DETERMINE_TASTE")}
   id_values = re.search(r"pub const BUILD_ID:.*?=\s*\[(.*?)\];", profile, re.S).group(1)
   build_id = bytes(int(word, 16) for word in re.findall(r"0x[0-9A-Fa-f]+", id_values))
   expected_hooks = {offset(name) for name in (
     "COUNT_MENU", "BUILD_TEXT", "EXECUTE_GACHA", "UNLOAD", "DRAW", "CREATE_DEMO"
   )}
+  expected_hooks.update(expected_cooking_hooks)
+  ring_menu = int(re.search(r"pub const RING_MENU: usize = (0x[0-9A-Fa-f]+)", facility_profile).group(1), 16)
+  expected_hooks.add(ring_menu)
+  expected_hooks.update(int(value, 16) for name, value in re.findall(
+    r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", support_profile)
+    if name in ("CREATE_SEQUENCE", "CREATE_UNIT_MENU", "CREATE_PAIR_MENU"))
   expected_hooks.update(int(re.search(
     rf"pub const {name}: usize = (0x[0-9A-Fa-f]+)", meld_profile).group(1), 16)
     for name in ("ON_SELECT", "ON_DECIDE", "ON_YES", "ON_CANCEL", "DESTROY_MENU",
@@ -139,6 +153,8 @@ def smoke(data: bytes, case: str) -> int:
     write_game(GAME + 0x025379A0, bytes(4))
   if case == "wrong_well_instruction":
     write_game(GAME + well_menu, bytes(4))
+  for name, address in (("cooking", 0x025447B0), ("support", 0x02393B40), ("facility", ring_menu)):
+    if case == f"wrong_{name}_instruction": write_game(GAME + address, bytes(4))
   stubs = {name: STUB + index * 16 for index, name in enumerate(sorted(required_imports(data)))}
   names = {address: name for name, address in stubs.items()}
   for target, info, addend in relocations:
@@ -159,6 +175,7 @@ def smoke(data: bytes, case: str) -> int:
   replacements = {}
   fs_calls = []
   settings_callbacks = []
+  thread_keys = {}
   allocation_cursor = GAME + 0x7F00000
   patch_calls = []
   patch_failed = False
@@ -175,8 +192,9 @@ def smoke(data: bytes, case: str) -> int:
   cleaning_game.tls = meld_dialog.tls
   arena_game = ArenaFixture(cpu, GAME, write_game, arena, profile)
   bond_dialogue = BondTalkFixture(cpu, GAME, write_game, bond_talk, profile)
-  settings_game = SettingsFixture(cpu, GAME, write_game, settings_profile, profile)
+  settings_game = ConvenienceFixture(cpu, GAME, write_game, settings_profile + cooking_profile + support_profile, profile)
   well_game = WellFixture(cpu, GAME, write_game, well_profile + collector, profile)
+  facility_game = FacilityFixture(cpu, GAME, write_game, facility_profile + collector + support_profile, profile)
 
   def string_at(address: int) -> bytes:
     result = bytearray()
@@ -199,6 +217,8 @@ def smoke(data: bytes, case: str) -> int:
     if bond_dialogue.handle(pc, names.get(pc)):
       return
     if settings_game.handle(pc, names.get(pc)):
+      return
+    if facility_game.handle(pc, names.get(pc)):
       return
     if well_game.handle(pc, names.get(pc)):
       return
@@ -296,6 +316,16 @@ def smoke(data: bytes, case: str) -> int:
       assert count <= 4096
       left, right = bytes(cpu.mem_read(argument, count)), bytes(cpu.mem_read(other, count))
       cpu.reg_write(registers.UC_ARM64_REG_X0, (int(left > right) - int(left < right)) & 0xFFFFFFFFFFFFFFFF)
+    elif name == "pthread_key_create":
+      key = len(thread_keys) + 1
+      thread_keys[key] = 0
+      cpu.mem_write(argument, struct.pack("<I", key))
+      cpu.reg_write(registers.UC_ARM64_REG_X0, 0)
+    elif name == "pthread_getspecific":
+      cpu.reg_write(registers.UC_ARM64_REG_X0, thread_keys[argument])
+    elif name == "pthread_setspecific":
+      thread_keys[argument] = cpu.reg_read(registers.UC_ARM64_REG_X1)
+      cpu.reg_write(registers.UC_ARM64_REG_X0, 0)
     else:
       raise AssertionError(f"unexpected initialization import: {name}")
     cpu.reg_write(registers.UC_ARM64_REG_PC, cpu.reg_read(registers.UC_ARM64_REG_X30))
@@ -311,7 +341,7 @@ def smoke(data: bytes, case: str) -> int:
   if set(hooks) != expected or len(hooks) != len(expected):
     raise AssertionError(f"{case}: incorrect hook registration: {hooks}")
   if supported:
-    assert len(settings_callbacks) == 1
+    assert len(settings_callbacks) == 4
     assert fs_calls.count("mount") == 1
     assert fs_calls.count("unmount") == (case != "mount_failed")
     assert fs_calls.count("close") == (case in configs)
@@ -341,8 +371,15 @@ def smoke(data: bytes, case: str) -> int:
       print("supported: compiled Wyvern hook uses per-difficulty SSS boundaries; guarded fallbacks and native tick preserved")
       collector_game.exercise(replacements[next(iter(collector_hooks))], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled collection menu handles native claim gates, donation quantities, capacity, adoption restrictions and repeated dispatch")
+      facility_game.exercise(replacements[next(iter(collector_hooks))], replacements[ring_menu], STOP, STACK + 0x20000 - 0x20, facility_profile)
+      print("supported: compiled facility menu binds ten native entries, retains original cleanup, restores parent/footer and rejects locked or off-Somniel access")
       settings_game.exercise(settings_callbacks[0], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled Plugin Settings adjusts counts, persists independent files, retains old values on failure and leaves original classes unchanged")
+      new_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
+        r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cooking_profile + support_profile)
+        if int(value, 16) in replacements}
+      settings_game.exercise_new(settings_callbacks, new_hooks, STOP, STACK + 0x20000 - 0x20)
+      print("supported: compiled cooking choices preserve independent settings and context; support dispatch uses native A/B actions, excludes special/unready pairs and never writes ranks")
   else:
     assert not fs_calls, "unsupported executables must not read configuration"
     assert not settings_callbacks, "unsupported executables must not register settings"
@@ -366,6 +403,7 @@ def main() -> None:
   verify_nro(args.nro)
   for case in ("supported", "wrong_version", "wrong_build_id", "wrong_instruction", "wrong_segment_layout",
     "wrong_activity_instruction", "wrong_wyvern_instruction", "wrong_collector_instruction", "wrong_cleaning_instruction", "wrong_arena_instruction", "wrong_bond_talk_instruction", "wrong_settings_instruction", "wrong_well_instruction", "patch_failed",
+    "wrong_cooking_instruction", "wrong_support_instruction", "wrong_facility_instruction",
     "mount_failed", "config_ten", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
     "config_large", "config_short", "config_empty"):
     count = smoke(args.nro.read_bytes(), case)

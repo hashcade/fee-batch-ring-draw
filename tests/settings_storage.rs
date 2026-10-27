@@ -63,6 +63,43 @@ fn independent_file_round_trips_without_game_variables() {
 }
 
 #[test]
+fn all_preferences_survive_each_transaction_failure() {
+  use fee_better_somniel::config::{
+    storage::{load_settings, save_settings},
+    Settings,
+  };
+  let old = Settings {
+    draw_count: 527,
+    chef: "PID_パネトネ".into(),
+    cooking_outcome: 3,
+    auto_support: false,
+  };
+  let new = Settings {
+    draw_count: 612,
+    chef: "PID_エーティエ".into(),
+    cooking_outcome: 2,
+    auto_support: true,
+  };
+  let mut initial = Memory::default();
+  save_settings(&mut initial, &old).unwrap();
+  let mut complete = initial.clone();
+  complete.calls = 0;
+  save_settings(&mut complete, &new).unwrap();
+  for fail in 1..=complete.calls {
+    let mut disk = initial.clone();
+    disk.calls = 0;
+    disk.fail = fail;
+    let result = save_settings(&mut disk, &new);
+    disk.fail = 0;
+    assert_eq!(
+      load_settings(&mut disk),
+      Some(if result.is_ok() { new.clone() } else { old.clone() }),
+      "call {fail}"
+    );
+  }
+}
+
+#[test]
 fn every_single_io_failure_retains_a_loadable_committed_value() {
   let mut initial = Memory::default();
   save(&mut initial, 300).unwrap();

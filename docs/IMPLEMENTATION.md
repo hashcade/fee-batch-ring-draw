@@ -1,5 +1,36 @@
 # Native implementation boundaries
 
+## Facility, support and cooking extensions
+
+The outdoor HubMenu receives a separate facility entry. Its BasicMenu and item
+classes are private copies, not shared-vtable mutations. Native facility
+CreateBind entry points keep their full descriptors and OnDispose. The wrapper
+runs original cleanup before reopening the parent and restoring the footer.
+Only Hub_Solanel sequence 4 is accepted. Remote ring rubbing is hidden because
+it requires the original ring-room scene; normal ring cleaning is unchanged.
+Cooking, training and minigame 3D scenes are not rebound remotely.
+
+On opening HubMenu, ready ordinary supports can bind the complete native
+MyRoomRelianceSequence as a child. Private KeyCall overrides on its unit/pair
+menus return native ACall/BCall results to TickInput; they do not replace the
+dialogue sequence. Native IsLevelUpOnly/IsGodReliance gates, IsTalk,
+UnitReliance.TryGet and CanLevelUp must permit an ordinary C/B/A pair.
+One unordered pair is attempted once per owning sequence. Messages use the
+existing narrow skip branch. Lua, rank advancement, completion callbacks and
+cleanup remain native. No rank/EXP/viewed write API is used by the dispatcher.
+Gallery and Pact Ring calls are excluded. Temporary menu mode flags are restored
+on disposal, independently of settings.
+
+Cooking preferences use stable PID strings and a bounded native outcome branch
+(0 = native; 1..3 = chef specialties; 4 = ordinary; 5 = native bad-result roll).
+Only joined units with CookData are offered. CurrentCookingPid and GetCookData
+are read overrides; Cook receives the selected existing Unit without changing
+the rotation's stored PID. A thread-local Cook owner scopes DetermineTaste to
+that transaction and keeps conditional variation/RNG native. Outside Cook,
+DetermineTaste is untouched. Outcome names come from TasteData/Mess without
+running a roll. Each independent settings edit preserves the other options;
+legacy count-only files remain valid.
+
 Target: Engage 2.0.0, Build ID `8C08B9719E085F91847B5E0F935D9488`, Cobalt 1.31.0. Addresses below are relative to the main module.
 
 ## Initialization

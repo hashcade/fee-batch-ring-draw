@@ -17,7 +17,9 @@ class WellFixture(CollectorFixture):
     result = None
     if name == "CREATE_MENU": self.original_calls += 1
     elif name in ("INITIALIZE_METADATA", "WRITE_BARRIER", "ITEM_CTOR"): pass
-    elif name == "ALLOCATE_OBJECT": result = self.alloc()
+    elif name == "ALLOCATE_OBJECT":
+      result = self.alloc()
+      self.qword(result, args[0])
     elif name == "LIST_ADD":
       self.append(args[0], args[1])
       self.qword(args[1] + 0x10, self.menu)

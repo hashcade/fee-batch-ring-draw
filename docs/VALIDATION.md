@@ -4,11 +4,11 @@
 
 - Build the combined Switch NRO with the pinned Skyline dependency.
 - Verify actual relocation-backed imports against Cobalt 1.31.0 / Engage 2.0.0. No unavailable `get_program_id`, NRO-load/unload hook, or plugin-address API is accepted.
-- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **238** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/well instruction signatures.
+- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **274** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/well/cooking/support/facility instruction signatures.
 - Focused meld planning/session/confirmation tests retain cost, capacity, equipped-copy, repeated-dispatch, and fragment-refill protections.
 - Presentation-session tests cover matching owner, one-shot consumption, cancellation/cleanup, stale ownership, and null ownership.
 - Activity tests cover all **32** instruction replacements, whole-set preflight, readback, each possible failed write and restoration, and separation from arena/rewind/resource code.
-- Compiled-NRO AArch64 startup smoke checks: supported game registers **25 hooks** and writes precisely the activity replacements; wrong game/version/layout/instruction and conflicting activity/Wyvern/collection/cleaning/arena/dialogue/well instructions register none and write nothing.
+- Compiled-NRO AArch64 startup smoke checks: supported game registers **33 hooks** and writes precisely the activity replacements; wrong game/version/layout/instruction and conflicting module instructions register none and write nothing.
 - Well tests and compiled callbacks cover explicit localized entries, duplicate insertion prevention, unchanged original metadata, pending/ready/invalid state and level gates, grouped quantities, independent RNG, explicit-only reseeding and failed-preview seed recovery. No inventory-grant API is modeled or callable in this path. Actual rendered menus, waiting/collection and preview-to-claimed consistency still require in-game verification.
 - Focused and compiled arena cases cover both ordinary and paid training, rejecting special challenges, inconsistent mode/EXP values and mismatched or modified children. The same native growth/fade steps remain in order for both modes. Real ordinary EXP, support and activity-use settlement still require in-game verification.
 - A compiled failed-write case restores the original instructions, returns normally, and installs no hooks.
@@ -23,6 +23,22 @@
 - The compiled collection fixture covers first-position menu insertion, repeated binding without duplicate entries, unchanged original class/vtable, game-language message lookup, donation versus precomputed quantities, full inventory, duplicate source nodes, claimed and existing-zero flags, NPC result-index/access-count gating including reconstructed TalkItem, story exclusions, barn/donation/capture-cap gates, Somniel animal exclusion, adoption-only batches and repeated dispatch without duplicate grants.
 
 These tests model loader/native boundaries. They do not run Unity, render the game UI, or prove in-game state-machine completion.
+
+The added compiled convenience fixture exercises all four Plugin Settings rows,
+stable-PID chef selection, missing-join fallback, native cooking-branch scoping,
+missing-taste fallback, preservation of other preferences and independent files.
+Support dispatch returns native A/B results, excludes unready/special pairs,
+does not retry dispatched pairs and never writes relation ranks/EXP. Bond and
+gallery modes fall back to original input. The facility fixture binds all ten
+menu entry points, tests native cleanup before reopening the parent/footer,
+checks unlock/Somniel gates and keeps the original classes unchanged. Remote
+ring rubbing is hidden on the private shortcut only.
+
+Still requiring real-game validation: actual facility menus/resources and their
+header/footer appearance, end-to-end queued Lua support completion and viewed
+records, chef models/names through cooking and reload, and condition-specific
+taste variations. The boundary fixtures are not evidence that these Unity flows
+have been played successfully. No user save or installed mod was changed.
 
 Settings transaction tests cover independent-file round trips, every individual
 I/O failure, old-value recovery and stale transaction cleanup. The compiled

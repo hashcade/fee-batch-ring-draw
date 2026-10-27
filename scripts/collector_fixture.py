@@ -15,6 +15,8 @@ class CollectorFixture:
     self.close = game + 0x02459A70
     self.write(self.close, struct.pack("<I", 0xD65F03C0))
     self.functions[self.close] = "CLOSE"
+    self.functions[game + 0x02393F60] = "EMPTY_UNIT_LIST"
+    self.functions[game + 0x02A71860] = "SCENE_NAME"
     self.heap = game + 0x7000000
     self.active = False
 
@@ -170,6 +172,8 @@ class CollectorFixture:
       result = self.user
     elif name == "HUB_GET":
       result = self.hub
+    elif name == "EMPTY_UNIT_LIST": result = self.list()
+    elif name == "SCENE_NAME": result = self.string("Hub_Solanel")
     elif name == "CURRENT_ACCESS":
       result = self.manager
     elif name == "VARIABLE_BOOL":
@@ -279,15 +283,16 @@ class CollectorFixture:
       original_class = bytes(self.cpu.mem_read(self.base_class, 0x400))
       call(replacement, self.parent)
       values = self.values(self.full_list)
-      assert len(values) == 2 and values[1] == self.original
-      assert self.number(self.menu + 0xB8) == 8
+      extra = int(self.number(self.user + 0x28) == 4)
+      assert len(values) == 2 + extra and values[1] == self.original
+      assert self.number(self.menu + 0xB8) == 8 + extra
       assert bytes(self.cpu.mem_read(self.base_class, 0x400)) == original_class
       item = values[0]
       self.qword(item + 0x10, self.menu)
       private = self.pointer(item)
       self.callbacks = {slot: self.pointer(private + 0x138 + slot * 16) for slot in (4, 8, 18, 28)}
       call(replacement, self.parent)
-      assert len(self.values(self.full_list)) == 2, "do not insert a second collector"
+      assert len(self.values(self.full_list)) == 2 + extra, "do not insert a second menu entry"
       return item
 
     self.reset()

@@ -4,6 +4,8 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 
 ## Features
 
+- **Somniel facility shortcuts:** a facility entry in the outdoor exploration menu opens the notice board, Ring Chamber, Ancient Well, animal management, armory, item shop, smithy, boutique, flea market and jukebox. Keep native unlock checks and return to the menu on exit. Ring cleaning and 3D activities remain at their original facilities.
+- **Automatic ready supports:** opening the Somniel exploration menu processes eligible C/B/A support conversations through their original menus and events. Selected ordinary support menus also process ready pairs automatically. Do not add support points or force ranks; leave Pact Ring events and the conversation gallery unchanged.
 - **Batch Bond Ring creation:** keep Create One and Create Ten, and add a configurable batch, defaulting to **300**. Batch creation keeps normal costs and probabilities, skips the result animation, and leaves acquired rings in the original ring list.
 - **Single or batch Bond Ring melding:** choose one copy or as many copies of the selected kind and current rank as materials, fragments, and capacity allow, in the original confirmation. Keep normal costs and equipped copies; batch melding automatically skips the result animation.
 - **Single or all-ring cleaning:** keep one-action individual cleaning, or select Polish All at the original facility and choose a cleaner once. Clean eligible dirty rings and bracelets without individual rubbing, keeping native bond rewards for that cleaner.
@@ -14,11 +16,11 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 - **Ancient Well preview and reroll:** the original well menu includes Preview Results and Reroll Results for a pending exchange. Preview uses a private RNG and lists item quantities without claiming anything. Reroll changes only that exchange's seed; normal waiting, deposits and collection remain.
 - **Fast perfect strength training:** quickly finish push-ups, sit-ups, and squats with perfect results while keeping the original training allowance.
 - **Fast SSS Wyvern Ride:** after the opening, finish at the selected difficulty's SSS score threshold and continue through the original result and reward flow. Keep difficulty unlocks and reward eligibility unchanged.
-- **Repeatable cooking and food selection:** cook multiple times between battles and select food without the usual stock restriction.
+- **Cooking choices:** select a recruited chef and the chef's native specialty, ordinary or bad-result branch in Plugin Settings. Default choices retain the original chef rotation and outcome roll. Cook multiple times between battles and select food without the usual stock restriction.
 - **Inventory-free ordinary gifts:** give normal gifts even at zero stock without consuming owned copies. Keep the original recipient preferences and support gains.
 - **Collect exploration rewards:** use the first entry in the original exploration menu to collect generated ground items, farm products, eligible animals, and available ordinary villager gifts in the Somniel or after battle. Keep donation bonuses, adoption requirements, and inventory limits; leave rewards that do not fit unclaimed.
 
-All features are enabled automatically. Ring creation labels and melding confirmations follow the game's text language.
+Convenience features are enabled automatically; automatic supports can be disabled in Plugin Settings. Menu labels follow the game's text language.
 
 ## Installation
 
@@ -42,8 +44,11 @@ Fully restart the game after installation or an update.
 
 ## Settings
 
-Open **Settings → Plugin Settings → Somniel: Batch Ring Count** in the game.
-Adjust the value with the original left/right controls. The default is **300**,
+Open **Settings → Plugin Settings** in the game. Somniel entries include
+**Batch Ring Count**, **Chef**, **Cooking Outcome**, and **Automatic Supports**.
+Use the original left/right controls; changes save automatically.
+
+Batch Ring Count defaults to **300**,
 with a range of **2–1000**. Changes are saved automatically and apply when the
 ring-creation menu is opened again; no restart or manual file editing is needed.
 
@@ -59,6 +64,13 @@ sdmc:/fee-better-somniel.cfg
 The plugin does not add settings variables to game saves. Without a valid settings
 file, the default is used. If saving fails, the old value remains active and the
 setting's help text reports the failure.
+
+Chef and Cooking Outcome default to **Native**. Specialty choices use that
+chef's existing taste definitions and retain native conditional variations;
+the bad branch keeps its original eligible-outcome roll. A selected chef who
+has not joined the current save falls back to the original rotation.
+Automatic Supports defaults to **On**. Mod preferences are not stored in game
+saves; completing a support uses the game's normal progress and viewed records.
 
 ## Credits
 
