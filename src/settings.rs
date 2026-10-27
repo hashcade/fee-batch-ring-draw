@@ -52,3 +52,110 @@ pub fn help(language: i32, failed: bool) -> &'static str {
 
 #[cfg(target_os = "switch")]
 pub(crate) mod native;
+
+pub fn option_title(language: i32, kind: usize) -> &'static str {
+  if kind == 0 {
+    return title(language);
+  }
+  let labels = match language {
+    0 => ["ソラネル：料理当番", "ソラネル：料理の出来", "ソラネル：支援会話を自動再生"],
+    2 | 5 => ["Somniel : chef", "Somniel : résultat du repas", "Somniel : soutiens automatiques"],
+    3 | 6 => ["Somniel: cocinero", "Somniel: resultado de cocina", "Somniel: apoyos automáticos"],
+    7 => ["Somniel: Koch", "Somniel: Kochergebnis", "Somniel: automatische Unterstützungen"],
+    8 => ["Somniel: cuoco", "Somniel: risultato cucina", "Somniel: sostegni automatici"],
+    9 => ["索拉涅爾：廚師", "索拉涅爾：料理結果", "索拉涅爾：自動完成支援對話"],
+    10 => ["索拉涅尔：厨师", "索拉涅尔：料理结果", "索拉涅尔：自动完成支援对话"],
+    11 => ["솔라넬: 요리사", "솔라넬: 요리 결과", "솔라넬: 자동 지원 회화"],
+    _ => ["Somniel: Chef", "Somniel: Cooking Outcome", "Somniel: Automatic Supports"],
+  };
+  labels[kind.saturating_sub(1).min(2)]
+}
+
+pub fn default_label(language: i32) -> &'static str {
+  match language {
+    0 => "通常",
+    2 | 5 => "Normal",
+    3 | 6 => "Normal",
+    7 => "Original",
+    8 => "Normale",
+    9 => "原版",
+    10 => "原版",
+    11 => "기본",
+    _ => "Native",
+  }
+}
+
+pub fn support_label(language: i32, enabled: bool) -> &'static str {
+  let pair = match language {
+    0 => ["オフ", "オン"],
+    2 | 5 => ["Non", "Oui"],
+    3 | 6 => ["No", "Sí"],
+    7 => ["Aus", "Ein"],
+    8 => ["No", "Sì"],
+    9 | 10 => ["关闭", "开启"],
+    11 => ["끄기", "켜기"],
+    _ => ["Off", "On"],
+  };
+  pair[usize::from(enabled)]
+}
+
+pub fn outcome_label(language: i32, option: u8) -> &'static str {
+  if option == 0 {
+    return default_label(language);
+  }
+  let labels = match language {
+    0 => ["得意料理1", "得意料理2", "得意料理3", "普通", "失敗（通常の抽選）"],
+    2 | 5 => ["Spécialité 1", "Spécialité 2", "Spécialité 3", "Ordinaire", "Échec (tirage normal)"],
+    3 | 6 => {
+      ["Especialidad 1", "Especialidad 2", "Especialidad 3", "Normal", "Fallo (sorteo normal)"]
+    }
+    7 => [
+      "Spezialität 1",
+      "Spezialität 2",
+      "Spezialität 3",
+      "Gewöhnlich",
+      "Misslungen (Originalauswahl)",
+    ],
+    8 => ["Specialità 1", "Specialità 2", "Specialità 3", "Comune", "Fallito (estrazione normale)"],
+    9 => ["廚師特色1", "廚師特色2", "廚師特色3", "普通", "失敗（原版抽選）"],
+    10 => ["厨师特色1", "厨师特色2", "厨师特色3", "普通", "失败（原版抽选）"],
+    11 => ["특기 요리 1", "특기 요리 2", "특기 요리 3", "보통", "실패 (기본 추첨)"],
+    _ => {
+      ["Chef Specialty 1", "Chef Specialty 2", "Chef Specialty 3", "Ordinary", "Bad (Native Roll)"]
+    }
+  };
+  labels[usize::from(option.saturating_sub(1).min(4))]
+}
+
+pub fn option_help(language: i32, kind: usize) -> &'static str {
+  if kind == 0 {
+    return help(language, false);
+  }
+  (match language {
+    0 => [
+      "加入済みの料理当番を選択。通常で元に戻します。",
+      "料理当番の元の出来分岐を選択。食材や報酬は通常どおりです。",
+      "再生可能なC/B/A支援会話だけを順に処理します。",
+    ],
+    9 => [
+      "選擇已加入的廚師。原版保留當前輪值。",
+      "選擇廚師原生料理分支，保留食材及獎勵處理。",
+      "依序處理已滿足條件的C/B/A支援對話。",
+    ],
+    10 => [
+      "选择已加入的厨师。原版保留当前轮值。",
+      "选择厨师原生料理分支，保留食材和奖励处理。",
+      "依次处理已满足条件的C/B/A支援对话。",
+    ],
+    11 => [
+      "영입한 요리사를 선택합니다. 기본값은 기존 당번을 유지합니다.",
+      "요리사의 기본 결과 분기를 선택합니다. 재료와 보상은 유지됩니다.",
+      "조건을 충족한 C/B/A 지원 회화만 순서대로 처리합니다.",
+    ],
+    _ => [
+      "Choose a joined chef. Native keeps the original rotation.",
+      "Choose the chef's native outcome branch. Keep ingredients and rewards.",
+      "Process only already eligible C/B/A support conversations in order.",
+    ],
+  })[kind.saturating_sub(1).min(2)]
+}

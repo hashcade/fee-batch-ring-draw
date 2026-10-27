@@ -7,6 +7,7 @@ pub mod bond_talk;
 pub mod cleaning;
 pub mod collector;
 pub mod config;
+pub mod cooking;
 pub mod labels;
 pub mod meld;
 pub mod profile;

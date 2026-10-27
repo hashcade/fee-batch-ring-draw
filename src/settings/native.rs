@@ -14,7 +14,7 @@ use core::{
 
 const VTABLE: usize = 0x138;
 const NONE: Method = ptr::null();
-static ITEM_CLASS: AtomicUsize = AtomicUsize::new(0);
+static ITEM_CLASSES: [AtomicUsize; 4] = [const { AtomicUsize::new(0) }; 4];
 static SAVE_FAILED: AtomicBool = AtomicBool::new(false);
 
 extern "C" {
@@ -25,7 +25,9 @@ extern "C" {
 }
 
 pub(crate) fn install() {
-  unsafe { cobapi_register_configmenuitem_cb(create) };
+  for callback in [create, create_chef, create_outcome] {
+    unsafe { cobapi_register_configmenuitem_cb(callback) };
+  }
 }
 
 unsafe fn named(pointer: *const u8, expected: &[u8]) -> bool {
@@ -36,8 +38,9 @@ unsafe fn named(pointer: *const u8, expected: &[u8]) -> bool {
     }
 }
 
-unsafe fn private_class(class: Object) -> Option<usize> {
-  let current = ITEM_CLASS.load(Ordering::Relaxed);
+unsafe fn private_class(class: Object, kind: usize) -> Option<usize> {
+  let cache = &ITEM_CLASSES[kind];
+  let current = cache.load(Ordering::Relaxed);
   if current != 0 {
     return Some(current);
   }
@@ -61,24 +64,31 @@ unsafe fn private_class(class: Object) -> Option<usize> {
     copy[(VTABLE + slot * 16) / 8] = callback;
   }
   let class = Box::leak(copy).as_mut_ptr() as usize;
-  ITEM_CLASS.store(class, Ordering::Relaxed);
+  cache.store(class, Ordering::Relaxed);
   Some(class)
 }
 
 unsafe extern "C" fn create() -> Object {
+  unsafe { create_kind(0) }
+}
+unsafe extern "C" fn create_chef() -> Object {
+  unsafe { create_kind(1) }
+}
+unsafe extern "C" fn create_outcome() -> Object {
+  unsafe { create_kind(2) }
+}
+
+unsafe fn kind(item: Object) -> usize {
+  let class = unsafe { field::<usize>(item, 0) };
+  ITEM_CLASSES.iter().position(|cache| cache.load(Ordering::Relaxed) == class).unwrap_or(0)
+}
+
+unsafe fn create_kind(kind: usize) -> Object {
   unsafe {
-    let mut image = il2cpp_assembly_get_image(b"Assembly-CSharp.dll\0".as_ptr());
-    if image.is_null() {
-      image = il2cpp_assembly_get_image(b"Assembly-CSharp\0".as_ptr());
-    }
-    if image.is_null() {
-      return ptr::null_mut();
-    }
-    let class = il2cpp_class_from_name(image, b"\0".as_ptr(), b"ConfigBasicMenuItem\0".as_ptr());
+    let class = lookup_class(b"\0", b"ConfigBasicMenuItem\0");
     if class.is_null() {
       return ptr::null_mut();
     }
-    il2cpp_class_init(class);
     let allocate: unsafe extern "C" fn(Object) -> Object =
       core::mem::transmute(base() + profile::ALLOCATE_OBJECT);
     let ctor: unsafe extern "C" fn(Object, Method) = core::mem::transmute(base() + ITEM_CTOR);
@@ -87,37 +97,106 @@ unsafe extern "C" fn create() -> Object {
       return item;
     }
     ctor(item, NONE);
-    let Some(private) = private_class(class) else { return item };
+    let Some(private) = private_class(class, kind) else { return item };
     item.cast::<usize>().write(private);
     // ConfigMethodKind.Switch, using the game's existing left/right repeat.
     item.cast::<u8>().add(0x64).cast::<i32>().write(0);
     item.cast::<u8>().add(0x80).write(1);
-    reference(item, 0x68, new_text(title(text_language())));
+    reference(item, 0x68, new_text(option_title(text_language(), kind)));
     command(item, NONE);
     description(item, NONE);
     item
   }
 }
 
+pub(crate) unsafe fn lookup_class(namespace: &[u8], name: &[u8]) -> Object {
+  unsafe {
+    let mut image = il2cpp_assembly_get_image(b"Assembly-CSharp.dll\0".as_ptr());
+    if image.is_null() {
+      image = il2cpp_assembly_get_image(b"Assembly-CSharp\0".as_ptr());
+    }
+    if image.is_null() {
+      return ptr::null_mut();
+    }
+    let class = il2cpp_class_from_name(image, namespace.as_ptr(), name.as_ptr());
+    if class.is_null() {
+      return ptr::null_mut();
+    }
+    il2cpp_class_init(class);
+    class
+  }
+}
+
 unsafe extern "C" fn command(item: Object, _: Method) {
-  unsafe { reference(item, 0x70, new_text(&config::draw_count().to_string())) };
+  unsafe {
+    let settings = config::current();
+    let language = text_language();
+    let label = match kind(item) {
+      1 => crate::cooking::native::chefs()
+        .into_iter()
+        .find(|(pid, _)| *pid == settings.chef)
+        .map(|(_, name)| name)
+        .unwrap_or_else(|| default_label(language).to_owned()),
+      2 => crate::cooking::native::outcome_name(settings.cooking_outcome)
+        .unwrap_or_else(|| outcome_label(language, settings.cooking_outcome).to_owned()),
+      3 => support_label(language, settings.auto_support).to_owned(),
+      _ => settings.draw_count.to_string(),
+    };
+    reference(item, 0x70, new_text(&label));
+  }
 }
 
 unsafe extern "C" fn description(item: Object, _: Method) {
   unsafe {
-    reference(item, 0x78, new_text(help(text_language(), SAVE_FAILED.load(Ordering::Relaxed))))
+    let language = text_language();
+    let label = if SAVE_FAILED.load(Ordering::Relaxed) {
+      help(language, true)
+    } else {
+      option_help(language, kind(item))
+    };
+    reference(item, 0x78, new_text(label));
   };
 }
 
 unsafe extern "C" fn change(item: Object, _: Method) -> i32 {
-  let old = config::draw_count();
+  let mut settings = config::current();
+  let old = settings.clone();
   let change: unsafe extern "C" fn(i32, i32, i32, i32, Method) -> i32 =
     unsafe { core::mem::transmute(base() + CHANGE_NUMBER) };
-  let next = unsafe { change(old as i32, 2, config::MAX_DRAW_COUNT as i32, 1, NONE) };
-  if next == old as i32 {
+  match unsafe { kind(item) } {
+    1 => {
+      let mut chefs = unsafe { crate::cooking::native::chefs() };
+      chefs.insert(0, (String::new(), String::new()));
+      let current = chefs.iter().position(|(pid, _)| *pid == settings.chef).unwrap_or(0);
+      let next = unsafe { change(current as i32, 0, chefs.len() as i32 - 1, 1, NONE) };
+      if let Some((pid, _)) = chefs.get(next as usize) {
+        settings.chef = pid.clone();
+      }
+    }
+    2 => {
+      let next = unsafe { change(i32::from(settings.cooking_outcome), 0, 5, 1, NONE) };
+      if (0..=5).contains(&next) {
+        settings.cooking_outcome = next as u8;
+      }
+    }
+    3 => {
+      let next = unsafe { change(i32::from(settings.auto_support), 0, 1, 1, NONE) };
+      if (0..=1).contains(&next) {
+        settings.auto_support = next == 1;
+      }
+    }
+    _ => {
+      let next =
+        unsafe { change(settings.draw_count as i32, 2, config::MAX_DRAW_COUNT as i32, 1, NONE) };
+      if next >= 0 {
+        settings.draw_count = next as u32;
+      }
+    }
+  }
+  if settings == old {
     return 0;
   }
-  let saved = next >= 0 && config::set_draw_count(next as u32).is_ok();
+  let saved = config::set(settings).is_ok();
   SAVE_FAILED.store(!saved, Ordering::Relaxed);
   unsafe {
     command(item, NONE);
