@@ -1,6 +1,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod activities;
+pub mod arena;
 pub mod batch;
 pub mod cleaning;
 pub mod collector;

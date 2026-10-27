@@ -168,3 +168,24 @@ Native layouts were checked against generated interfaces, the
 [Unity IL2CPP ABI](https://github.com/DivineDragonFanClub/unity-nx/tree/0.1.2/src/il2cpp),
 and the read-only supplied Engage executable. The compiled fixture models these
 boundaries, not Unity's actual dialogue, animation, minimap or save/reload flow.
+
+## Paid Emblem-training presentation
+
+`ArenaCombatSequence.CreateBind` (`0x01CA3000`) constructs and binds a fresh
+14-entry descriptor array without ticking its first step. For paid, non-special
+Emblem training only, validate the parent/child flags, calculator identities,
+untouched descriptor index, all descriptor types and callback targets. Reorder
+that instance's array to retain the native fades, Grow1, Grow2, Grow3 and End.
+Use managed write barriers; leave the unused tail as End entries. Unknown or
+already modified layouts stay unchanged. FadeWait is a native user descriptor
+(type 15), not a WaitWhileTrue descriptor.
+
+This removes child combat setup, fight/result presentation and the matching
+child rendering teardown. Parent calculation, equipment setup/restoration,
+fragment charging, growth, bond-conversation dispatch, achievements and final
+cleanup remain native. No ordinary-training steps or allowances change.
+
+[Triabolical's arena implementation](https://github.com/triabolicals/triabolical-code-mods)
+provided a behavior reference. No source was copied. Unlike its global
+coroutine patches, this implementation edits only a validated fresh child array.
+The compiled fixture checks the edit and fallbacks, not Unity execution.

@@ -22,6 +22,12 @@
 
 These tests model loader/native boundaries. They do not run Unity, render the game UI, or prove in-game state-machine completion.
 
+The paid Emblem-training addition validates 23 further native signatures
+(204 total) and registers one further hook (23 total). Focused planning tests
+and the compiled arena fixture cover per-instance descriptor ordering, native
+growth/fade retention, unchanged delegates/calculators, ordinary/special/zero-EXP
+exclusions, started or missing children, changed layouts and wrong targets.
+
 ## In-game checks still required
 
 Use a temporary test save or the user's explicitly chosen test environment. Do not automatically install anything or modify the main save.
@@ -35,6 +41,7 @@ Use a temporary test save or the user's explicitly chosen test environment. Do n
 - Feed and pet Sommie through the original entries. Check food preference, food consumption rules, affection/animation events, first versus repeated reward eligibility, automatic petting finish, cancellation and return cleanup. Shortened coroutine waits are statically checked, not game-tested.
 - Fish with different rods/fish; confirm quick bite/landing, catch inventory, records, rewards, and unchanged allowance.
 - Run each exercise at available difficulties; confirm quick/perfect result, native reward, and unchanged allowance.
+- Use paid Emblem training below and across bond-conversation thresholds. Confirm exact fragment costs, correct bond/skill growth, conversation completion, equipment/HP restoration, consecutive visits and return to the menu without a fight. Check ordinary training retains its battle, EXP and allowance. These require real-game verification; the fixture does not prove settlement or Unity scene completion.
 - Run Wyvern Ride on each unlocked difficulty, with and without Sommie. Confirm opening, quick ending, SSS score/rank, correct rewards and unchanged eligibility, higher existing records, consecutive visits, cancellation/retirement, and return to the hub. Hit statistics are not fabricated; confirm the original result screen remains usable. These Unity/state-machine checks require in-game verification and are not proven by the modeled fixture.
 - Repeat cooking with different companions/recipes; inspect ingredient handling, support results, meal effects, and packed-lunch behavior.
 - Open the food list at zero and positive stock; inspect Sommie feeding, native inventory handling, and the normal return flow.
