@@ -25,7 +25,7 @@ extern "C" {
 }
 
 pub(crate) fn install() {
-  for callback in [create, create_chef, create_outcome] {
+  for callback in [create, create_chef, create_outcome, create_support] {
     unsafe { cobapi_register_configmenuitem_cb(callback) };
   }
 }
@@ -76,6 +76,9 @@ unsafe extern "C" fn create_chef() -> Object {
 }
 unsafe extern "C" fn create_outcome() -> Object {
   unsafe { create_kind(2) }
+}
+unsafe extern "C" fn create_support() -> Object {
+  unsafe { create_kind(3) }
 }
 
 unsafe fn kind(item: Object) -> usize {
