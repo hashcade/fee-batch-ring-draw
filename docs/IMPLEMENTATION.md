@@ -200,14 +200,17 @@ provided a behavior reference. No source was copied. Unlike its global
 coroutine patches, this implementation edits only a validated fresh child array.
 The compiled fixture checks the edit and fallbacks, not Unity execution.
 
-### Training bond conversations
+### Relationship conversation messages
 
 Hook only `App.Talk3D.TalkSequence.Tick` (`0x020C79B0`). Follow at most eight
-native parent links and require the exact initialized IL2CPP classes for
-MyRoomRelianceCallSequence, ArenaCombatSequence and ArenaOrderSequence.
-Require a God target, no ordinary support target, paid/non-special Emblem
-training flags and the live parent/child identity. Other conversations use the
-original Tick. No cached session or global skip/input flag is introduced.
+native parent links and require the exact initialized IL2CPP class for
+MyRoomRelianceCallSequence. Accept a native C/B/A support target (levels 1–3,
+no God target), or a God target with no ordinary target. In an arena child,
+additionally require paid/non-special Emblem training flags and the live
+parent/child identity. This includes manually selected/replayed relationship
+events outside training; it does not start or complete unselected supports.
+Pact Ring/A+ events, story talks and malformed/missing targets use original
+Tick. No cached session or global skip/input flag is introduced.
 
 For an eligible talk in Main (label 3), use native `ProcInst.Jump(int)`
 (`0x0281E6F0`) to enter Skip (label 6), matching Tick's own GameSkip branch.

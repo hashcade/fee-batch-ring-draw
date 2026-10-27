@@ -1,4 +1,4 @@
-//! Use the native dialogue skip branch only inside paid Emblem training.
+//! Use the native skip branch inside relationship dialogues, never story talks.
 
 pub const TALK_TICK: usize = 0x020C79B0;
 pub const JUMP_LABEL: usize = 0x0281E6F0;
@@ -21,6 +21,11 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x02097E70, [0xA9BC7BFD, 0xA9015FF8, 0x910003FD, 0xA90257F6]),
   (0x020C86E0, [0xD10243FF, 0xA9037BFD, 0x9100C3FD, 0xF90023FB]),
   (0x02098280, [0xF9405A60, 0xB4000060, 0xAA1F03E1, 0x944D7009]),
+  (0x02096870, [0xF9403800, 0xD65F03C0, 0xD503201F, 0xD503201F]),
+  (0x02096890, [0xF9403C00, 0xD65F03C0, 0xD503201F, 0xD503201F]),
+  (0x020968B0, [0xB9408000, 0xD65F03C0, 0xD503201F, 0xD503201F]),
+  (0x020969B0, [0xA9BA7BFD, 0xF9000BFB, 0x910003FD, 0xA90267FA]),
+  (0x02097B10, [0xA9BC7BFD, 0xF9000BF7, 0x910003FD, 0xA90257F6]),
 ];
 
 #[cfg(target_os = "switch")]
@@ -36,7 +41,7 @@ pub(crate) mod native {
     !object.is_null() && !class.is_null() && unsafe { field::<Object>(object, 0) == class }
   }
 
-  unsafe fn is_training_dialogue(talk: Object) -> bool {
+  unsafe fn is_relationship_dialogue(talk: Object) -> bool {
     if talk.is_null() {
       return false;
     }
@@ -50,15 +55,23 @@ pub(crate) mod native {
           return false;
         }
         if is_class(ancestor, dialog_class) {
-          if field::<Object>(ancestor, 0x70).is_null()
-            || !field::<Object>(ancestor, 0x78).is_null()
-            || field::<Object>(ancestor, 0x88).is_null()
-          {
+          if field::<Object>(ancestor, 0x70).is_null() {
+            return false;
+          }
+          let target: Object = field(ancestor, 0x78);
+          let god: Object = field(ancestor, 0x88);
+          if !target.is_null() {
+            // Only native C/B/A support calls, not the Pact Ring/A+ event.
+            return god.is_null() && (1..=3).contains(&field::<i32>(ancestor, 0x80));
+          }
+          if god.is_null() {
             return false;
           }
           let combat: Object = field(ancestor, 0x30);
           if !is_class(combat, metadata(COMBAT_CLASS)) {
-            return false;
+            // The game already selected and bound this native bond event.
+            // Keep its Lua, viewed records, rank caps and exit callbacks.
+            return true;
           }
           let order: Object = field(combat, 0x30);
           return is_class(order, metadata(ORDER_CLASS))
@@ -78,7 +91,7 @@ pub(crate) mod native {
   #[skyline::hook(offset = TALK_TICK)]
   fn talk_tick(talk: Object, method: Method) {
     unsafe {
-      if is_training_dialogue(talk) {
+      if is_relationship_dialogue(talk) {
         let get_label: unsafe extern "C" fn(Object, Method) -> i32 =
           core::mem::transmute(base() + GET_LABEL);
         if get_label(talk, core::ptr::null()) == 3 {

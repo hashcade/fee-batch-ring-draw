@@ -33,15 +33,17 @@ class BondTalkFixture(CollectorFixture):
     dialog_class = self.metadata(0x062A3CB8)
     combat_class = self.metadata(0x06291678)
     order_class = self.metadata(0x062917C0)
-    cases = ("paid", "nested", "repeat", "support", "story", "outside", "ordinary",
-      "special", "zero", "wrong_combat", "wrong_order", "stale", "cycle", "no_unit", "no_god")
+    cases = ("paid", "nested", "repeat", "support_c", "support_b", "support_a", "pact", "support_invalid", "story", "outside", "ordinary",
+      "special", "zero", "wrong_combat", "wrong_order", "stale", "cycle", "no_unit", "no_god", "both_targets")
     for case in cases:
       self.talk, dialog, combat, order, unit, god = [self.alloc() for _ in range(6)]
       self.qword(self.talk + 0x30, dialog)
       self.qword(dialog, dialog_class)
       self.qword(dialog + 0x70, 0 if case == "no_unit" else unit)
-      self.qword(dialog + 0x78, unit if case == "support" else 0)
-      self.qword(dialog + 0x88, 0 if case == "no_god" else god)
+      support = case.startswith("support") or case == "pact"
+      self.qword(dialog + 0x78, unit if support or case == "both_targets" else 0)
+      self.integer(dialog + 0x80, {"support_c": 1, "support_b": 2, "support_a": 3, "pact": 4}.get(case, 0))
+      self.qword(dialog + 0x88, 0 if case == "no_god" or support else god)
       self.qword(dialog + 0x30, combat)
       self.qword(combat, 0 if case == "wrong_combat" else combat_class)
       self.qword(combat + 0x30, order)
@@ -69,7 +71,7 @@ class BondTalkFixture(CollectorFixture):
         self.cpu.reg_write(reg.UC_ARM64_REG_X30, stop)
         self.cpu.emu_start(replacement, stop + 4, count=100_000)
         assert self.cpu.reg_read(reg.UC_ARM64_REG_PC) == stop
-        skip = case in ("paid", "nested", "repeat") and self.label == 3
+        skip = case in ("paid", "nested", "repeat", "support_c", "support_b", "support_a", "outside", "wrong_combat") and self.label == 3
         assert self.jumps == int(skip), (case, self.label)
         assert self.original_calls == int(not skip), (case, self.label)
         assert all(bytes(self.cpu.mem_read(address, len(before))) == before for address, before in snapshots)

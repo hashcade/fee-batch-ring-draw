@@ -328,7 +328,7 @@ def smoke(data: bytes, case: str) -> int:
       arena_game.exercise(replacements[arena_create], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled arena hook keeps native growth/fades for ordinary/paid training and rejects special, stale or changed children")
       bond_dialogue.exercise(replacements[talk_tick], STOP, STACK + 0x20000 - 0x20)
-      print("supported: compiled bond dialogue hook uses native skip only for paid training; support/story, callbacks and global skip state untouched")
+      print("supported: compiled dialogue hook uses native skip for relationship calls; Pact Ring, story, callbacks and global skip state untouched")
       meld_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", meld_profile) if int(value, 16) in replacements}
       meld_dialog.exercise(meld_replacements, STOP, STACK + 0x20000 - 0x20)

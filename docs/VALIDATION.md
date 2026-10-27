@@ -4,7 +4,7 @@
 
 - Build the combined Switch NRO with the pinned Skyline dependency.
 - Verify actual relocation-backed imports against Cobalt 1.31.0 / Engage 2.0.0. No unavailable `get_program_id`, NRO-load/unload hook, or plugin-address API is accepted.
-- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **225** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/level instruction signatures.
+- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **230** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/level instruction signatures.
 - Focused meld planning/session/confirmation tests retain cost, capacity, equipped-copy, repeated-dispatch, and fragment-refill protections.
 - Presentation-session tests cover matching owner, one-shot consumption, cancellation/cleanup, stale ownership, and null ownership.
 - Activity tests cover all **32** instruction replacements, whole-set preflight, readback, each possible failed write and restoration, and separation from arena/rewind/resource code.
@@ -33,12 +33,13 @@ and an unchanged original ConfigBasicMenuItem class. No game-variable API is
 available to this settings path.
 
 Focused planning tests and the compiled arena fixture cover per-instance descriptor ordering, native
-growth/fade retention, unchanged delegates/calculators, ordinary/special/zero-EXP
-exclusions, started or missing children, changed layouts and wrong targets.
-The compiled dialogue fixture covers paid training and nested Lua parents,
-repeat calls, native Main-to-Skip dispatch and every other lifecycle label.
-Support, story, outside-training, ordinary/special/zero-EXP, stale/wrong-class,
-missing-target and cyclic-parent cases retain original Tick. Parent sequences,
+growth/fade retention, unchanged delegates/calculators, ordinary/paid selections,
+special/inconsistent-EXP exclusions, started or missing children, changed layouts
+and wrong targets. The compiled dialogue fixture covers paid training, nested Lua
+parents, manually selected C/B/A support/bond calls, repeated Main-to-Skip dispatch
+and every other lifecycle label. Pact Ring, story, ordinary/special/zero-EXP arena
+calls, stale/wrong-order, malformed/missing-target and cyclic-parent cases retain
+original Tick. Parent sequences,
 callbacks and data objects remain unchanged; no global skip flag is set.
 
 ## In-game checks still required
@@ -55,8 +56,8 @@ Use a temporary test save or the user's explicitly chosen test environment. Do n
 - Feed and pet Sommie through the original entries. Check food preference, food consumption rules, affection/animation events, first versus repeated reward eligibility, automatic petting finish, cancellation and return cleanup. Shortened coroutine waits are statically checked, not game-tested.
 - Fish with different rods/fish; confirm quick bite/landing, catch inventory, records, rewards, and unchanged allowance.
 - Run each exercise at available difficulties; confirm quick/perfect result, native reward, and unchanged allowance.
-- Use paid Emblem training below and across bond-conversation thresholds. Confirm exact fragment costs, correct bond/skill growth, conversation completion, equipment/HP restoration, consecutive visits and return to the menu without a fight. Check ordinary training retains its battle, EXP and allowance. These require real-game verification; the fixture does not prove settlement or Unity scene completion.
-- At training bond thresholds, confirm automatic message skipping returns to the menu, updates native viewed records and allows subsequent eligible bond levels. Check repeated and DLC Emblems, then an ordinary support/story conversation and a bond conversation outside training: those must still play normally. Native Lua events, rewards and callback execution are not emulated by the fixture.
+- Use paid Emblem training below and across bond-conversation thresholds. Confirm exact fragment costs, correct bond/skill growth, conversation completion, equipment/HP restoration, consecutive visits and return to the menu without a fight. Check ordinary training skips its fight but retains EXP, support and allowance use. These require real-game verification; the fixture does not prove settlement or Unity scene completion.
+- At training bond thresholds, confirm automatic message skipping returns to the menu, updates native viewed records and allows subsequent eligible bond levels. Check repeated and DLC Emblems, C/B/A support and selected/replayed bond conversations outside training. Story and Pact Ring events must still play normally. Native Lua events, rewards and callback execution are not emulated by the fixture. This feature does not automatically dispatch unselected supports.
 - Run Wyvern Ride on each unlocked difficulty, with and without Sommie. Confirm opening, quick ending, SSS score/rank, correct rewards and unchanged eligibility, higher existing records, consecutive visits, cancellation/retirement, and return to the hub. Hit statistics are not fabricated; confirm the original result screen remains usable. These Unity/state-machine checks require in-game verification and are not proven by the modeled fixture.
 - Repeat cooking with different companions/recipes; inspect ingredient handling, support results, meal effects, and packed-lunch behavior.
 - Open the food list at zero and positive stock; inspect Sommie feeding, native inventory handling, and the normal return flow.
