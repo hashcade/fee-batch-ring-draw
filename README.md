@@ -4,6 +4,7 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 
 ## Features
 
+- **Unlimited shop stock:** keep unlocked armory, item-shop and flea-market goods available, including sold-out goods. Keep native prices, chapter requirements and inventory limits. Outfit/accessory ownership rules stay unchanged.
 - **Somniel facility shortcuts:** a facility entry in the outdoor exploration menu opens the notice board, Ring Chamber, Ancient Well, animal management, armory, item shop, smithy, boutique, flea market and jukebox. Keep native unlock checks and return to the menu on exit. Ring cleaning and 3D activities remain at their original facilities.
 - **Automatic ready supports:** opening the Somniel exploration menu processes eligible C/B/A support conversations through their original menus and events. Selected ordinary support menus also process ready pairs automatically. Do not add support points or force ranks; leave Pact Ring events and the conversation gallery unchanged.
 - **Batch Bond Ring creation:** keep Create One and Create Ten, and add a configurable batch, defaulting to **300**. Batch creation keeps normal costs and probabilities, skips the result animation, and leaves acquired rings in the original ring list.

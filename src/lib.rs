@@ -15,6 +15,7 @@ pub mod profile;
 pub mod random;
 pub mod session;
 pub mod settings;
+pub mod shops;
 pub mod supports;
 pub mod well;
 pub mod wyvern;
