@@ -67,6 +67,7 @@ fn supported_game() -> bool {
     .chain(crate::settings::TEXT_SIGNATURES)
     .chain(crate::well::TEXT_SIGNATURES)
     .chain(crate::cooking::TEXT_SIGNATURES)
+    .chain(crate::facilities::TEXT_SIGNATURES)
   {
     if offset + 16 > profile::RODATA_OFFSET {
       return false;

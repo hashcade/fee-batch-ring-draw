@@ -63,6 +63,11 @@ unsafe fn make_item(first: Object) -> Option<Object> {
 #[skyline::hook(offset = offsets::CREATE_MENU)]
 fn create_menu(parent: Object, method: Method) {
   call_original!(parent, method);
+  unsafe { append_collection(parent) };
+  unsafe { crate::facilities::native::append(parent) };
+}
+
+unsafe fn append_collection(parent: Object) {
   if parent.is_null() {
     return;
   }

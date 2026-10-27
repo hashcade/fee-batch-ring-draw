@@ -9,6 +9,40 @@ use core::{
 
 pub(crate) const VTABLE: usize = 0x138;
 
+pub(crate) unsafe fn override_class(
+  object: Object,
+  cache: &AtomicUsize,
+  callbacks: &[(usize, usize)],
+) -> bool {
+  if object.is_null() {
+    return false;
+  }
+  unsafe {
+    let class: Object = field(object, 0);
+    if class.is_null() {
+      return false;
+    }
+    let count: u16 = field(class, 0x126);
+    if !(29..=128).contains(&count) || callbacks.iter().any(|(slot, _)| *slot >= usize::from(count))
+    {
+      return false;
+    }
+    let mut private = cache.load(Ordering::Relaxed);
+    if private == 0 {
+      let words = (VTABLE + usize::from(count) * 16) / 8;
+      let mut copy =
+        core::slice::from_raw_parts(class.cast::<usize>(), words).to_vec().into_boxed_slice();
+      for &(slot, function) in callbacks {
+        copy[(VTABLE + slot * 16) / 8] = function;
+      }
+      private = Box::leak(copy).as_mut_ptr() as usize;
+      cache.store(private, Ordering::Relaxed);
+    }
+    object.cast::<usize>().write(private);
+    true
+  }
+}
+
 pub(crate) unsafe fn named(pointer: *const c_char, expected: &[u8]) -> bool {
   !pointer.is_null()
     && unsafe {

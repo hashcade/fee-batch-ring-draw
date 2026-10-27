@@ -8,6 +8,7 @@ pub mod cleaning;
 pub mod collector;
 pub mod config;
 pub mod cooking;
+pub mod facilities;
 pub mod labels;
 pub mod meld;
 pub mod profile;
