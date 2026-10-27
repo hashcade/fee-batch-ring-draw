@@ -4,7 +4,7 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 
 ## Features
 
-- **Batch Bond Ring creation:** replace Create Ten with a configurable batch, defaulting to **300**. Keep normal costs and probabilities, skip the result animation, and view acquired rings in the original ring list.
+- **Batch Bond Ring creation:** keep Create One and Create Ten, and add a configurable batch, defaulting to **300**. Batch creation keeps normal costs and probabilities, skips the result animation, and leaves acquired rings in the original ring list.
 - **Batch Bond Ring melding:** meld as many copies of the selected kind and current rank as materials, fragments, and capacity allow. Keep normal costs and equipped copies, and automatically skip the result animation.
 - **Fast ring and bracelet cleaning:** finish cleaning with one effective cleaning action.
 - **Quick Sommie interactions:** keep the original feeding and petting choices, shorten feeding waits, and automatically finish a petting round after its initial interaction. Keep native preferences, affection and reward eligibility.
@@ -49,7 +49,7 @@ sdmc:/fee-better-somniel.cfg
 draw_count=300
 ```
 
-`draw_count` accepts **2–1000**. Without a configuration file, or with an invalid value, the default is **300**. Single-ring creation remains unchanged.
+`draw_count` accepts **2–1000**. Without a configuration file, or with an invalid value, the default is **300**. Original single-ring and ten-ring creation remain unchanged. Setting it to **10** keeps just those two entries, without a duplicate batch entry.
 
 A [sample configuration](config/fee-better-somniel.cfg) is provided separately. Fully restart the game after changing it.
 

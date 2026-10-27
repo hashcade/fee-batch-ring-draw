@@ -90,7 +90,7 @@ pub unsafe fn set_menu_text(content: Object) {
   }
   let item: Object = unsafe { field(content, 0x18) };
   let count = config::draw_count();
-  if item.is_null() || unsafe { field::<i32>(item, 0x64) } != count as i32 {
+  if item.is_null() || count == 10 || unsafe { field::<i32>(item, 0x64) } != count as i32 {
     return;
   }
   let language: unsafe extern "C" fn(Method) -> i32 =
@@ -104,6 +104,47 @@ pub unsafe fn set_menu_text(content: Object) {
   if let Some(price) = labels::price(price) {
     unsafe {
       set_text(field(content, 0x50), &price);
+    }
+  }
+}
+
+pub unsafe fn append_draw_count(menu: Object, handler: Object) {
+  let count = config::draw_count();
+  if menu.is_null() || count == 10 {
+    return;
+  }
+  let list: Object = unsafe { field(menu, 0x80) };
+  let Some(length) = (unsafe { list_count(list) }).filter(|n| *n == 2) else {
+    return;
+  };
+  // Only extend the original one/ten menu, never another menu or a second bind.
+  for (index, expected) in [1, 10].into_iter().enumerate() {
+    let Some(item) = (unsafe { object_at(list, index) }) else { return };
+    if unsafe { field::<i32>(item, 0x64) } != expected {
+      return;
+    }
+  }
+  let class = unsafe { metadata(0x062C2B88) };
+  let add_method = unsafe { metadata(0x06286A70) };
+  if class.is_null() || add_method.is_null() {
+    return;
+  }
+  let allocate: unsafe extern "C" fn(Object) -> Object =
+    unsafe { core::mem::transmute(base() + profile::ALLOCATE_OBJECT) };
+  let ctor: unsafe extern "C" fn(Object, i32, Object, Method) =
+    unsafe { core::mem::transmute(base() + profile::COUNT_CTOR) };
+  let add: unsafe extern "C" fn(Object, Object, Method) =
+    unsafe { core::mem::transmute(base() + profile::LIST_ADD) };
+  let rows: unsafe extern "C" fn(Object, i32, Method) =
+    unsafe { core::mem::transmute(base() + profile::SET_MENU_ROWS) };
+  let item = unsafe { allocate(class) };
+  if !item.is_null() {
+    unsafe {
+      ctor(item, count as i32, handler, NONE);
+      add(list, item, add_method);
+      if list_count(list) == Some(length + 1) {
+        rows(menu, (length + 1) as i32, NONE);
+      }
     }
   }
 }

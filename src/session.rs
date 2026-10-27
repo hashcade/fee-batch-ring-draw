@@ -22,6 +22,8 @@ impl Session {
     if self.executing == 0
       || self.dispatched
       || !crate::config::valid_count(configured)
+      || count == 1
+      || count == 10
       || count != configured as i32
     {
       return None;

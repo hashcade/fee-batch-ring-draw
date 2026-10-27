@@ -12,7 +12,7 @@ Draw, meld, Wyvern Ride, and collection hooks are installed only after this pref
 
 ## Ring transactions and presentation
 
-Creation retains its existing count configuration, RNG preview on a copy, native per-ring transaction, capacity checks, native achievement pass, and guarded presentation bypass.
+Creation retains its existing count configuration, RNG preview on a copy, native per-ring transaction, capacity checks, native achievement pass, and guarded presentation bypass. The original CreateBind (`0x02956D00`) constructs the one/ten menu unchanged; a third native count item is appended with the same decision handler and native constructor. A configuration of ten adds nothing. Only the configured extra count can arm batch settlement and presentation bypass, never the original one or ten entries.
 
 Melding is ported from former `fee-batch-ring-meld` v0.2.0 (`d92aed4`). Costs remain single-transaction costs in the native Result object; only confirmation text shows totals. Each transaction rechecks free materials, equipped copies, output capacity, fragments, and actual inventory deltas.
 

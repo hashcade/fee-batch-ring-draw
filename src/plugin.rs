@@ -18,7 +18,7 @@ pub fn install() {
     return;
   }
   config::load();
-  skyline::install_hooks!(count_ctor, build_text, execute_gacha, draw, create_demo, unload);
+  skyline::install_hooks!(count_menu, build_text, execute_gacha, draw, create_demo, unload);
   crate::meld::plugin::install();
   crate::wyvern::native::install();
   crate::collector::native::install();
@@ -68,11 +68,11 @@ fn supported_game() -> bool {
   true
 }
 
-#[skyline::hook(offset = profile::COUNT_CTOR)]
-fn count_ctor(item: Object, times: i32, handler: Object, method: Method) {
-  let times = if times == 10 { config::draw_count() as i32 } else { times };
-  // The native constructor calculates total price and affordability from times.
-  call_original!(item, times, handler, method);
+#[skyline::hook(offset = profile::COUNT_MENU)]
+fn count_menu(parent: Object, handler: Object, method: Method) -> Object {
+  let menu = call_original!(parent, handler, method);
+  unsafe { native::append_draw_count(menu, handler) };
+  menu
 }
 
 #[skyline::hook(offset = profile::BUILD_TEXT)]
@@ -97,7 +97,7 @@ fn execute_gacha(sequence: Object, method: Method) {
 fn draw(god: Object, times: i32, flags: *mut Object, method: Method) -> Object {
   let active = SESSION.with(|session| session.borrow().executing());
   let count = config::draw_count();
-  if !active || times != count as i32 {
+  if !active || times == 1 || times == 10 || times != count as i32 {
     return call_original!(god, times, flags, method);
   }
   let Some(sequence) = SESSION.with(|session| session.borrow_mut().dispatch(times, count)) else {

@@ -32,7 +32,7 @@ fn single_draw_and_unload_never_skip_an_unrelated_presentation() {
 
 #[test]
 fn configured_count_not_a_literal_300_is_dispatched() {
-  for count in [2, 10, 600, 1000] {
+  for count in [2, 600, 1000] {
     let mut session = Session::default();
     assert!(session.begin(123));
     assert_eq!(session.dispatch(1, count), None);
@@ -41,4 +41,13 @@ fn configured_count_not_a_literal_300_is_dispatched() {
     session.end();
     assert!(session.presentation(123));
   }
+}
+
+#[test]
+fn original_ten_never_arms_batch_presentation_even_when_configured() {
+  let mut session = Session::default();
+  assert!(session.begin(123));
+  assert_eq!(session.dispatch(10, 10), None);
+  session.end();
+  assert!(!session.presentation(123));
 }

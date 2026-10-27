@@ -16,6 +16,7 @@ from verify_nro import verify_nro
 from text_fixture import TextFixture
 from wyvern_fixture import WyvernFixture
 from collector_fixture import CollectorFixture
+from draw_menu_fixture import DrawMenuFixture
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -68,7 +69,7 @@ def smoke(data: bytes, case: str) -> int:
   id_values = re.search(r"pub const BUILD_ID:.*?=\s*\[(.*?)\];", profile, re.S).group(1)
   build_id = bytes(int(word, 16) for word in re.findall(r"0x[0-9A-Fa-f]+", id_values))
   expected_hooks = {offset(name) for name in (
-    "COUNT_CTOR", "BUILD_TEXT", "EXECUTE_GACHA", "UNLOAD", "DRAW", "CREATE_DEMO"
+    "COUNT_MENU", "BUILD_TEXT", "EXECUTE_GACHA", "UNLOAD", "DRAW", "CREATE_DEMO"
   )}
   expected_hooks.update(int(re.search(
     rf"pub const {name}: usize = (0x[0-9A-Fa-f]+)", meld_profile).group(1), 16)
@@ -125,17 +126,17 @@ def smoke(data: bytes, case: str) -> int:
     cpu.mem_write(BASE + target, struct.pack("<Q", value))
   hooks = []
   replacements = {}
-  selected_counts = []
   fs_calls = []
   patch_calls = []
   patch_failed = False
-  configs = {"config_low": b"draw_count=2\n", "config_custom": b"draw_count=600\n",
+  configs = {"config_ten": b"draw_count=10\n", "config_low": b"draw_count=2\n", "config_custom": b"draw_count=600\n",
     "config_high": b"draw_count=1000\n", "config_invalid": b"draw_count=1001\n",
     "config_utf8": b"\xff", "config_large": b" " * 4097,
     "config_short": b"draw_count=600\n", "config_empty": b""}
   text = TextFixture(cpu, GAME, STUB + 0xE000, write_game, offset)
   wyvern_game = WyvernFixture(cpu, GAME, write_game, wyvern)
   collector_game = CollectorFixture(cpu, GAME, write_game, collector, profile)
+  draw_menu = DrawMenuFixture(cpu, GAME, write_game, offset)
 
   def string_at(address: int) -> bytes:
     result = bytearray()
@@ -155,11 +156,9 @@ def smoke(data: bytes, case: str) -> int:
       return
     if collector_game.handle(pc, names.get(pc)):
       return
-    if text.handle(pc, names.get(pc)):
+    if draw_menu.handle(pc):
       return
-    if pc == GAME + offset("COUNT_CTOR"):
-      selected_counts.append(cpu.reg_read(registers.UC_ARM64_REG_X1))
-      cpu.reg_write(registers.UC_ARM64_REG_PC, cpu.reg_read(registers.UC_ARM64_REG_X30))
+    if text.handle(pc, names.get(pc)):
       return
     if pc not in names:
       return
@@ -246,17 +245,9 @@ def smoke(data: bytes, case: str) -> int:
     assert fs_calls.count("mount") == 1
     assert fs_calls.count("unmount") == (case != "mount_failed")
     assert fs_calls.count("close") == (case in configs)
-    expected_count = {"config_low": 2, "config_custom": 600, "config_high": 1000}.get(case, 300)
-    for count in (10, 1):
-      cpu.reg_write(registers.UC_ARM64_REG_SP, STACK + 0x20000 - 0x20)
-      cpu.reg_write(registers.UC_ARM64_REG_X0, 0)
-      cpu.reg_write(registers.UC_ARM64_REG_X1, count)
-      cpu.reg_write(registers.UC_ARM64_REG_X2, 0)
-      cpu.reg_write(registers.UC_ARM64_REG_X3, 0)
-      cpu.reg_write(registers.UC_ARM64_REG_X30, STOP)
-      cpu.emu_start(replacements[offset("COUNT_CTOR")], STOP + 4, count=10_000)
-      assert cpu.reg_read(registers.UC_ARM64_REG_PC) == STOP
-    assert selected_counts == [expected_count, 1], (case, selected_counts)
+    expected_count = {"config_ten": 10, "config_low": 2, "config_custom": 600, "config_high": 1000}.get(case, 300)
+    draw_menu.exercise(replacements[offset("COUNT_MENU")], STOP,
+      STACK + 0x20000 - 0x20, expected_count)
     if case in ("supported", "config_low", "config_custom", "config_high"):
       text.exercise(replacements[offset("BUILD_TEXT")], STOP, STACK + 0x20000 - 0x20,
         expected_count)
@@ -288,7 +279,7 @@ def main() -> None:
   verify_nro(args.nro)
   for case in ("supported", "wrong_version", "wrong_build_id", "wrong_instruction", "wrong_segment_layout",
     "wrong_activity_instruction", "wrong_wyvern_instruction", "wrong_collector_instruction", "patch_failed",
-    "mount_failed", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
+    "mount_failed", "config_ten", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
     "config_large", "config_short", "config_empty"):
     count = smoke(args.nro.read_bytes(), case)
     print(f"{case}: initialization returned normally; {count} hooks; no unavailable API call")
