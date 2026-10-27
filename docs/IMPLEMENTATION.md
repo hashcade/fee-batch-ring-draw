@@ -23,13 +23,6 @@ does not advance any live RNG. Deposits, exchange level, waiting and native
 collection remain unchanged. This is a normal native seed change, not a custom
 mod-settings variable in the save.
 
-The native unit-status SetLevel hook (`0x01C66980`) runs the complete original
-setter first, then replaces only its level title/value through TrySetText
-(`0x0290F0A0`). The localized title distinguishes current/total. Current display
-uses GetEnhancedLevel; total uses the unenhanced unit's stored level (`+0x89`)
-plus signed internal level (`+0x158`). Negative internal levels and invalid
-inputs retain native text. This does not write unit data, EXP, arrows or colors.
-
 One entry point validates the display version, mapped segment layout, loaded Build ID, draw/meld native functions, semantic call sites, and every activity patch's surrounding instructions before changing any game code.
 
 Activities use 32 one-time instruction replacements. All original words must match before the first write. Each write is read back; a failure triggers restoration of startup writes and no hooks are registered. The memory writer imports only Cobalt's `sky_memcpy` ABI, not Skyline's NRO-loader APIs.

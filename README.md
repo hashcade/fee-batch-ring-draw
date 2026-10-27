@@ -11,7 +11,6 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 - **Quick arena training:** skip ordinary and paid Emblem-training battles. Keep native EXP, costs, growth, activity allowances and cleanup.
 - **Quick relationship dialogues:** automatically skip messages in selected C/B/A support and Emblem bond conversations, including paid training. Keep native scripts, viewed records, rank advancement and callbacks. Story and Pact Ring conversations stay unchanged.
 - **Fast fishing:** shorten the bite wait and simplify landing fish while keeping the original fishing allowance and rewards.
-- **Cumulative level display:** the character status screen shows current/total level. Total means stored current level plus internal level; no level, EXP or growth values are changed.
 - **Ancient Well preview and reroll:** the original well menu includes Preview Results and Reroll Results for a pending exchange. Preview uses a private RNG and lists item quantities without claiming anything. Reroll changes only that exchange's seed; normal waiting, deposits and collection remain.
 - **Fast perfect strength training:** quickly finish push-ups, sit-ups, and squats with perfect results while keeping the original training allowance.
 - **Fast SSS Wyvern Ride:** after the opening, finish at the selected difficulty's SSS score threshold and continue through the original result and reward flow. Keep difficulty unlocks and reward eligibility unchanged.

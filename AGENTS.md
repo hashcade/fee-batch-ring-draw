@@ -10,6 +10,7 @@
 - Check game version, Build ID, and every native entry/signature before hooking.
 - Run transactions synchronously on the original game menu thread.
 - Preserve native prices, probabilities, acquisition records, achievements, and equipped rings.
+- Keep the game's original level display. Do not add internal or cumulative level information to the UI.
 - Preview only a copy of RNG state; never advance or restore the live RNG to skip a full result.
 - Stop before an unaffordable or unrecordable result. Never retry after an attempted transaction.
 - Keep the original outer flow; bypass presentation before changing the scene, background, or title bar.

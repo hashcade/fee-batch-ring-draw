@@ -8,7 +8,6 @@ pub mod cleaning;
 pub mod collector;
 pub mod config;
 pub mod labels;
-pub mod level;
 pub mod meld;
 pub mod profile;
 pub mod random;
