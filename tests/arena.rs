@@ -1,5 +1,5 @@
 use fee_better_somniel::arena::{
-  layout, selection, Step, DESCRIPTOR_COUNT, KEPT_STEPS, STEP_FUNCTIONS, STEP_TYPES,
+  layout, quick_training, selection, Step, DESCRIPTOR_COUNT, KEPT_STEPS, STEP_FUNCTIONS, STEP_TYPES,
 };
 
 fn original() -> [Step; DESCRIPTOR_COUNT] {
@@ -14,6 +14,22 @@ fn only_paid_normal_emblem_training_is_eligible() {
   assert!(!selection(true, true, 1, 6000));
   for amount in [0, -1, i32::MIN] {
     assert!(!selection(true, false, 1, amount));
+  }
+}
+
+#[test]
+fn ordinary_training_skips_presentation_without_becoming_paid_training() {
+  assert!(quick_training(false, false, 0, 0));
+  assert!(!selection(false, false, 0, 0));
+  assert!(quick_training(true, false, 1, 6000));
+  for (emblem, special, kind, exp) in [
+    (false, true, 0, 0),
+    (false, false, 0, 1),
+    (false, false, 1, 0),
+    (true, false, 0, 0),
+    (true, true, 1, 6000),
+  ] {
+    assert!(!quick_training(emblem, special, kind, exp));
   }
 }
 

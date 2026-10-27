@@ -326,7 +326,7 @@ def smoke(data: bytes, case: str) -> int:
       level_game.exercise(replacements[set_level], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled level labels show current/total in all languages, retain native setter and do not write unit data")
       arena_game.exercise(replacements[arena_create], STOP, STACK + 0x20000 - 0x20)
-      print("supported: compiled arena hook keeps native growth/fades and rejects ordinary, special, stale or changed children")
+      print("supported: compiled arena hook keeps native growth/fades for ordinary/paid training and rejects special, stale or changed children")
       bond_dialogue.exercise(replacements[talk_tick], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled bond dialogue hook uses native skip only for paid training; support/story, callbacks and global skip state untouched")
       meld_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(

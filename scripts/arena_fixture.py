@@ -30,9 +30,11 @@ class ArenaFixture(CollectorFixture):
       0x1CA3A80, 0x1CA3B00, 0x1CA3B80, 0x1CA3C00, 0, 0, 0x1CA3DB0, 0]
     kinds = [11, 11, 10, 15, 11, 11, 10, 11, 11, 10, 10, 15, 11, 0]
     kept = [2, 3, 7, 8, 9, 10, 11, 13] + [13] * 6
-    for case in ("paid", "ordinary", "special", "zero", "started", "changed", "wrong_target", "wrong_calculator", "missing", "size"):
+    for case in ("paid", "ordinary", "ordinary_exp", "ordinary_special", "special", "zero", "started", "changed", "wrong_target", "wrong_calculator", "missing", "size"):
       parent, child, calculator, simulation = [self.alloc() for _ in range(4)]
-      emblem, special, exp = int(case != "ordinary"), int(case == "special"), 0 if case == "zero" else 6000
+      emblem = int(not case.startswith("ordinary"))
+      special = int(case in ("special", "ordinary_special"))
+      exp = 0 if case in ("zero", "ordinary", "ordinary_special") else 6000
       self.qword(parent + 0x38, 0 if case == "missing" else child)
       self.write(parent + 0x88, bytes([emblem, special]))
       self.integer(parent + 0x8C, emblem)
@@ -67,7 +69,8 @@ class ArenaFixture(CollectorFixture):
       assert self.cpu.reg_read(reg.UC_ARM64_REG_PC) == stop
       assert self.original_calls == 1
       actual = [self.pointer(self.array + 0x20 + index * 8) for index in range(14)]
-      assert actual == ([descriptors[index] for index in kept] if case == "paid" else descriptors), case
-      assert self.writes == (14 if case == "paid" else 0), case
+      eligible = case in ("paid", "ordinary")
+      assert actual == ([descriptors[index] for index in kept] if eligible else descriptors), case
+      assert self.writes == (14 if eligible else 0), case
       assert all(bytes(self.cpu.mem_read(address, len(before))) == before for address, before in snapshots), case
     self.active = False

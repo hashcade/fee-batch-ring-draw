@@ -1,4 +1,4 @@
-//! Presentation-only changes to the native paid Emblem-training child.
+//! Presentation-only changes to native ordinary and paid Emblem-training children.
 
 pub const CREATE_COMBAT: usize = 0x01CA3000;
 pub const DESCRIPTOR_COUNT: usize = 14;
@@ -18,6 +18,11 @@ pub struct Step {
 
 pub fn selection(emblem: bool, special: bool, training_type: i32, bond_exp: i32) -> bool {
   emblem && !special && training_type == 1 && bond_exp > 0
+}
+
+pub fn quick_training(emblem: bool, special: bool, training_type: i32, bond_exp: i32) -> bool {
+  selection(emblem, special, training_type, bond_exp)
+    || !emblem && !special && training_type == 0 && bond_exp == 0
 }
 
 pub fn layout(steps: &[Step]) -> Option<[usize; DESCRIPTOR_COUNT]> {
@@ -84,9 +89,9 @@ pub(crate) mod native {
       return;
     }
     unsafe {
-      if !selection(emblem, special, field(parent, 0x8C), bond_exp)
-        || field::<u8>(parent, 0x88) != 1
-        || field::<u8>(parent, 0x89) != 0
+      if !quick_training(emblem, special, field(parent, 0x8C), bond_exp)
+        || field::<u8>(parent, 0x88) != u8::from(emblem)
+        || field::<u8>(parent, 0x89) != u8::from(special)
         || field::<Object>(parent, 0xB0) != calculator
         || field::<Object>(parent, 0xB8) != simulation
       {
@@ -99,8 +104,8 @@ pub(crate) mod native {
         || field::<Object>(child, 0x88) != calculator
         || field::<Object>(child, 0x90) != simulation
         || field::<i32>(child, 0x98) != bond_exp
-        || field::<u8>(child, 0x9C) != 1
-        || field::<u8>(child, 0x9D) != 0
+        || field::<u8>(child, 0x9C) != u8::from(emblem)
+        || field::<u8>(child, 0x9D) != u8::from(special)
       {
         return;
       }
