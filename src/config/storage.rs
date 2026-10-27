@@ -1,6 +1,6 @@
 //! Small recoverable settings transaction. These are mod files, not game saves.
 
-use super::{parse, valid_count};
+use super::{parse_settings, Settings};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum File {
@@ -19,11 +19,15 @@ pub trait Storage {
   fn rename(&mut self, from: File, to: File) -> Result<(), Error>;
 }
 
-fn value(bytes: &[u8]) -> Option<u32> {
-  parse(core::str::from_utf8(bytes).ok()?).ok()
+fn value(bytes: &[u8]) -> Option<Settings> {
+  parse_settings(core::str::from_utf8(bytes).ok()?).ok()
 }
 
 pub fn load(storage: &mut impl Storage) -> Option<u32> {
+  load_settings(storage).map(|value| value.draw_count)
+}
+
+pub fn load_settings(storage: &mut impl Storage) -> Option<Settings> {
   if let Some(bytes) = storage.read(File::Settings).ok()? {
     if let Some(count) = value(&bytes) {
       return Some(count);
@@ -33,7 +37,11 @@ pub fn load(storage: &mut impl Storage) -> Option<u32> {
 }
 
 pub fn save(storage: &mut impl Storage, count: u32) -> Result<(), Error> {
-  if !valid_count(count) {
+  save_settings(storage, &Settings { draw_count: count, ..Settings::default() })
+}
+
+pub fn save_settings(storage: &mut impl Storage, settings: &Settings) -> Result<(), Error> {
+  if !settings.valid() {
     return Err(Error);
   }
   let current = storage.read(File::Settings)?;
@@ -46,7 +54,7 @@ pub fn save(storage: &mut impl Storage, count: u32) -> Result<(), Error> {
   }
   let had_current = storage.read(File::Settings)?.is_some();
   storage.remove(File::Pending)?;
-  let contents = format!("draw_count={count}\n");
+  let contents = settings.encode();
   storage.write_pending(contents.as_bytes())?;
   if storage.read(File::Pending)?.as_deref() != Some(contents.as_bytes()) {
     return Err(Error);

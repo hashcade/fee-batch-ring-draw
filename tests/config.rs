@@ -8,6 +8,33 @@ fn missing_setting_and_comments_keep_300_default() {
 }
 
 #[test]
+fn extended_settings_round_trip_without_save_variables() {
+  use fee_better_somniel::config::{parse_settings, Settings};
+  assert_eq!(
+    parse_settings("draw_count=527").unwrap(),
+    Settings { draw_count: 527, ..Settings::default() }
+  );
+  let settings = Settings {
+    draw_count: 527,
+    chef: "PID_パネトネ".to_owned(),
+    cooking_outcome: 3,
+    auto_support: false,
+  };
+  assert_eq!(parse_settings(&settings.encode()), Ok(settings));
+  for value in [
+    "chef=IID_Food",
+    "chef=PID_a=b",
+    "chef=PID_a\tbad",
+    "chef=PID_x\nchef=PID_y",
+    "cooking_outcome=6",
+    "auto_support=2",
+    "auto_support=1\nauto_support=0",
+  ] {
+    assert!(parse_settings(value).is_err(), "{value}");
+  }
+}
+
+#[test]
 fn accepts_whitespace_and_safe_boundary_values() {
   for count in [2, 10, 300, 600, 1000] {
     assert_eq!(parse(&format!("# count\r\n draw_count = {count}\r\n")), Ok(count));
