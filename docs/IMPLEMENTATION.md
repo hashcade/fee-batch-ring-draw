@@ -6,7 +6,7 @@ Target: Engage 2.0.0, Build ID `8C08B9719E085F91847B5E0F935D9488`, Cobalt 1.31.0
 
 One entry point validates the display version, mapped segment layout, loaded Build ID, draw/meld native functions, semantic call sites, and every activity patch's surrounding instructions before changing any game code.
 
-Activities use 24 one-time instruction replacements. All original words must match before the first write. Each write is read back; a failure triggers restoration of startup writes and no hooks are registered. The memory writer imports only Cobalt's `sky_memcpy` ABI, not Skyline's NRO-loader APIs.
+Activities use 32 one-time instruction replacements. All original words must match before the first write. Each write is read back; a failure triggers restoration of startup writes and no hooks are registered. The memory writer imports only Cobalt's `sky_memcpy` ABI, not Skyline's NRO-loader APIs.
 
 Draw, meld, Wyvern Ride, and collection hooks are installed only after this preflight and patch application succeed. The ring modules have separate thread-local sessions and uniquely named exported hook symbols. No repeating timer or background inventory writer is used.
 
@@ -26,6 +26,15 @@ The normal meld flow remains:
 The presentation bypass happens **before** header/footer hiding (`0x0233B014`, `0x0233B064`), background unbinding, and creation of the child `RingSynthesisSequence`. It does not press a synthetic + button or repeatedly skip frames. A cancelled, stale, unrelated, or ordinary non-batch transaction does not inherit the bypass.
 
 ## Migrated activity effects
+
+Sommie's original EatFood coroutine has five fixed reaction/telop waits shortened.
+Its original food choice, conditional consumption, food preference branches,
+ExitEatFood, GetBond and repeat-reward guards remain untouched. The original
+Strok coroutine retains its initial animation/petting interval, then enters its
+own finish-input branch at `0x01E5520C`, including motion stop and normal exit.
+Only two following fixed waits are shortened. No new interaction menu, synthetic
+global input, reward call, friendship overwrite or eligibility reset is added.
+Actual animation events and affection settlement still require in-game checks.
 
 | Effect | Patched addresses | Preserved boundary |
 | --- | --- | --- |

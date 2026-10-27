@@ -7,6 +7,7 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 - **Batch Bond Ring creation:** replace Create Ten with a configurable batch, defaulting to **300**. Keep normal costs and probabilities, skip the result animation, and view acquired rings in the original ring list.
 - **Batch Bond Ring melding:** meld as many copies of the selected kind and current rank as materials, fragments, and capacity allow. Keep normal costs and equipped copies, and automatically skip the result animation.
 - **Fast ring and bracelet cleaning:** finish cleaning with one effective cleaning action.
+- **Quick Sommie interactions:** keep the original feeding and petting choices, shorten feeding waits, and automatically finish a petting round after its initial interaction. Keep native preferences, affection and reward eligibility.
 - **Fast fishing:** shorten the bite wait and simplify landing fish while keeping the original fishing allowance and rewards.
 - **Fast perfect strength training:** quickly finish push-ups, sit-ups, and squats with perfect results while keeping the original training allowance.
 - **Fast SSS Wyvern Ride:** after the opening, finish at the selected difficulty's SSS score threshold and continue through the original result and reward flow. Keep difficulty unlocks and reward eligibility unchanged.
