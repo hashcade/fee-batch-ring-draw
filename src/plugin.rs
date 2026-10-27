@@ -24,6 +24,7 @@ pub fn install() {
   crate::collector::native::install();
   crate::cleaning::native::install();
   crate::arena::native::install();
+  crate::bond_talk::native::install();
 }
 
 fn supported_game() -> bool {
@@ -59,6 +60,7 @@ fn supported_game() -> bool {
     .chain(crate::collector::profile::TEXT_SIGNATURES)
     .chain(crate::cleaning::TEXT_SIGNATURES)
     .chain(crate::arena::TEXT_SIGNATURES)
+    .chain(crate::bond_talk::TEXT_SIGNATURES)
   {
     if offset + 16 > profile::RODATA_OFFSET {
       return false;

@@ -4,11 +4,11 @@
 
 - Build the combined Switch NRO with the pinned Skyline dependency.
 - Verify actual relocation-backed imports against Cobalt 1.31.0 / Engage 2.0.0. No unavailable `get_program_id`, NRO-load/unload hook, or plugin-address API is accepted.
-- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **181** draw/meld/activity/Wyvern/collection/cleaning instruction signatures.
+- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **217** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue instruction signatures.
 - Focused meld planning/session/confirmation tests retain cost, capacity, equipped-copy, repeated-dispatch, and fragment-refill protections.
 - Presentation-session tests cover matching owner, one-shot consumption, cancellation/cleanup, stale ownership, and null ownership.
 - Activity tests cover all **32** instruction replacements, whole-set preflight, readback, each possible failed write and restoration, and separation from arena/rewind/resource code.
-- Compiled-NRO AArch64 startup smoke checks: supported game registers **22 hooks** and writes precisely the activity replacements; wrong game/version/layout/instruction and conflicting activity/Wyvern/collection/cleaning instructions register none and write nothing.
+- Compiled-NRO AArch64 startup smoke checks: supported game registers **24 hooks** and writes precisely the activity replacements; wrong game/version/layout/instruction and conflicting activity/Wyvern/collection/cleaning/arena/dialogue instructions register none and write nothing.
 - A compiled failed-write case restores the original instructions, returns normally, and installs no hooks.
 - Configuration cases cover missing/malformed/oversized/invalid UTF-8/short reads, mount failure, and counts 2, 10, 300, 600, and 1000. The filesystem is read-only; handles/mounts are released.
 - Compiled draw text fixtures cover supported text languages, exact compact prices, unchanged actual native prices, and unchanged single-row behavior.
@@ -22,11 +22,14 @@
 
 These tests model loader/native boundaries. They do not run Unity, render the game UI, or prove in-game state-machine completion.
 
-The paid Emblem-training addition validates 23 further native signatures
-(204 total) and registers one further hook (23 total). Focused planning tests
-and the compiled arena fixture cover per-instance descriptor ordering, native
+Focused planning tests and the compiled arena fixture cover per-instance descriptor ordering, native
 growth/fade retention, unchanged delegates/calculators, ordinary/special/zero-EXP
 exclusions, started or missing children, changed layouts and wrong targets.
+The compiled dialogue fixture covers paid training and nested Lua parents,
+repeat calls, native Main-to-Skip dispatch and every other lifecycle label.
+Support, story, outside-training, ordinary/special/zero-EXP, stale/wrong-class,
+missing-target and cyclic-parent cases retain original Tick. Parent sequences,
+callbacks and data objects remain unchanged; no global skip flag is set.
 
 ## In-game checks still required
 
@@ -42,6 +45,7 @@ Use a temporary test save or the user's explicitly chosen test environment. Do n
 - Fish with different rods/fish; confirm quick bite/landing, catch inventory, records, rewards, and unchanged allowance.
 - Run each exercise at available difficulties; confirm quick/perfect result, native reward, and unchanged allowance.
 - Use paid Emblem training below and across bond-conversation thresholds. Confirm exact fragment costs, correct bond/skill growth, conversation completion, equipment/HP restoration, consecutive visits and return to the menu without a fight. Check ordinary training retains its battle, EXP and allowance. These require real-game verification; the fixture does not prove settlement or Unity scene completion.
+- At training bond thresholds, confirm automatic message skipping returns to the menu, updates native viewed records and allows subsequent eligible bond levels. Check repeated and DLC Emblems, then an ordinary support/story conversation and a bond conversation outside training: those must still play normally. Native Lua events, rewards and callback execution are not emulated by the fixture.
 - Run Wyvern Ride on each unlocked difficulty, with and without Sommie. Confirm opening, quick ending, SSS score/rank, correct rewards and unchanged eligibility, higher existing records, consecutive visits, cancellation/retirement, and return to the hub. Hit statistics are not fabricated; confirm the original result screen remains usable. These Unity/state-machine checks require in-game verification and are not proven by the modeled fixture.
 - Repeat cooking with different companions/recipes; inspect ingredient handling, support results, meal effects, and packed-lunch behavior.
 - Open the food list at zero and positive stock; inspect Sommie feeding, native inventory handling, and the normal return flow.

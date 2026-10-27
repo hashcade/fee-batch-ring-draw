@@ -20,6 +20,7 @@ from draw_menu_fixture import DrawMenuFixture
 from meld_dialog_fixture import MeldDialogFixture
 from cleaning_fixture import CleaningFixture
 from arena_fixture import ArenaFixture
+from bond_talk_fixture import BondTalkFixture
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -61,6 +62,7 @@ def smoke(data: bytes, case: str) -> int:
   collector = (ROOT / "src/collector/profile.rs").read_text(encoding="utf-8")
   cleaning = (ROOT / "src/cleaning.rs").read_text(encoding="utf-8")
   arena = (ROOT / "src/arena.rs").read_text(encoding="utf-8")
+  bond_talk = (ROOT / "src/bond_talk.rs").read_text(encoding="utf-8")
   patches = [(int(address, 16), int(original, 16), int(replacement, 16))
     for address, original, replacement in re.findall(
       r"\((0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+)\)", activities)]
@@ -70,7 +72,7 @@ def smoke(data: bytes, case: str) -> int:
 
   signatures = [(int(address, 16), b"".join(
     struct.pack("<I", int(word, 16)) for word in re.findall(r"0x[0-9A-Fa-f]+", words)
-  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena)]
+  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk)]
   id_values = re.search(r"pub const BUILD_ID:.*?=\s*\[(.*?)\];", profile, re.S).group(1)
   build_id = bytes(int(word, 16) for word in re.findall(r"0x[0-9A-Fa-f]+", id_values))
   expected_hooks = {offset(name) for name in (
@@ -91,6 +93,8 @@ def smoke(data: bytes, case: str) -> int:
   expected_hooks.update(cleaning_hooks)
   arena_create = int(re.search(r"pub const CREATE_COMBAT: usize = (0x[0-9A-Fa-f]+)", arena).group(1), 16)
   expected_hooks.add(arena_create)
+  talk_tick = int(re.search(r"pub const TALK_TICK: usize = (0x[0-9A-Fa-f]+)", bond_talk).group(1), 16)
+  expected_hooks.add(talk_tick)
   symbols, relocations = metadata(data)
   main = next(value for name, section, value in symbols if name == "main" and section)
   cpu = Uc(UC_ARCH_ARM64, UC_MODE_ARM)
@@ -123,6 +127,8 @@ def smoke(data: bytes, case: str) -> int:
     write_game(GAME + min(cleaning_hooks), bytes(4))
   if case == "wrong_arena_instruction":
     write_game(GAME + arena_create, bytes(4))
+  if case == "wrong_bond_talk_instruction":
+    write_game(GAME + talk_tick, bytes(4))
   stubs = {name: STUB + index * 16 for index, name in enumerate(sorted(required_imports(data)))}
   names = {address: name for name, address in stubs.items()}
   for target, info, addend in relocations:
@@ -156,6 +162,7 @@ def smoke(data: bytes, case: str) -> int:
   cleaning_game = CleaningFixture(cpu, GAME, write_game, cleaning, profile)
   cleaning_game.tls = meld_dialog.tls
   arena_game = ArenaFixture(cpu, GAME, write_game, arena, profile)
+  bond_dialogue = BondTalkFixture(cpu, GAME, write_game, bond_talk, profile)
 
   def string_at(address: int) -> bytes:
     result = bytearray()
@@ -174,6 +181,8 @@ def smoke(data: bytes, case: str) -> int:
     if wyvern_game.handle(pc):
       return
     if arena_game.handle(pc, names.get(pc)):
+      return
+    if bond_dialogue.handle(pc, names.get(pc)):
       return
     if collector_game.handle(pc, names.get(pc)):
       return
@@ -280,6 +289,8 @@ def smoke(data: bytes, case: str) -> int:
     if case == "supported":
       arena_game.exercise(replacements[arena_create], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled arena hook keeps native growth/fades and rejects ordinary, special, stale or changed children")
+      bond_dialogue.exercise(replacements[talk_tick], STOP, STACK + 0x20000 - 0x20)
+      print("supported: compiled bond dialogue hook uses native skip only for paid training; support/story, callbacks and global skip state untouched")
       meld_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", meld_profile) if int(value, 16) in replacements}
       meld_dialog.exercise(meld_replacements, STOP, STACK + 0x20000 - 0x20)
@@ -313,7 +324,7 @@ def main() -> None:
   args = parser.parse_args()
   verify_nro(args.nro)
   for case in ("supported", "wrong_version", "wrong_build_id", "wrong_instruction", "wrong_segment_layout",
-    "wrong_activity_instruction", "wrong_wyvern_instruction", "wrong_collector_instruction", "wrong_cleaning_instruction", "wrong_arena_instruction", "patch_failed",
+    "wrong_activity_instruction", "wrong_wyvern_instruction", "wrong_collector_instruction", "wrong_cleaning_instruction", "wrong_arena_instruction", "wrong_bond_talk_instruction", "patch_failed",
     "mount_failed", "config_ten", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
     "config_large", "config_short", "config_empty"):
     count = smoke(args.nro.read_bytes(), case)

@@ -189,3 +189,22 @@ cleanup remain native. No ordinary-training steps or allowances change.
 provided a behavior reference. No source was copied. Unlike its global
 coroutine patches, this implementation edits only a validated fresh child array.
 The compiled fixture checks the edit and fallbacks, not Unity execution.
+
+### Training bond conversations
+
+Hook only `App.Talk3D.TalkSequence.Tick` (`0x020C79B0`). Follow at most eight
+native parent links and require the exact initialized IL2CPP classes for
+MyRoomRelianceCallSequence, ArenaCombatSequence and ArenaOrderSequence.
+Require a God target, no ordinary support target, paid/non-special Emblem
+training flags and the live parent/child identity. Other conversations use the
+original Tick. No cached session or global skip/input flag is introduced.
+
+For an eligible talk in Main (label 3), use native `ProcInst.Jump(int)`
+(`0x0281E6F0`) to enter Skip (label 6), matching Tick's own GameSkip branch.
+The original Skip (`0x020C85E0`) processes remaining message tags and returns
+through the native close/finish path. Do not bypass MyRoomRelianceCallSequence,
+its Lua event, entry/exit callbacks, level-up flow or reward handling; do not
+write viewed flags or unlock future bond levels manually. Subsequent event
+instructions still run normally. The compiled fixture proves scope and jump
+dispatch only; actual conversation completion, viewed records and level caps
+must be checked in-game.

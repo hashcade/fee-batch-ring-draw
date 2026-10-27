@@ -3,6 +3,7 @@
 pub mod activities;
 pub mod arena;
 pub mod batch;
+pub mod bond_talk;
 pub mod cleaning;
 pub mod collector;
 pub mod config;
