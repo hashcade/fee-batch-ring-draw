@@ -29,6 +29,7 @@ pub fn install() {
   crate::well::native::install();
   crate::cooking::native::install();
   crate::supports::native::install();
+  crate::facilities::native::install();
 }
 
 fn supported_game() -> bool {

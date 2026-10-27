@@ -57,7 +57,16 @@ pub(crate) mod native {
   }
 
   pub(crate) fn install() {
-    skyline::install_hooks!(create_unit_menu, create_pair_menu);
+    skyline::install_hooks!(create_sequence, create_unit_menu, create_pair_menu);
+  }
+
+  #[skyline::hook(offset = CREATE_SEQUENCE)]
+  fn create_sequence(parent: Object, method: Method) {
+    // A new opening always owns a fresh attempt set, even if managed addresses
+    // are reused after disposal. Rebuilding its unit menu does not reset it.
+    OWNER.store(0, Ordering::Relaxed);
+    ATTEMPTED.with(|set| set.borrow_mut().clear());
+    call_original!(parent, method);
   }
 
   pub(crate) unsafe fn on_hub_menu(parent: Object) {

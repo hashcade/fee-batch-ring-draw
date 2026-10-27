@@ -76,19 +76,14 @@ pub(crate) mod native {
     }
   }
 
-  pub(crate) unsafe fn outcome_name(option: u8) -> Option<String> {
+  unsafe fn taste_for(pid: Object, option: u8) -> Option<Object> {
     if !(1..=4).contains(&option) {
       return None;
     }
     unsafe {
-      let user = crate::native::user_data();
-      if user.is_null() || field::<i32>(user, 0x28) != 4 {
-        return None;
-      }
       let key = if option == 4 {
         metadata(0x062B5868)
       } else {
-        let pid = native!(CURRENT_CHEF, unsafe extern "C" fn(Method) -> Object)(NONE);
         let data = cook_data(pid);
         if data.is_null() {
           return None;
@@ -100,9 +95,18 @@ pub(crate) mod native {
         return None;
       }
       let taste = native!(TASTE_DATA, unsafe extern "C" fn(Object, Method) -> Object)(key, method);
-      if taste.is_null() {
+      (!taste.is_null()).then_some(taste)
+    }
+  }
+
+  pub(crate) unsafe fn outcome_name(option: u8) -> Option<String> {
+    unsafe {
+      let user = crate::native::user_data();
+      if user.is_null() || field::<i32>(user, 0x28) != 4 {
         return None;
       }
+      let pid = native!(CURRENT_CHEF, unsafe extern "C" fn(Method) -> Object)(NONE);
+      let taste = taste_for(pid, option)?;
       let name: Object = field(taste, 0x28);
       if name.is_null() {
         return None;
@@ -176,6 +180,13 @@ pub(crate) mod native {
     let option = config::current().cooking_outcome;
     if chef.is_null() || option == 0 || !COOKING.with(|value| value.get() == chef as usize) {
       return call_original!(chef, quality, method);
+    }
+    if option <= 4 {
+      let pid =
+        unsafe { native!(UNIT_PID, unsafe extern "C" fn(Object, Method) -> Object)(chef, NONE) };
+      if unsafe { taste_for(pid, option) }.is_none() {
+        return call_original!(chef, quality, method);
+      }
     }
     // Use the chef-specific native branch, including conditional outcomes and
     // ordinary RNG. No arbitrary TasteData from another character is injected.

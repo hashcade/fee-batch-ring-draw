@@ -91,19 +91,5 @@ pub(crate) unsafe fn create(
     return None;
   }
   unsafe { ctor(item, ptr::null()) };
-  let mut private = cache.load(Ordering::Relaxed);
-  if private == 0 {
-    let words = (VTABLE + usize::from(count) * 16) / 8;
-    let mut copy = unsafe { core::slice::from_raw_parts(class.cast::<usize>(), words) }
-      .to_vec()
-      .into_boxed_slice();
-    for &(slot, function) in callbacks {
-      copy[(VTABLE + slot * 16) / 8] = function;
-    }
-    // Created once on the native menu thread; original metadata stays intact.
-    private = Box::leak(copy).as_mut_ptr() as usize;
-    cache.store(private, Ordering::Relaxed);
-  }
-  unsafe { item.cast::<usize>().write(private) };
-  Some(item)
+  unsafe { override_class(item, cache, callbacks) }.then_some(item)
 }

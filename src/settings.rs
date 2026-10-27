@@ -92,7 +92,8 @@ pub fn support_label(language: i32, enabled: bool) -> &'static str {
     3 | 6 => ["No", "Sí"],
     7 => ["Aus", "Ein"],
     8 => ["No", "Sì"],
-    9 | 10 => ["关闭", "开启"],
+    9 => ["關閉", "開啟"],
+    10 => ["关闭", "开启"],
     11 => ["끄기", "켜기"],
     _ => ["Off", "On"],
   };
@@ -136,6 +137,26 @@ pub fn option_help(language: i32, kind: usize) -> &'static str {
       "加入済みの料理当番を選択。通常で元に戻します。",
       "料理当番の元の出来分岐を選択。食材や報酬は通常どおりです。",
       "再生可能なC/B/A支援会話だけを順に処理します。",
+    ],
+    2 | 5 => [
+      "Choisir un chef recruté. Normal conserve le roulement du jeu.",
+      "Choisir une branche native du chef. Ingrédients et récompenses restent normaux.",
+      "Traiter uniquement les conversations C/B/A déjà disponibles, dans l'ordre.",
+    ],
+    3 | 6 => [
+      "Elige un cocinero reclutado. Normal conserva el turno original.",
+      "Elige una rama nativa del cocinero. Conserva ingredientes y recompensas.",
+      "Procesa por orden solo las conversaciones C/B/A ya disponibles.",
+    ],
+    7 => [
+      "Rekrutierten Koch wählen. Original behält die normale Rotation bei.",
+      "Originalen Ergebniszweig des Kochs wählen. Zutaten und Belohnungen bleiben normal.",
+      "Nur bereits verfügbare C/B/A-Gespräche nacheinander verarbeiten.",
+    ],
+    8 => [
+      "Scegli un cuoco reclutato. Normale mantiene il turno originale.",
+      "Scegli un ramo originale del cuoco. Ingredienti e ricompense rimangono normali.",
+      "Elabora in ordine solo le conversazioni C/B/A già disponibili.",
     ],
     9 => [
       "選擇已加入的廚師。原版保留當前輪值。",

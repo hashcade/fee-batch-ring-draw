@@ -5,6 +5,8 @@ pub const BIND_PARENT: usize = 0x02454310;
 pub const BIND: usize = 0x0280A6B0;
 pub const CONTENT: usize = 0x028B78C0;
 pub const SHOW_FOOTER: usize = 0x021EDE30;
+pub const SCENE_NAME: usize = 0x02A71860;
+pub const RING_MENU: usize = 0x023397D0;
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x024533F0, [0xD10203FF, 0xA9027BFD, 0x910083FD, 0xA9036FFC]),
   (0x02454310, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0x9001F634]),
@@ -15,12 +17,14 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x02A744F0, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
   (0x028AB140, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
   (0x023DCCB0, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
-  (0x02D748E0, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
+  (0x02174D70, [0xA9BA7BFD, 0xF9000BFB, 0x910003FD, 0xA90267FA]),
   (0x028A8700, [0xA9BD7BFD, 0xA90157F6, 0x910003FD, 0xA9024FF4]),
   (0x01F19B30, [0xA9BC7BFD, 0xF9000BF7, 0x910003FD, 0xA90257F6]),
   (0x01C9BB30, [0xD101C3FF, 0xA9027BFD, 0x910083FD, 0xA90367FA]),
   (0x0205B740, [0xA9BC7BFD, 0xA9015FF8, 0x910003FD, 0xA90257F6]),
   (0x021EDE30, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xD0020954]),
+  (0x02A71860, [0xD10103FF, 0xA9017BFD, 0x910043FD, 0xF90013F5]),
+  (0x023397D0, [0xA9BA7BFD, 0xA9016FFC, 0x910003FD, 0xA90267FA]),
 ];
 
 pub struct Facility {
@@ -37,7 +41,7 @@ pub const FACILITIES: &[Facility] = &[
   Facility { name: "MID_Hub_WeaponShop", aid: "AID_武器屋", bind: 0x02A744F0 },
   Facility { name: "MID_Hub_ItemShop", aid: "AID_道具屋", bind: 0x028AB140 },
   Facility { name: "MID_Hub_Blacksmith", aid: "AID_錬成屋", bind: 0x023DCCB0 },
-  Facility { name: "MID_Hub_AccessoryShop", aid: "AID_アクセサリ", bind: 0x02D748E0 },
+  Facility { name: "MID_Hub_AccessoryShop", aid: "AID_アクセサリ", bind: 0x02174D70 },
   Facility { name: "MID_Hub_FreeMarket", aid: "AID_蚤の市", bind: 0x028A8700 },
   Facility {
     name: "MID_Hub_CafeTerrace_Jukebox", aid: "AID_ジュークボックス", bind: 0x0205B740
@@ -48,7 +52,7 @@ pub const FACILITIES: &[Facility] = &[
 pub(crate) mod native {
   use super::*;
   use crate::{
-    meld::native::new_text,
+    meld::native::{new_text, text},
     menu_item::{self, VTABLE},
     native::{base, field, list_count, metadata, object_at, user_data, Method, Object},
     profile,
@@ -60,6 +64,7 @@ pub(crate) mod native {
   const NONE: Method = ptr::null();
   static ENTRY_CLASS: AtomicUsize = AtomicUsize::new(0);
   static MENU_CLASS: AtomicUsize = AtomicUsize::new(0);
+  static CLEANING_CLASS: AtomicUsize = AtomicUsize::new(0);
   static ITEM_CLASSES: [AtomicUsize; 10] = [const { AtomicUsize::new(0) }; 10];
   static SEQUENCE_CLASSES: [AtomicUsize; 10] = [const { AtomicUsize::new(0) }; 10];
 
@@ -69,9 +74,51 @@ pub(crate) mod native {
     };
   }
 
+  pub(crate) fn install() {
+    skyline::install_hooks!(ring_menu);
+  }
+
+  unsafe extern "C" fn hidden(_: Object, _: Method) -> i32 {
+    4
+  }
+
+  #[skyline::hook(offset = RING_MENU)]
+  fn ring_menu(parent: Object, selected: i32, handler: Object, method: Method) {
+    call_original!(parent, selected, handler, method);
+    if parent.is_null() {
+      return;
+    }
+    unsafe {
+      let quick: Object = field(parent, 0x30);
+      if quick.is_null() || field::<usize>(quick, 0) != MENU_CLASS.load(Ordering::Relaxed) {
+        return;
+      }
+      let menu: Object = field(parent, 0x38);
+      if menu.is_null() {
+        return;
+      }
+      let list: Object = field(menu, 0x80);
+      let Some(count) = list_count(list).filter(|n| *n <= 32) else { return };
+      for index in 0..count {
+        let Some(item) = object_at(list, index).filter(|item| !item.is_null()) else { continue };
+        let class: Object = field(item, 0);
+        if menu_item::named(field(class, 0x10), b"RingCleaningItem") {
+          // Remote rubbing requires the actual ring-room scene. The original
+          // facility still offers individual and all-ring cleaning unchanged.
+          menu_item::override_class(item, &CLEANING_CLASS, &[(8, hidden as *const () as usize)]);
+        }
+      }
+    }
+  }
+
   unsafe fn somniel() -> bool {
     let user = unsafe { user_data() };
-    !user.is_null() && unsafe { field::<i32>(user, 0x28) == 4 }
+    !user.is_null()
+      && unsafe {
+        field::<i32>(user, 0x28) == 4
+          && text(native!(SCENE_NAME, unsafe extern "C" fn(Method) -> Object)(NONE)).as_deref()
+            == Some("Hub_Solanel")
+      }
   }
 
   unsafe fn message(key: &str) -> Object {
@@ -326,6 +373,10 @@ pub(crate) mod native {
       let entry = FACILITIES[index].bind;
       if entry == 0x028A8700 {
         native!(entry, unsafe extern "C" fn(Object, bool, Method))(menu, false, NONE);
+      } else if entry == 0x02174D70 {
+        // Enter the native accessory room first; the shop child needs its
+        // preview/resources. Do not bind HubAccessoryShopSequence directly.
+        native!(entry, unsafe extern "C" fn(Object, i32, Method))(menu, 0, NONE);
       } else if entry == 0x01C9BB30 {
         let _ = native!(entry, unsafe extern "C" fn(Object, Method) -> Object)(menu, NONE);
       } else {
