@@ -12,6 +12,7 @@ pub mod meld;
 pub mod profile;
 pub mod random;
 pub mod session;
+pub mod settings;
 pub mod wyvern;
 
 #[cfg(target_os = "switch")]

@@ -4,13 +4,13 @@
 
 - Build the combined Switch NRO with the pinned Skyline dependency.
 - Verify actual relocation-backed imports against Cobalt 1.31.0 / Engage 2.0.0. No unavailable `get_program_id`, NRO-load/unload hook, or plugin-address API is accepted.
-- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **217** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue instruction signatures.
+- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **220** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings instruction signatures.
 - Focused meld planning/session/confirmation tests retain cost, capacity, equipped-copy, repeated-dispatch, and fragment-refill protections.
 - Presentation-session tests cover matching owner, one-shot consumption, cancellation/cleanup, stale ownership, and null ownership.
 - Activity tests cover all **32** instruction replacements, whole-set preflight, readback, each possible failed write and restoration, and separation from arena/rewind/resource code.
 - Compiled-NRO AArch64 startup smoke checks: supported game registers **24 hooks** and writes precisely the activity replacements; wrong game/version/layout/instruction and conflicting activity/Wyvern/collection/cleaning/arena/dialogue instructions register none and write nothing.
 - A compiled failed-write case restores the original instructions, returns normally, and installs no hooks.
-- Configuration cases cover missing/malformed/oversized/invalid UTF-8/short reads, mount failure, and counts 2, 10, 300, 600, and 1000. The filesystem is read-only; handles/mounts are released.
+- Configuration cases cover missing/malformed/oversized/invalid UTF-8/short reads, mount failure, and counts 2, 10, 300, 600, and 1000. Startup only reads independent mod files; explicit UI edits use bounded recoverable transactions. Handles/mounts are released.
 - Compiled draw text fixtures cover supported text languages, exact compact prices, unchanged actual native prices, and unchanged single-row behavior.
 - Compiled draw-menu fixtures retain native one/ten entries and their handlers, append the configured native count item once, and avoid a duplicate when configured to ten. Original ten draws cannot arm batch presentation bypass.
 - Compiled meld-dialog fixtures construct single/batch/cancel choices with distinct localized labels. Alternating single/batch/single selections preserves their separate confirmation and presentation paths. Focused tests verify unit versus total costs and the single-copy fallback.
@@ -21,6 +21,14 @@
 - The compiled collection fixture covers first-position menu insertion, repeated binding without duplicate entries, unchanged original class/vtable, game-language message lookup, donation versus precomputed quantities, full inventory, duplicate source nodes, claimed and existing-zero flags, NPC result-index/access-count gating including reconstructed TalkItem, story exclusions, barn/donation/capture-cap gates, Somniel animal exclusion, adoption-only batches and repeated dispatch without duplicate grants.
 
 These tests model loader/native boundaries. They do not run Unity, render the game UI, or prove in-game state-machine completion.
+
+Settings transaction tests cover independent-file round trips, every individual
+I/O failure, old-value recovery and stale transaction cleanup. The compiled
+settings fixture invokes the registered Cobalt callback, changes arbitrary and
+boundary counts, verifies exact file contents and current UI values, checks
+mount/write/rename failure feedback, no-write unchanged input, resource release
+and an unchanged original ConfigBasicMenuItem class. No game-variable API is
+available to this settings path.
 
 Focused planning tests and the compiled arena fixture cover per-instance descriptor ordering, native
 growth/fade retention, unchanged delegates/calculators, ordinary/special/zero-EXP
@@ -37,6 +45,7 @@ Use a temporary test save or the user's explicitly chosen test environment. Do n
 
 - Start with only the combined plugin, then with the retained resource/stock cheats. Confirm there is no loading stall and both ring menus work.
 - Create one ring, ten rings and a configured batch; check all menu entries, costs, acquired results, capacity stopping, and original RNG/probabilities. Check configuration ten does not add a duplicate row.
+- Adjust the batch count through Plugin Settings, reopen ring creation and check labels, prices and actual counts. Restart and switch save slots to confirm independent persistence; check localized labels and an unwritable SD card. These Unity/rendering/storage-device checks are not proven by the compiled fixture.
 - Meld C→B, B→A, A→S; check exact material/fragment costs, equipped copies, capacity, first/repeat acquisitions, cancellation, and consecutive transactions.
 - Confirm a batch meld returns directly to the menu without pressing +, the header/footer/background remain correct, and leaving/re-entering works.
 - Clean a dirty ring and a bracelet through one effective action; confirm the original completion and bond settlement.

@@ -35,6 +35,14 @@ fn rejects_ambiguous_unknown_or_out_of_range_values() {
 }
 
 #[test]
-fn sample_configuration_uses_default() {
-  assert_eq!(parse(include_str!("../config/fee-better-somniel.cfg")), Ok(300));
+fn settings_labels_follow_all_supported_game_languages() {
+  for language in 0..=11 {
+    assert!(!fee_better_somniel::settings::title(language).is_empty());
+    assert!(!fee_better_somniel::settings::help(language, false).is_empty());
+    assert!(!fee_better_somniel::settings::help(language, true).is_empty());
+    assert_ne!(
+      fee_better_somniel::settings::help(language, false),
+      fee_better_somniel::settings::help(language, true)
+    );
+  }
 }

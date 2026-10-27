@@ -208,3 +208,28 @@ write viewed flags or unlock future bond levels manually. Subsequent event
 instructions still run normally. The compiled fixture proves scope and jump
 dispatch only; actual conversation completion, viewed records and level caps
 must be checked in-game.
+
+## Independent in-game settings
+
+Cobalt 1.31.0's `cobapi_register_configmenuitem_cb` registers the batch-count
+row in Plugin Settings. Its class lookup uses Cobalt's exported IL2CPP
+forwarders. All four added imports were checked in the pinned release's
+`subsdk9` (SHA-256 recorded in `tools/cobalt-imports.json`). No new dependency,
+game-setting hook, custom save key or global class/vtable edit is required.
+
+The callback constructs ConfigBasicMenuItem using the native constructor,
+validates its size and bounded vtable, and gives it a process-lifetime private
+class. Only CustomCall, SetCommandText and SetHelpText are replaced, located
+by metadata name. Native `ChangeKeyValue(int,int,int,int)` handles the original
+left/right repeat. Labels follow the game's current text language. The count
+is changed in memory only after its independent file has been committed.
+
+The existing SD-root `fee-better-somniel.cfg` is now managed by the UI; old
+single-key files remain readable. Reads are bounded and do not touch saves.
+Writes create `.cfg.tmp`, flush and read it back, rotate the old file to
+`.cfg.previous`, and rename the complete temporary file into place. A failed
+commit restores the old name where possible; the reader can also recover the
+previous file after interruption. Successful commits remove the recovery file;
+there is no backup history. All handles and mounts are scoped and released.
+Failures keep the active count unchanged and return the native error sound
+with a localized help message. Unchanged input does not write the SD card.

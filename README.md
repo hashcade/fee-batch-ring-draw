@@ -38,21 +38,25 @@ engage/mods/fee_better_somniel/fee_better_somniel.nro
 
 Fully restart the game after installation or an update.
 
-## Configuration
+## Settings
 
-The optional configuration file belongs at the SD card root:
+Open **Settings → Plugin Settings → Somniel: Batch Ring Count** in the game.
+Adjust the value with the original left/right controls. The default is **300**,
+with a range of **2–1000**. Changes are saved automatically and apply when the
+ring-creation menu is opened again; no restart or manual file editing is needed.
+
+Original single-ring and ten-ring creation remain available. Setting the batch
+count to **10** does not add a duplicate ten-ring choice.
+
+Settings are stored independently at the SD card root:
 
 ```text
 sdmc:/fee-better-somniel.cfg
 ```
 
-```ini
-draw_count=300
-```
-
-`draw_count` accepts **2–1000**. Without a configuration file, or with an invalid value, the default is **300**. Original single-ring and ten-ring creation remain unchanged. Setting it to **10** keeps just those two entries, without a duplicate batch entry.
-
-A [sample configuration](config/fee-better-somniel.cfg) is provided separately. Fully restart the game after changing it.
+The plugin does not add settings variables to game saves. Without a valid settings
+file, the default is used. If saving fails, the old value remains active and the
+setting's help text reports the failure.
 
 ## Credits
 

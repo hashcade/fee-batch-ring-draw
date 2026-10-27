@@ -1,4 +1,8 @@
-//! Optional, bounded key=value configuration, read once at game startup.
+//! In-game settings persisted independently of the game's save variables.
+
+#[cfg(target_os = "switch")]
+mod sdk;
+pub mod storage;
 
 use core::sync::atomic::{AtomicU32, Ordering};
 
@@ -43,47 +47,16 @@ pub fn parse(contents: &str) -> Result<u32, &'static str> {
 
 #[cfg(target_os = "switch")]
 pub fn load() {
-  use skyline::nn::fs;
-  const MOUNT: &[u8] = b"feesomniel\0";
-  const PATH: &[u8] = b"feesomniel:/fee-better-somniel.cfg\0";
-
-  fn read() -> Option<u32> {
-    let mut handle = fs::FileHandle { handle: 0 };
-    // SDK paths are NUL-terminated. Only successfully opened handles are used.
-    unsafe {
-      if fs::OpenFile(&mut handle, PATH.as_ptr(), fs::OpenMode_OpenMode_Read as i32) != 0 {
-        return None;
-      }
-      let mut size = 0i64;
-      let result = fs::GetFileSize(&mut size, handle);
-      if result != 0 || !(0..=MAX_CONFIG_BYTES as i64).contains(&size) {
-        fs::CloseFile(handle);
-        return None;
-      }
-      let mut bytes = [0u8; MAX_CONFIG_BYTES];
-      let mut read = 0u64;
-      let result = if size == 0 {
-        0
-      } else {
-        fs::ReadFile1(&mut read, handle, 0, bytes.as_mut_ptr(), size as u64)
-      };
-      fs::CloseFile(handle);
-      if result != 0 || read != size as u64 {
-        return None;
-      }
-      parse(core::str::from_utf8(&bytes[..size as usize]).ok()?).ok()
-    }
-  }
-
-  // Use an isolated mount name and release it on every successful-mount path.
-  let count = if unsafe { fs::MountSdCard(MOUNT.as_ptr()) } == 0 {
-    let count = read().unwrap_or(DEFAULT_DRAW_COUNT);
-    unsafe {
-      fs::Unmount(MOUNT.as_ptr());
-    }
-    count
-  } else {
-    DEFAULT_DRAW_COUNT
-  };
+  let count = sdk::SdCard::mount()
+    .ok()
+    .and_then(|mut sd| storage::load(&mut sd))
+    .unwrap_or(DEFAULT_DRAW_COUNT);
   DRAW_COUNT.store(count, Ordering::Relaxed);
+}
+
+#[cfg(target_os = "switch")]
+pub fn set_draw_count(count: u32) -> Result<(), storage::Error> {
+  storage::save(&mut sdk::SdCard::mount()?, count)?;
+  DRAW_COUNT.store(count, Ordering::Relaxed);
+  Ok(())
 }

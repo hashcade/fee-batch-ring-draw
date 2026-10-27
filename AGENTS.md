@@ -13,7 +13,7 @@
 - Preview only a copy of RNG state; never advance or restore the live RNG to skip a full result.
 - Stop before an unaffordable or unrecordable result. Never retry after an attempted transaction.
 - Keep the original outer flow; bypass presentation before changing the scene, background, or title bar.
-- Support the requested draw_count configuration only; do not add logs, hotkeys, result windows, or quantity dialogs.
+- Expose requested options through Cobalt's in-game Plugin Settings. Persist them automatically in an independent SD-card file, never custom game/save variables. Keep batch creation at 300 by default and retain original one/ten choices. Do not add logs, result windows, or quantity dialogs.
 - Integrate batch ring creation, batch melding, fast ring cleaning, fast fishing, fast perfect strength training, and repeatable cooking in one plugin. These features are always enabled; do not add feature toggles or increase activity allowances.
 - Include the explicitly requested food-list stock bypass and inventory-free ordinary gifts. Scope gift changes to the original ordinary-gift menu and settlement; never bypass global item inventory, special relationship prerequisites, or plot checks.
 - Ordinary Wyvern Ride finishes after its opening at the current difficulty's native SSS boundary. Retain the original ending, record updates, rewards and eligibility. Do not fabricate target counts, perfect scores, unlocks, or additional attempts; preserve event/test/pause/retirement paths.

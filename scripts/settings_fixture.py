@@ -1,0 +1,158 @@
+"""Exercise the compiled settings callback and SDK file transaction boundaries."""
+
+import struct
+from unicorn import arm64_const as reg
+from collector_fixture import CollectorFixture
+
+
+class SettingsFixture(CollectorFixture):
+  def __init__(self, cpu, game, write, profile, common):
+    super().__init__(cpu, game, write, profile, common)
+    self.heap = game + 0x8100000
+
+  def path(self, address):
+    value = bytearray()
+    for index in range(128):
+      byte = self.cpu.mem_read(address + index, 1)[0]
+      if not byte: return bytes(value)
+      value.append(byte)
+    raise AssertionError("unterminated path")
+
+  def handle(self, pc, import_name):
+    if not self.active: return False
+    name = self.functions.get(pc, import_name)
+    args = [self.cpu.reg_read(getattr(reg, f"UC_ARM64_REG_X{i}")) for i in range(8)]
+    x0, x1 = args[:2]
+    result = None
+    if name == "il2cpp_assembly_get_image":
+      assert self.path(x0) in (b"Assembly-CSharp.dll", b"Assembly-CSharp")
+      result = self.image
+    elif name == "il2cpp_class_from_name":
+      assert x0 == self.image and self.path(x1) == b"" and self.path(args[2]) == b"ConfigBasicMenuItem"
+      result = self.item_class
+    elif name == "il2cpp_class_init": assert x0 == self.item_class
+    elif name == "ALLOCATE_OBJECT":
+      assert x0 == self.item_class
+      result = self.alloc()
+      self.qword(result, x0)
+    elif name == "ITEM_CTOR": pass
+    elif name == "STRING_NEW_SIZE":
+      result = self.alloc(0x20 + x0 * 2)
+      self.integer(result + 0x10, x0)
+    elif name == "WRITE_BARRIER": assert self.pointer(x0) == x1
+    elif name == "GET_LANGUAGE": result = 10
+    elif name == "CHANGE_NUMBER":
+      assert args[1:4] == [2, 1000, 1]
+      result = self.next_count
+    elif name == "UPDATE_TEXT": self.refreshes += 1
+    elif name == "_ZN2nn2fs11MountSdCardEPKc":
+      assert self.path(x0) == b"feesomniel"
+      result = int(self.failure == "mount")
+      if result == 0: self.mounts += 1
+    elif name == "_ZN2nn2fs7UnmountEPKc":
+      assert self.path(x0) == b"feesomniel"
+      self.unmounts += 1
+    elif name == "_ZN2nn2fs8OpenFileEPNS0_10FileHandleEPKci":
+      path = self.path(x1)
+      assert path in self.paths
+      result = 0x202 if path not in self.files else 0
+      if result == 0:
+        self.next_handle += 1
+        self.handles[self.next_handle] = path
+        self.cpu.mem_write(x0, struct.pack("<Q", self.next_handle))
+    elif name == "_ZN2nn2fs11GetFileSizeEPlNS0_10FileHandleE":
+      self.cpu.mem_write(x0, struct.pack("<Q", len(self.files[self.handles[x1]])))
+      result = 0
+    elif name == "_ZN2nn2fs8ReadFileEPmNS0_10FileHandleElPvm":
+      data = self.files[self.handles[x1]]
+      assert args[2] == 0 and args[4] == len(data)
+      if data: self.write(args[3], data)
+      self.cpu.mem_write(x0, struct.pack("<Q", len(data)))
+      result = 0
+    elif name == "_ZN2nn2fs9CloseFileENS0_10FileHandleE": self.handles.pop(x0)
+    elif name == "_ZN2nn2fs10CreateFileEPKcl":
+      path = self.path(x0)
+      assert path == self.paths[1] and path not in self.files
+      self.files[path] = bytes(x1)
+      result = 0
+    elif name == "_ZN2nn2fs9WriteFileENS0_10FileHandleElPKvmRKNS0_11WriteOptionE":
+      assert self.handles[x0] == self.paths[1] and x1 == 0 and self.number(args[4]) == 1
+      result = int(self.failure == "write")
+      if result == 0: self.files[self.handles[x0]] = bytes(self.cpu.mem_read(args[2], args[3]))
+    elif name == "_ZN2nn2fs10DeleteFileEPKc":
+      path = self.path(x0)
+      assert path in self.paths
+      result = 0 if self.files.pop(path, None) is not None else 0x202
+    elif name == "_ZN2nn2fs10RenameFileEPKcS2_":
+      source, target = self.path(x0), self.path(x1)
+      assert source in self.paths and target in self.paths
+      if self.failure == "rename" and source == self.paths[1]: result = 1
+      else:
+        assert source in self.files and target not in self.files
+        self.files[target] = self.files.pop(source)
+        result = 0
+    elif name == "getRegionAddress": result = self.game
+    elif name in ("malloc", "calloc"):
+      result = self.alloc(max(32, x0 * (x1 if name == "calloc" else 1)))
+    elif name == "free": pass
+    elif name in ("memcpy", "memmove"):
+      if args[2]: self.write(x0, bytes(self.cpu.mem_read(x1, args[2])))
+      result = x0
+    elif name == "memset":
+      self.write(x0, bytes([x1 & 255]) * args[2])
+      result = x0
+    else: return False
+    if result is not None: self.cpu.reg_write(reg.UC_ARM64_REG_X0, result)
+    self.cpu.reg_write(reg.UC_ARM64_REG_PC, self.cpu.reg_read(reg.UC_ARM64_REG_X30))
+    return True
+
+  def exercise(self, callback, stop, stack):
+    self.active = True
+    self.image, self.item_class = self.alloc(), self.alloc(0x138 + 40 * 16)
+    self.integer(self.item_class + 0xF8, 0x88)
+    self.write(self.item_class + 0x126, struct.pack("<H", 40))
+    for slot, name in enumerate(("CustomCall", "SetCommandText", "SetHelpText"), 30):
+      method = self.alloc()
+      self.qword(method + 0x10, self.c_string(name))
+      self.qword(self.item_class + 0x138 + slot * 16, self.game + 0x3E00000 + slot * 16)
+      self.qword(self.item_class + 0x138 + slot * 16 + 8, method)
+    original = bytes(self.cpu.mem_read(self.item_class, 0x138 + 40 * 16))
+    self.paths = tuple(b"feesomniel:/fee-better-somniel.cfg" + tail for tail in (b"", b".tmp", b".previous"))
+    self.files = {self.paths[0]: b"draw_count=300\n"}
+    self.handles, self.next_handle = {}, 100
+    self.mounts, self.unmounts, self.refreshes, self.failure = 0, 0, 0, ""
+
+    def call(address, *args):
+      for index in range(8): self.cpu.reg_write(getattr(reg, f"UC_ARM64_REG_X{index}"), args[index] if index < len(args) else 0)
+      self.cpu.reg_write(reg.UC_ARM64_REG_SP, stack)
+      self.cpu.reg_write(reg.UC_ARM64_REG_X30, stop)
+      self.cpu.emu_start(address, stop + 4, count=500_000)
+      assert self.cpu.reg_read(reg.UC_ARM64_REG_PC) == stop
+      return self.cpu.reg_read(reg.UC_ARM64_REG_X0)
+
+    item = call(callback)
+    assert self.read_string(self.pointer(item + 0x68)) == "索拉涅尔：批量精炼次数"
+    assert self.read_string(self.pointer(item + 0x70)) == "300"
+    assert self.pointer(item) != self.item_class
+    change = self.pointer(self.pointer(item) + 0x138 + 30 * 16)
+    for count in (527, 10, 2, 1000):
+      self.next_count = count
+      assert call(change, item, 0) == 4096
+      assert self.files == {self.paths[0]: f"draw_count={count}\n".encode()}
+      assert self.read_string(self.pointer(item + 0x70)) == str(count)
+      reopened = call(callback)
+      assert self.read_string(self.pointer(reopened + 0x70)) == str(count)
+    for failure in ("mount", "write", "rename"):
+      self.failure, self.next_count = failure, 600
+      assert call(change, item, 0) == 2048
+      assert self.files[self.paths[0]] == b"draw_count=1000\n"
+      assert self.read_string(self.pointer(item + 0x70)) == "1000"
+      assert "无法保存" in self.read_string(self.pointer(item + 0x78))
+    self.failure, self.next_count = "", 300
+    assert call(change, item, 0) == 4096
+    assert self.files == {self.paths[0]: b"draw_count=300\n"}
+    mounts = self.mounts
+    assert call(change, item, 0) == 0 and self.mounts == mounts
+    assert self.mounts == self.unmounts and not self.handles
+    assert bytes(self.cpu.mem_read(self.item_class, len(original))) == original
+    self.active = False

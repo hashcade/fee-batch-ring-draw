@@ -21,6 +21,7 @@ from meld_dialog_fixture import MeldDialogFixture
 from cleaning_fixture import CleaningFixture
 from arena_fixture import ArenaFixture
 from bond_talk_fixture import BondTalkFixture
+from settings_fixture import SettingsFixture
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -63,6 +64,7 @@ def smoke(data: bytes, case: str) -> int:
   cleaning = (ROOT / "src/cleaning.rs").read_text(encoding="utf-8")
   arena = (ROOT / "src/arena.rs").read_text(encoding="utf-8")
   bond_talk = (ROOT / "src/bond_talk.rs").read_text(encoding="utf-8")
+  settings_profile = (ROOT / "src/settings.rs").read_text(encoding="utf-8")
   patches = [(int(address, 16), int(original, 16), int(replacement, 16))
     for address, original, replacement in re.findall(
       r"\((0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+)\)", activities)]
@@ -72,7 +74,7 @@ def smoke(data: bytes, case: str) -> int:
 
   signatures = [(int(address, 16), b"".join(
     struct.pack("<I", int(word, 16)) for word in re.findall(r"0x[0-9A-Fa-f]+", words)
-  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk)]
+  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings_profile)]
   id_values = re.search(r"pub const BUILD_ID:.*?=\s*\[(.*?)\];", profile, re.S).group(1)
   build_id = bytes(int(word, 16) for word in re.findall(r"0x[0-9A-Fa-f]+", id_values))
   expected_hooks = {offset(name) for name in (
@@ -129,6 +131,8 @@ def smoke(data: bytes, case: str) -> int:
     write_game(GAME + arena_create, bytes(4))
   if case == "wrong_bond_talk_instruction":
     write_game(GAME + talk_tick, bytes(4))
+  if case == "wrong_settings_instruction":
+    write_game(GAME + 0x025379A0, bytes(4))
   stubs = {name: STUB + index * 16 for index, name in enumerate(sorted(required_imports(data)))}
   names = {address: name for name, address in stubs.items()}
   for target, info, addend in relocations:
@@ -148,6 +152,8 @@ def smoke(data: bytes, case: str) -> int:
   hooks = []
   replacements = {}
   fs_calls = []
+  settings_callbacks = []
+  allocation_cursor = GAME + 0x7F00000
   patch_calls = []
   patch_failed = False
   configs = {"config_ten": b"draw_count=10\n", "config_low": b"draw_count=2\n", "config_custom": b"draw_count=600\n",
@@ -163,6 +169,7 @@ def smoke(data: bytes, case: str) -> int:
   cleaning_game.tls = meld_dialog.tls
   arena_game = ArenaFixture(cpu, GAME, write_game, arena, profile)
   bond_dialogue = BondTalkFixture(cpu, GAME, write_game, bond_talk, profile)
+  settings_game = SettingsFixture(cpu, GAME, write_game, settings_profile, profile)
 
   def string_at(address: int) -> bytes:
     result = bytearray()
@@ -174,7 +181,7 @@ def smoke(data: bytes, case: str) -> int:
     raise AssertionError("unterminated SDK path")
 
   def native_call(cpu: Uc, pc: int, size: int, user: object) -> None:
-    nonlocal patch_failed
+    nonlocal patch_failed, allocation_cursor
     if pc == STOP:
       cpu.emu_stop()
       return
@@ -183,6 +190,8 @@ def smoke(data: bytes, case: str) -> int:
     if arena_game.handle(pc, names.get(pc)):
       return
     if bond_dialogue.handle(pc, names.get(pc)):
+      return
+    if settings_game.handle(pc, names.get(pc)):
       return
     if collector_game.handle(pc, names.get(pc)):
       return
@@ -203,6 +212,9 @@ def smoke(data: bytes, case: str) -> int:
       if case == "wrong_segment_layout" and argument == 1:
         delta += 0x1000
       cpu.reg_write(registers.UC_ARM64_REG_X0, GAME + delta)
+    elif name == "cobapi_register_configmenuitem_cb":
+      assert BASE <= argument < BASE + len(data)
+      settings_callbacks.append(argument)
     elif name == "_ZN2nn2oe17GetDisplayVersionEPNS0_14DisplayVersionE":
       cpu.mem_write(argument, b"1.3.0\0" if case == "wrong_version" else b"2.0.0\0")
     elif name == "sky_memcpy":
@@ -230,11 +242,12 @@ def smoke(data: bytes, case: str) -> int:
       assert string_at(argument) == b"feesomniel"
       fs_calls.append("unmount")
     elif name == "_ZN2nn2fs8OpenFileEPNS0_10FileHandleEPKci":
-      assert string_at(cpu.reg_read(registers.UC_ARM64_REG_X1)) == b"feesomniel:/fee-better-somniel.cfg"
+      path = string_at(cpu.reg_read(registers.UC_ARM64_REG_X1))
+      assert path in (b"feesomniel:/fee-better-somniel.cfg", b"feesomniel:/fee-better-somniel.cfg.previous")
       assert cpu.reg_read(registers.UC_ARM64_REG_X2) == 1
       fs_calls.append("open")
       cpu.mem_write(argument, struct.pack("<Q", 42))
-      cpu.reg_write(registers.UC_ARM64_REG_X0, 0 if case in configs else 1)
+      cpu.reg_write(registers.UC_ARM64_REG_X0, 0 if case in configs and path.endswith(b".cfg") else 0x202)
     elif name == "_ZN2nn2fs11GetFileSizeEPlNS0_10FileHandleE":
       cpu.mem_write(argument, struct.pack("<q", len(configs[case])))
       cpu.reg_write(registers.UC_ARM64_REG_X0, 0)
@@ -250,6 +263,19 @@ def smoke(data: bytes, case: str) -> int:
     elif name == "_ZN2nn2fs9CloseFileENS0_10FileHandleE":
       assert argument == 42
       fs_calls.append("close")
+    elif name in ("malloc", "calloc"):
+      count = argument * (cpu.reg_read(registers.UC_ARM64_REG_X1) if name == "calloc" else 1)
+      assert count <= 4096
+      write_game(allocation_cursor, bytes(max(count, 32)))
+      cpu.reg_write(registers.UC_ARM64_REG_X0, allocation_cursor)
+      allocation_cursor += (max(count, 32) + 31) & ~31
+    elif name == "free":
+      pass
+    elif name in ("memcpy", "memmove"):
+      count = cpu.reg_read(registers.UC_ARM64_REG_X2)
+      assert count <= 4096
+      if count:
+        cpu.mem_write(argument, bytes(cpu.mem_read(cpu.reg_read(registers.UC_ARM64_REG_X1), count)))
     elif name == "memset":
       value = cpu.reg_read(registers.UC_ARM64_REG_X1) & 0xFF
       count = cpu.reg_read(registers.UC_ARM64_REG_X2)
@@ -276,6 +302,7 @@ def smoke(data: bytes, case: str) -> int:
   if set(hooks) != expected or len(hooks) != len(expected):
     raise AssertionError(f"{case}: incorrect hook registration: {hooks}")
   if supported:
+    assert len(settings_callbacks) == 1
     assert fs_calls.count("mount") == 1
     assert fs_calls.count("unmount") == (case != "mount_failed")
     assert fs_calls.count("close") == (case in configs)
@@ -303,8 +330,11 @@ def smoke(data: bytes, case: str) -> int:
       print("supported: compiled Wyvern hook uses per-difficulty SSS boundaries; guarded fallbacks and native tick preserved")
       collector_game.exercise(replacements[next(iter(collector_hooks))], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled collection menu handles native claim gates, donation quantities, capacity, adoption restrictions and repeated dispatch")
+      settings_game.exercise(settings_callbacks[0], STOP, STACK + 0x20000 - 0x20)
+      print("supported: compiled Plugin Settings adjusts counts, persists independent files, retains old values on failure and leaves original classes unchanged")
   else:
     assert not fs_calls, "unsupported executables must not read configuration"
+    assert not settings_callbacks, "unsupported executables must not register settings"
   if supported:
     assert patch_calls == [(address, replacement) for address, _, replacement in patches]
     for address, _, replacement in patches:
@@ -324,7 +354,7 @@ def main() -> None:
   args = parser.parse_args()
   verify_nro(args.nro)
   for case in ("supported", "wrong_version", "wrong_build_id", "wrong_instruction", "wrong_segment_layout",
-    "wrong_activity_instruction", "wrong_wyvern_instruction", "wrong_collector_instruction", "wrong_cleaning_instruction", "wrong_arena_instruction", "wrong_bond_talk_instruction", "patch_failed",
+    "wrong_activity_instruction", "wrong_wyvern_instruction", "wrong_collector_instruction", "wrong_cleaning_instruction", "wrong_arena_instruction", "wrong_bond_talk_instruction", "wrong_settings_instruction", "patch_failed",
     "mount_failed", "config_ten", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
     "config_large", "config_short", "config_empty"):
     count = smoke(args.nro.read_bytes(), case)

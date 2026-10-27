@@ -18,6 +18,7 @@ pub fn install() {
     return;
   }
   config::load();
+  crate::settings::native::install();
   skyline::install_hooks!(count_menu, build_text, execute_gacha, draw, create_demo, unload);
   crate::meld::plugin::install();
   crate::wyvern::native::install();
@@ -61,6 +62,7 @@ fn supported_game() -> bool {
     .chain(crate::cleaning::TEXT_SIGNATURES)
     .chain(crate::arena::TEXT_SIGNATURES)
     .chain(crate::bond_talk::TEXT_SIGNATURES)
+    .chain(crate::settings::TEXT_SIGNATURES)
   {
     if offset + 16 > profile::RODATA_OFFSET {
       return false;
