@@ -99,6 +99,8 @@ class TextFixture:
       assert str(count) in self.values[self.label]
       call(1, 100)
       assert self.values == {self.label: "native label", self.amount: "100"}
+      call(10, 1000)
+      assert self.values == {self.label: "native label", self.amount: "1,000"}
     # Price comes from the item's native total, not count multiplied again.
     for price, expected in [(30000, "30k"), (99900, "99.9k"), (100000, "100k"),
       (1234, "1.234k"), (999, "999")]:

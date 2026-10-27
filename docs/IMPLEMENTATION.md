@@ -25,7 +25,35 @@ The normal meld flow remains:
 
 The presentation bypass happens **before** header/footer hiding (`0x0233B014`, `0x0233B064`), background unbinding, and creation of the child `RingSynthesisSequence`. It does not press a synthetic + button or repeatedly skip frames. A cancelled, stale, unrelated, or ordinary non-batch transaction does not inherit the bypass.
 
-## Migrated activity effects
+## Clean all at the original facility
+
+`RingCleaningSelectSequence.CreateGodSelectMenu` (`0x0241A430`) first builds
+the original eligible list. A private instance of its native `GodUnitMenuItem`
+adds Polish All when a dirty entry exists, retaining the native selection and
+decision delegates and their transition to the original cleaner selection.
+The content builder calls `GetName` non-virtually, so a narrowly scoped name
+hook recognizes only the private class. Original items keep their names.
+
+The once-only plan is tied to that selection sequence, excludes clean entries,
+and deduplicates by the underlying GodUnit rather than DLC portraits sharing
+the same ring. Cancelling, rebuilding the ring selection or ending the sequence
+discards the plan. Cleaner choice and static cleaner assignment stay native.
+
+For this plan only, `RingCleaningSequence.CreateBind` (`0x0241AF90`) settles on
+the menu thread instead of constructing the per-ring 3D rubbing child. Each
+entry rechecks dirt, its native state and the unavailable flag. The native dirty
+setter must read back zero before native `AddBondExp(true, Weak)` is invoked;
+that helper applies its normal three-point finish reward, HasBond and level-up
+guards to the selected cleaner. No reward is issued for already-clean, duplicate,
+unavailable or failed-setter entries. Static GodUnit/type selection is restored
+afterward. The original outer StartRingCleaning/EndRingCleaning header, footer
+and return-label path is not bypassed; normal individual cleaning is unchanged.
+
+The helper is verified not to dereference a cleaning controller receiver; it
+does use static selection and native bond-level notification code. Unity menu,
+notification and outer-state-machine behavior still require in-game checks.
+
+## Sommie and existing activity effects
 
 Sommie's original EatFood coroutine has five fixed reaction/telop waits shortened.
 Its original food choice, conditional consumption, food preference branches,

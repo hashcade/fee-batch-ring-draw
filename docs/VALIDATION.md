@@ -4,14 +4,17 @@
 
 - Build the combined Switch NRO with the pinned Skyline dependency.
 - Verify actual relocation-backed imports against Cobalt 1.31.0 / Engage 2.0.0. No unavailable `get_program_id`, NRO-load/unload hook, or plugin-address API is accepted.
-- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **152** draw/meld/activity/Wyvern/collection instruction signatures.
+- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **181** draw/meld/activity/Wyvern/collection/cleaning instruction signatures.
 - Focused meld planning/session/confirmation tests retain cost, capacity, equipped-copy, repeated-dispatch, and fragment-refill protections.
 - Presentation-session tests cover matching owner, one-shot consumption, cancellation/cleanup, stale ownership, and null ownership.
-- Activity tests cover all **24** instruction replacements, whole-set preflight, readback, each possible failed write and restoration, and separation from arena/rewind/resource code.
-- Compiled-NRO AArch64 startup smoke checks: supported game registers **18 hooks** and writes precisely the activity replacements; wrong game/version/layout/instruction and conflicting activity/Wyvern/collection instructions register none and write nothing.
+- Activity tests cover all **32** instruction replacements, whole-set preflight, readback, each possible failed write and restoration, and separation from arena/rewind/resource code.
+- Compiled-NRO AArch64 startup smoke checks: supported game registers **22 hooks** and writes precisely the activity replacements; wrong game/version/layout/instruction and conflicting activity/Wyvern/collection/cleaning instructions register none and write nothing.
 - A compiled failed-write case restores the original instructions, returns normally, and installs no hooks.
-- Configuration cases cover missing/malformed/oversized/invalid UTF-8/short reads, mount failure, and batch counts 2, 300, 600, and 1000. The filesystem is read-only; handles/mounts are released.
+- Configuration cases cover missing/malformed/oversized/invalid UTF-8/short reads, mount failure, and counts 2, 10, 300, 600, and 1000. The filesystem is read-only; handles/mounts are released.
 - Compiled draw text fixtures cover supported text languages, exact compact prices, unchanged actual native prices, and unchanged single-row behavior.
+- Compiled draw-menu fixtures retain native one/ten entries and their handlers, append the configured native count item once, and avoid a duplicate when configured to ten. Original ten draws cannot arm batch presentation bypass.
+- Compiled meld-dialog fixtures construct single/batch/cancel choices with distinct localized labels. Alternating single/batch/single selections preserves their separate confirmation and presentation paths. Focused tests verify unit versus total costs and the single-copy fallback.
+- Cleaning planning tests cover owner scoping, cancellation, valid native GodType values (-1 through 3), clean exclusions and shared-DLC-ring deduplication. The compiled menu/settlement fixture covers native cleaner attribution, current unavailability/state gates, repeated dispatch, cancellation, failed dirty setters, missing cleaners and restoration of the original static ring selection.
 - Focused Wyvern tests cover difficulty-to-config mapping, dynamic SSS boundaries, and malformed arrays. The compiled-hook fixture covers all three difficulties, native tick/finish/score ordering, pending score additions, repeated dispatch, opening/event/test/pause/retirement guards, null pointers, and invalid difficulty/config/native-rank fallbacks.
 
 - Collection reservation tests cover duplicate claim identities, shared inventory/species/convoy budgets, atomic source reservations, arithmetic overflow, invalid capacities and the bounded reward list.
@@ -24,10 +27,12 @@ These tests model loader/native boundaries. They do not run Unity, render the ga
 Use a temporary test save or the user's explicitly chosen test environment. Do not automatically install anything or modify the main save.
 
 - Start with only the combined plugin, then with the retained resource/stock cheats. Confirm there is no loading stall and both ring menus work.
-- Create one ring and a configured batch; check costs, acquired results, capacity stopping, and original RNG/probabilities.
+- Create one ring, ten rings and a configured batch; check all menu entries, costs, acquired results, capacity stopping, and original RNG/probabilities. Check configuration ten does not add a duplicate row.
 - Meld C→B, B→A, A→S; check exact material/fragment costs, equipped copies, capacity, first/repeat acquisitions, cancellation, and consecutive transactions.
 - Confirm a batch meld returns directly to the menu without pressing +, the header/footer/background remain correct, and leaving/re-entering works.
 - Clean a dirty ring and a bracelet through one effective action; confirm the original completion and bond settlement.
+- Select Polish All, choose a cleaner and check every eligible dirty ring/bracelet, shared DLC rings, actual bond gains, level-up notifications, cancellation, consecutive visits and return to the facility without a rubbing scene. Confirm individual cleaning remains unchanged. The modeled fixture does not prove Unity rendering or this real state-machine hand-off.
+- Feed and pet Sommie through the original entries. Check food preference, food consumption rules, affection/animation events, first versus repeated reward eligibility, automatic petting finish, cancellation and return cleanup. Shortened coroutine waits are statically checked, not game-tested.
 - Fish with different rods/fish; confirm quick bite/landing, catch inventory, records, rewards, and unchanged allowance.
 - Run each exercise at available difficulties; confirm quick/perfect result, native reward, and unchanged allowance.
 - Run Wyvern Ride on each unlocked difficulty, with and without Sommie. Confirm opening, quick ending, SSS score/rank, correct rewards and unchanged eligibility, higher existing records, consecutive visits, cancellation/retirement, and return to the hub. Hit statistics are not fabricated; confirm the original result screen remains usable. These Unity/state-machine checks require in-game verification and are not proven by the modeled fixture.
