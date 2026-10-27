@@ -10,6 +10,7 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 - **Quick Sommie interactions:** keep the original feeding and petting choices, shorten feeding waits, and automatically finish a petting round after its initial interaction. Keep native preferences, affection and reward eligibility.
 - **Quick Emblem training:** skip the paid Emblem-training battle and automatically skip its bond-dialogue messages. Keep native costs, growth, conversation completion and cleanup. Ordinary arena training, support and story conversations stay unchanged.
 - **Fast fishing:** shorten the bite wait and simplify landing fish while keeping the original fishing allowance and rewards.
+- **Cumulative level display:** the character status screen shows current/total level. Total means stored current level plus internal level; no level, EXP or growth values are changed.
 - **Fast perfect strength training:** quickly finish push-ups, sit-ups, and squats with perfect results while keeping the original training allowance.
 - **Fast SSS Wyvern Ride:** after the opening, finish at the selected difficulty's SSS score threshold and continue through the original result and reward flow. Keep difficulty unlocks and reward eligibility unchanged.
 - **Repeatable cooking and food selection:** cook multiple times between battles and select food without the usual stock restriction.
