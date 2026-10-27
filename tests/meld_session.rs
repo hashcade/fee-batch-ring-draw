@@ -83,3 +83,23 @@ fn original_execution_without_a_batch_is_not_changed() {
   assert!(matches!(run.dispatch(), Dispatch::Vanilla));
   run.end();
 }
+
+#[test]
+fn single_choice_discards_the_batch_but_batch_choice_keeps_original_unit_costs() {
+  let mut session = Session::default();
+  session.prepare(Some(selection(1)));
+  assert_eq!(session.batch_count(), Some(3));
+  session.mark_displayed();
+  session.confirm_choice(1, false);
+  assert!(session.take_confirmed().is_none());
+  session.prepare(Some(selection(1)));
+  session.mark_displayed();
+  session.confirm_choice(1, true);
+  let selected = session.take_confirmed().unwrap();
+  assert_eq!(selected.plan.cost, Cost { rings: 2, fragments: 100 });
+  assert_eq!(selected.plan.count, 3);
+  let mut single = selection(1);
+  single.plan.count = 1;
+  session.prepare(Some(single));
+  assert_eq!(session.batch_count(), None);
+}

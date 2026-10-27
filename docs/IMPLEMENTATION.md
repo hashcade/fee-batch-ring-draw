@@ -18,7 +18,7 @@ Melding is ported from former `fee-batch-ring-meld` v0.2.0 (`d92aed4`). Costs re
 
 The normal meld flow remains:
 
-1. Show one localized batch confirmation.
+1. Show one localized confirmation with single, batch, and original cancel entries. Single selection clears the batch plan and preserves native presentation. Batch selection alone confirms the displayed plan. If only one copy is possible or custom choices cannot be built, retain the original single confirmation.
 2. Run `GodRoomPedestalSequence.ExecuteRingMerge` (`0x0233AE10`), including the original post-transaction call at `0x0233AF00`.
 3. For this confirmed batch only, bypass `CreateRingMergeDemoSequence` (`0x0233AF20`) once.
 4. Continue the original outer resource-unload and menu flow.

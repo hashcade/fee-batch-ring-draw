@@ -16,6 +16,8 @@ pub const CREATE_DEMO: usize = 0x0233AF20;
 pub const UNLOAD: usize = 0x0233B180;
 pub const MELD_ONE: usize = 0x020B2AE0;
 pub const YES_NO_DIALOG: usize = 0x029403D0;
+pub const YES_ITEM_CTOR: usize = 0x021FA190;
+pub const YES_ITEM_CALL: usize = 0x021FA240;
 pub const TRY_GET_RING: usize = 0x01C5CC60;
 pub const ALL_COUNT: usize = 0x01C5CF40;
 pub const STOCK_COUNT: usize = 0x01C5D0E0;
@@ -30,6 +32,8 @@ pub const GET_LANGUAGE: usize = 0x01BDBC80;
 // All hook entries and directly invoked native functions are checked before
 // installing any hook. Semantic call-site checks also pin the transaction ABI.
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
+  (0x021FA190, [0xA9BD7BFD, 0xA90157F6, 0x910003FD, 0xA9024FF4]),
+  (0x021FA240, [0xA9BF7BFD, 0x910003FD, 0xF9403800, 0xB4000040]),
   (0x020B5010, [0xA9BD7BFD, 0xA90157F6, 0x910003FD, 0xA9024FF4]),
   (0x020B5150, [0xA9BB7BFD, 0xA90167FA, 0x910003FD, 0xA9025FF8]),
   (0x020B53D0, [0xA9BB7BFD, 0xF9000BF9, 0x910003FD, 0xA9025FF8]),

@@ -17,6 +17,7 @@ from text_fixture import TextFixture
 from wyvern_fixture import WyvernFixture
 from collector_fixture import CollectorFixture
 from draw_menu_fixture import DrawMenuFixture
+from meld_dialog_fixture import MeldDialogFixture
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -137,6 +138,7 @@ def smoke(data: bytes, case: str) -> int:
   wyvern_game = WyvernFixture(cpu, GAME, write_game, wyvern)
   collector_game = CollectorFixture(cpu, GAME, write_game, collector, profile)
   draw_menu = DrawMenuFixture(cpu, GAME, write_game, offset)
+  meld_dialog = MeldDialogFixture(cpu, GAME, write_game, meld_profile, profile)
 
   def string_at(address: int) -> bytes:
     result = bytearray()
@@ -155,6 +157,8 @@ def smoke(data: bytes, case: str) -> int:
     if wyvern_game.handle(pc):
       return
     if collector_game.handle(pc, names.get(pc)):
+      return
+    if meld_dialog.handle(pc, names.get(pc)):
       return
     if draw_menu.handle(pc):
       return
@@ -253,6 +257,10 @@ def smoke(data: bytes, case: str) -> int:
         expected_count)
       print(f"{case}: compiled row text uses exact k prices; native geometry and single row unchanged")
     if case == "supported":
+      meld_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
+        r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", meld_profile) if int(value, 16) in replacements}
+      meld_dialog.exercise(meld_replacements, STOP, STACK + 0x20000 - 0x20)
+      print("supported: compiled meld dialog separates single/batch choices, costs and presentation")
       wyvern_game.exercise(replacements[wyvern_main], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled Wyvern hook uses per-difficulty SSS boundaries; guarded fallbacks and native tick preserved")
       collector_game.exercise(replacements[next(iter(collector_hooks))], STOP, STACK + 0x20000 - 0x20)

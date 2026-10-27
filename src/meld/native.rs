@@ -120,7 +120,7 @@ unsafe fn ring_name(data: Object) -> Option<String> {
   unsafe { text(get(mid, NONE)) }
 }
 
-fn text_language() -> i32 {
+pub(crate) fn text_language() -> i32 {
   // Use the game's current text language, not the console locale or voices.
   let get: unsafe extern "C" fn(Method) -> i32 =
     unsafe { core::mem::transmute(base() + profile::GET_LANGUAGE) };
@@ -149,7 +149,7 @@ pub unsafe fn selection(menu: Object, source: Object, cost: Cost) -> Option<Sele
   }
   let plan = Plan::new(cost, unsafe { stock(rnid, source) }?)?;
   let name = unsafe { ring_name(output) }?;
-  let prompt = confirmation::format(text_language(), &name, rank, plan)?;
+  let prompt = confirmation::choices(text_language(), &name, rank, plan)?;
   Some(Selection { menu: menu as usize, rnid: id, prompt, plan })
 }
 

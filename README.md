@@ -5,7 +5,7 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 ## Features
 
 - **Batch Bond Ring creation:** keep Create One and Create Ten, and add a configurable batch, defaulting to **300**. Batch creation keeps normal costs and probabilities, skips the result animation, and leaves acquired rings in the original ring list.
-- **Batch Bond Ring melding:** meld as many copies of the selected kind and current rank as materials, fragments, and capacity allow. Keep normal costs and equipped copies, and automatically skip the result animation.
+- **Single or batch Bond Ring melding:** choose one copy or as many copies of the selected kind and current rank as materials, fragments, and capacity allow, in the original confirmation. Keep normal costs and equipped copies; batch melding automatically skips the result animation.
 - **Fast ring and bracelet cleaning:** finish cleaning with one effective cleaning action.
 - **Quick Sommie interactions:** keep the original feeding and petting choices, shorten feeding waits, and automatically finish a petting round after its initial interaction. Keep native preferences, affection and reward eligibility.
 - **Fast fishing:** shorten the bite wait and simplify landing fish while keeping the original fishing allowance and rewards.

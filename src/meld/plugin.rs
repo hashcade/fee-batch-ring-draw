@@ -12,9 +12,17 @@ use core::{
 std::thread_local! {
   static SESSION: RefCell<Session> = RefCell::new(Session::default());
   static DISPLAYING: Cell<bool> = const { Cell::new(false) };
+  static BATCH_CHOICE: Cell<bool> = const { Cell::new(false) };
   static EXECUTION: RefCell<Execution> = RefCell::new(Execution::default());
   static IN_TRANSACTION: Cell<bool> = const { Cell::new(false) };
   static PRESENTATION: RefCell<Presentation> = RefCell::new(Presentation::default());
+}
+
+pub(super) fn choose<T>(batch: bool, action: impl FnOnce() -> T) -> T {
+  let previous = BATCH_CHOICE.with(|v| v.replace(batch));
+  let result = action();
+  BATCH_CHOICE.with(|v| v.set(previous));
+  result
 }
 
 pub fn install() {
@@ -66,23 +74,41 @@ fn meld_yes_no_dialog(
   no: Object,
   method: Method,
 ) -> Object {
-  let replacement = if DISPLAYING.with(Cell::get) {
-    let prompt = SESSION.with(|s| s.borrow().prompt().map(str::to_owned));
-    prompt.map(|p| native::new_text(&p)).unwrap_or(ptr::null_mut())
-  } else {
-    ptr::null_mut()
+  if !DISPLAYING.with(Cell::get) {
+    return call_original!(parent, message, yes, no, method);
+  }
+  let count = SESSION.with(|s| s.borrow().batch_count());
+  let choices = count.and_then(|count| unsafe {
+    Some((super::dialog::choice(yes, 1)?, super::dialog::choice(yes, count)?))
+  });
+  let replacement =
+    SESSION.with(|s| s.borrow().prompt().map(native::new_text)).unwrap_or(ptr::null_mut());
+  let Some((single, batch)) = choices.filter(|_| !replacement.is_null()) else {
+    SESSION.with(|s| s.borrow_mut().clear());
+    return call_original!(parent, message, yes, no, method);
   };
-  let message = if replacement.is_null() { message } else { replacement };
-  let dialog = call_original!(parent, message, yes, no, method);
-  if !replacement.is_null() && !dialog.is_null() {
+  let dialog = call_original!(parent, replacement, single, no, method);
+  if unsafe { super::dialog::append_batch(dialog, batch, field_no(dialog)) } {
     SESSION.with(|s| s.borrow_mut().mark_displayed());
+  } else {
+    SESSION.with(|s| s.borrow_mut().clear());
   }
   dialog
 }
 
+unsafe fn field_no(dialog: Object) -> Object {
+  if dialog.is_null() {
+    return ptr::null_mut();
+  }
+  unsafe {
+    let list = crate::native::field(dialog, 0x80);
+    crate::native::object_at(list, 1).unwrap_or(ptr::null_mut())
+  }
+}
+
 #[skyline::hook(offset = profile::ON_YES)]
 fn meld_on_yes(menu: Object, method: Method) {
-  SESSION.with(|s| s.borrow_mut().confirm(menu as usize));
+  SESSION.with(|s| s.borrow_mut().confirm_choice(menu as usize, BATCH_CHOICE.with(Cell::get)));
   call_original!(menu, method);
 }
 

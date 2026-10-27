@@ -6,6 +6,9 @@ pub mod profile;
 pub mod session;
 
 #[cfg(target_os = "switch")]
+mod dialog;
+
+#[cfg(target_os = "switch")]
 pub(crate) mod native;
 #[cfg(target_os = "switch")]
 pub(crate) mod plugin;

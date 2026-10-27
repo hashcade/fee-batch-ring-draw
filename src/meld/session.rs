@@ -25,12 +25,24 @@ impl Session {
     self.selection.as_ref().map(|s| s.prompt.as_str())
   }
 
+  pub fn batch_count(&self) -> Option<u32> {
+    self.selection.as_ref().map(|s| s.plan.count).filter(|n| *n > 1)
+  }
+
   pub fn mark_displayed(&mut self) {
     self.displayed = self.selection.is_some();
   }
 
   pub fn confirm(&mut self, menu: usize) {
     self.confirmed = self.displayed && self.selection.as_ref().is_some_and(|s| s.menu == menu);
+  }
+
+  pub fn confirm_choice(&mut self, menu: usize, batch: bool) {
+    if batch {
+      self.confirm(menu);
+    } else {
+      self.clear();
+    }
   }
 
   pub fn destroy_menu(&mut self, menu: usize) {

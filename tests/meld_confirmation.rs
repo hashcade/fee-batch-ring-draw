@@ -73,3 +73,17 @@ fn invalid_source_ranks_cannot_produce_a_confirmation() {
     assert!(confirmation::format(1, "Ring", rank, plan()).is_none());
   }
 }
+
+#[test]
+fn choice_prompt_distinguishes_unit_costs_from_batch_totals_in_all_languages() {
+  for language in 0..12 {
+    let prompt = confirmation::choices(language, "Minerva", 2, plan()).unwrap();
+    assert_eq!(prompt.lines().count(), 3);
+    assert_eq!(prompt.matches("Minerva").count(), 1);
+    assert!(prompt.lines().nth(1).unwrap().contains("A ×4"));
+    assert!(prompt.lines().nth(1).unwrap().ends_with("×10000"));
+    assert!(prompt.lines().nth(2).unwrap().contains("A ×20"));
+    assert!(prompt.lines().nth(2).unwrap().ends_with("×50000"));
+    assert_ne!(confirmation::action(language, 1), confirmation::action(language, 5));
+  }
+}
