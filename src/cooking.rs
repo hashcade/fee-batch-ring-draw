@@ -9,6 +9,11 @@ pub const TASTE_DATA: usize = 0x00206E50;
 pub const UNIT_LIST: usize = 0x02393F60;
 pub const UNIT_PID: usize = 0x01A35BF0;
 pub const UNIT_NAME: usize = 0x01A22770;
+pub const ANIMATION_CREATE: usize = 0x02D82720;
+pub const ANIMATION_MOVE_NEXT: usize = 0x01CE3CF0;
+pub const STAT_NAME: usize = 0x025BCED0;
+pub const GRADE_NAME: usize = 0x021DF2E0;
+pub const IS_CONDITIONAL: usize = 0x021DF130;
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x02A64450, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xD001C5B4]),
   (0x02D86CE0, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
@@ -19,7 +24,27 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x02393F60, [0xD10303FF, 0xA9067BFD, 0x910183FD, 0xA9076FFC]),
   (0x01A35BF0, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xD0024294]),
   (0x01A22770, [0xA9BD7BFD, 0xA90157F6, 0x910003FD, 0xA9024FF4]),
+  (0x01CE3CF0, [0xFC1C0FE8, 0xA900FBFD, 0x910023FD, 0xF9000FF7]),
+  (0x02D82720, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
+  (0x02D81260, [0xD10183FF, 0xA9017BFD, 0x910043FD, 0xF90013F9]),
+  (0x025BCED0, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
+  (0x021DF2E0, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0x900209D4]),
+  (0x021DF130, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
 ];
+
+pub fn preview_labels(language: i32) -> [&'static str; 3] {
+  match language {
+    0 => ["料理の基本能力", "その他の能力", "条件で変化"],
+    2 | 5 => ["Stats du plat", "Autres stats", "Selon conditions"],
+    3 | 6 => ["Atributos del plato", "Otros atributos", "Según condiciones"],
+    7 => ["Gerichtswerte", "Andere Werte", "Bedingungsabhängig"],
+    8 => ["Statistiche del piatto", "Altre statistiche", "Secondo condizioni"],
+    9 => ["料理基礎能力", "其他能力", "依條件變化"],
+    10 => ["料理基础能力", "其他能力", "依条件变化"],
+    11 => ["요리 기본 능력치", "기타 능력치", "조건에 따라 변경"],
+    _ => ["Recipe stats", "Other stats", "Conditional variants"],
+  }
+}
 
 #[cfg(target_os = "switch")]
 pub(crate) mod native {
@@ -40,7 +65,7 @@ pub(crate) mod native {
   }
 
   pub(crate) fn install() {
-    skyline::install_hooks!(current_chef, get_cook_data, cook, determine_taste);
+    skyline::install_hooks!(current_chef, get_cook_data, cook, determine_taste, animation_create);
   }
 
   unsafe fn cook_data(pid: Object) -> Object {
@@ -99,14 +124,23 @@ pub(crate) mod native {
     }
   }
 
-  pub(crate) unsafe fn outcome_name(option: u8) -> Option<String> {
+  unsafe fn preview_taste(option: u8) -> Option<Object> {
     unsafe {
       let user = crate::native::user_data();
       if user.is_null() || field::<i32>(user, 0x28) != 4 {
         return None;
       }
       let pid = native!(CURRENT_CHEF, unsafe extern "C" fn(Method) -> Object)(NONE);
-      let taste = taste_for(pid, option)?;
+      taste_for(pid, option)
+    }
+  }
+
+  pub(crate) unsafe fn outcome_name(option: u8) -> Option<String> {
+    unsafe { taste_name(preview_taste(option)?) }
+  }
+
+  unsafe fn taste_name(taste: Object) -> Option<String> {
+    unsafe {
       let name: Object = field(taste, 0x28);
       if name.is_null() {
         return None;
@@ -117,6 +151,74 @@ pub(crate) mod native {
       )(name, NONE);
       text(translated)
     }
+  }
+
+  pub(crate) unsafe fn outcome_detail(option: u8, language: i32) -> Option<String> {
+    unsafe {
+      let taste = preview_taste(option)?;
+      let labels = preview_labels(language);
+      let grade = native!(GRADE_NAME, unsafe extern "C" fn(Object, Method) -> Object)(taste, NONE);
+      let mut parts = vec![format!("{} · {}", text(grade)?, taste_name(taste)?)];
+      for (offset, label) in [(0x34, labels[0]), (0x35, labels[1])] {
+        let value: i8 = field(taste, offset);
+        if value != 0 {
+          parts.push(format!("{label} {value:+}"));
+        }
+      }
+      let capability: Object = field(taste, 0x38);
+      if !capability.is_null() {
+        let array: Object = field(capability, 0x10);
+        if !array.is_null() && field::<usize>(array, 0x18) == 11 {
+          for index in 0..11 {
+            let value: i8 = field(array, 0x20 + index);
+            if value != 0 {
+              let name =
+                native!(STAT_NAME, unsafe extern "C" fn(i32, Method) -> Object)(index as i32, NONE);
+              if let Some(name) = text(name) {
+                parts.push(format!("{name} {value:+}"));
+              }
+            }
+          }
+        }
+      }
+      // The taste has native derived/conditional definitions. Do not claim
+      // that a template preview is the final recipe/recipient-specific total.
+      if native!(IS_CONDITIONAL, unsafe extern "C" fn(Object, Method) -> bool)(taste, NONE) {
+        parts.push(labels[2].to_owned());
+      }
+      Some(parts.join(" · "))
+    }
+  }
+
+  #[skyline::hook(offset = ANIMATION_CREATE)]
+  fn animation_create(owner: Object, method: Method) -> Object {
+    let iterator = call_original!(owner, method);
+    unsafe {
+      let user = crate::native::user_data();
+      if !iterator.is_null()
+        && !user.is_null()
+        && field::<i32>(user, 0x28) == 4
+        && field::<i32>(iterator, 0x10) == 0
+        && !owner.is_null()
+        && field::<Object>(iterator, 0x20) == owner
+        && !field::<Object>(owner, 0xA0).is_null()
+      {
+        let class: Object = field(iterator, 0);
+        let count: u16 = if class.is_null() { 0 } else { field(class, 0x126) };
+        if (4..=16).contains(&count)
+          && (0..usize::from(count)).any(|slot| {
+            field::<usize>(class, crate::menu_item::VTABLE + slot * 16)
+              == base() + ANIMATION_MOVE_NEXT
+          })
+        {
+          // DoCooking only plays the cooking motion and waits for it/timing.
+          // Its native MoveNext treats -1 as complete, without starting a motion.
+          // ExecuteCooking, rewards and outer resource cleanup are separate.
+          iterator.cast::<u8>().add(0x10).cast::<i32>().write(-1);
+        }
+      }
+    }
+    iterator
   }
 
   unsafe fn selected_unit() -> Option<Object> {

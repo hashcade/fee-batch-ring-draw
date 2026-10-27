@@ -17,7 +17,7 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 - **Ancient Well preview and reroll:** the original well menu includes Preview Results and Reroll Results for a pending exchange. Preview uses a private RNG and lists item quantities without claiming anything. Reroll changes only that exchange's seed; normal waiting, deposits and collection remain.
 - **Fast perfect strength training:** quickly finish push-ups, sit-ups, and squats with perfect results while keeping the original training allowance.
 - **Fast SSS Wyvern Ride:** after the opening, finish at the selected difficulty's SSS score threshold and continue through the original result and reward flow. Keep difficulty unlocks and reward eligibility unchanged.
-- **Cooking choices:** select a recruited chef and the chef's native specialty, ordinary or bad-result branch in Plugin Settings. Default choices retain the original chef rotation and outcome roll. Cook multiple times between battles and select food without the usual stock restriction.
+- **Cooking choices:** select a recruited chef and a native outcome in Plugin Settings. Preview its grade and basic stat modifiers in the help text. Shorten the preparation animation, cook multiple times between battles, and select food without the usual stock restriction. Default chef/outcome choices retain the original rotation and roll.
 - **Inventory-free ordinary gifts:** give normal gifts even at zero stock without consuming owned copies. Keep the original recipient preferences and support gains.
 - **Collect exploration rewards:** use the first entry in the original exploration menu to collect generated ground items, farm products, eligible animals, and available ordinary villager gifts in the Somniel or after battle. Keep donation bonuses, adoption requirements, and inventory limits; leave rewards that do not fit unclaimed.
 
@@ -70,6 +70,8 @@ Chef and Cooking Outcome default to **Native**. Specialty choices use that
 chef's existing taste definitions and retain native conditional variations;
 the bad branch keeps its original eligible-outcome roll. A selected chef who
 has not joined the current save falls back to the original rotation.
+Previewed modifiers describe the taste template, not the final dish's total;
+recipes and recipient conditions still apply normally.
 Automatic Supports defaults to **On**. Mod preferences are not stored in game
 saves; completing a support uses the game's normal progress and viewed records.
 

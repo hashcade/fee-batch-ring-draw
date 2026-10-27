@@ -22,6 +22,12 @@ class ConvenienceFixture(SettingsFixture):
     elif name == "GET_COOK_DATA": result = self.cooks["PID_a"]
     elif name == "TASTE_DATA": result = self.tastes.get(self.read_string(a), 0)
     elif name in ("MESS_GET", "MESSAGE"): result = a
+    elif name == "GRADE_NAME": result = self.string("SS")
+    elif name == "STAT_NAME": result = self.string(f"Stat{a}")
+    elif name == "IS_CONDITIONAL": result = 1
+    elif name == "ANIMATION_CREATE":
+      self.animation_calls += 1
+      result = self.iterator
     elif name == "DETERMINE_TASTE":
       self.qualities.append((a, b))
       result = self.taste_result
@@ -72,6 +78,12 @@ class ConvenienceFixture(SettingsFixture):
         self.qword(data + 0x28 + index * 8, self.string(key))
         taste = self.tastes.setdefault(key, self.alloc())
         self.qword(taste + 0x28, self.string(key))
+        capability, values = self.alloc(), self.alloc()
+        self.qword(taste + 0x38, capability)
+        self.qword(capability + 0x10, values)
+        self.qword(values + 0x18, 11)
+        self.write(values + 0x20, struct.pack("<11b", 0, 3, -1, 0, 0, 0, 0, 0, 0, 0, 0))
+        self.write(taste + 0x34, bytes([2, 1]))
     self.bond, self.qualities, self.actions, self.selection = False, [], [], {}
     self.ready_only = True
     self.taste_result = self.alloc()
@@ -103,6 +115,9 @@ class ConvenienceFixture(SettingsFixture):
     self.units = self.list([self.unit_a, self.unit_b, invalid])
 
     assert change(outcome, 3) == 4096
+    detail = self.read_string(self.pointer(outcome + 0x78))
+    for part in ("SS", "Stat1 +3", "Stat2 -1", "料理基础能力 +2", "其他能力 +1", "依条件变化"):
+      assert part in detail, detail
     assert b"chef=PID_b\n" in self.files[self.paths[0]] and b"cooking_outcome=3\n" in self.files[self.paths[0]]
     call(hooks["DETERMINE_TASTE"], self.unit_b, 4)
     assert self.qualities[-1] == (self.unit_b, 4), "outside cooking must remain native"
@@ -120,6 +135,28 @@ class ConvenienceFixture(SettingsFixture):
     assert change(outcome, 0) == 4096
     call(hooks["COOK"], self.unit_a, 0, 0)
     assert self.qualities[-1] == (self.unit_b, 3)
+
+    # The animated coroutine is distinct from ExecuteCooking and its result
+    # flow. Skip only before animation starts and only after a real dish exists.
+    self.animation_calls = 0
+    for state, sequence, has_dish, changed, skipped in (
+      (0, 4, True, False, True), (1, 4, True, False, False),
+      (0, 5, True, False, False), (0, 4, False, False, False), (0, 4, True, True, False)):
+      iterator, owner, cls = self.alloc(), self.alloc(), self.alloc()
+      self.iterator = iterator
+      self.qword(iterator, cls)
+      self.write(cls + 0x126, struct.pack("<H", 8))
+      self.qword(cls + 0x138 + 4 * 16, self.game + 0x01CE3CF0 + 4 * changed)
+      self.qword(iterator + 0x20, owner)
+      self.qword(owner + 0xA0, taste if has_dish else 0)
+      self.integer(iterator + 0x10, state)
+      self.integer(self.user + 0x28, sequence)
+      before = bytes(self.cpu.mem_read(owner, 0x150))
+      assert call(hooks["ANIMATION_CREATE"], owner) == iterator
+      assert bytes(self.cpu.mem_read(owner, 0x150)) == before
+      assert self.number(iterator + 0x10) == (-1 if skipped else state)
+    assert self.animation_calls == 5
+    self.integer(self.user + 0x28, 4)
 
     def stub(name, slot):
       address = self.game + 0x03D00000 + slot * 16

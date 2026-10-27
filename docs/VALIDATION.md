@@ -37,6 +37,21 @@ The scene-arrival fixture covers Somniel and post-battle exploration, busy/non-M
 deferral, once-per-visit dispatch and restoration without invoking menu virtuals
 on HubSequence. Activity shortcuts reject exhausted allowances.
 
+Focused compiled cooking checks cover signed preview modifiers, grade/stat text,
+conditional labels and context-scoped outcome selection. The animation factory
+retains its result and only completes a fresh, settled, recognized iterator;
+already-started, changed, off-Somniel or unsettled cases are unchanged.
+Compiled shop checks cover each allowlisted store with missing, infinite, zero,
+one and positive stocks, unrelated keys/generic types, and post-list context
+cleanup. Saved dictionaries are not written. All 300 pinned instruction windows
+were compared with the supplied NSO; startup rejects a changed shop signature.
+
+The shop fixture does not execute native purchase settlement. Verify actual
+prices, capacity refusal, sold-out unlocked goods and locked chapters in game.
+Activity resource transitions, menu restoration after repeated/cancelled use,
+the meal animation/result flow and scene-arrival support events also need game
+testing; compiled boundary checks are not a substitute for Unity execution.
+
 Still requiring real-game validation: actual facility menus/resources and their
 header/footer appearance, end-to-end queued Lua support completion and viewed
 records, chef models/names through cooking and reload, and condition-specific

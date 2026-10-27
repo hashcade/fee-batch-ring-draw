@@ -157,7 +157,12 @@ unsafe extern "C" fn description(item: Object, _: Method) {
     } else {
       option_help(language, kind(item))
     };
-    reference(item, 0x78, new_text(label));
+    let preview = if !SAVE_FAILED.load(Ordering::Relaxed) && kind(item) == 2 {
+      crate::cooking::native::outcome_detail(config::current().cooking_outcome, language)
+    } else {
+      None
+    };
+    reference(item, 0x78, new_text(preview.as_deref().unwrap_or(label)));
   };
 }
 

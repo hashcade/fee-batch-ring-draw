@@ -41,6 +41,33 @@ DetermineTaste is untouched. Outcome names come from TasteData/Mess without
 running a roll. Each independent settings edit preserves the other options;
 legacy count-only files remain valid.
 
+Outcome help reads the native grade, signed recipe/other-stat modifiers and
+CapabilitySbyte array. Grade/stat names use game text; conditional templates are
+marked rather than presented as a guaranteed recipient-specific result. No
+Dish constructor, reward API or RNG is invoked for a preview.
+
+The preparation shortcut hooks DoCooking's iterator factory, not ExecuteCooking
+or the outer sequence. Only a fresh iterator with its exact owner, a settled
+dish and the pinned MoveNext is set to its native completed state (-1).
+That MoveNext only starts/waits for cooking motions and a fixed delay. Existing
+or changed iterators fall back. Result/support/lunch/achievement and resource
+cleanup descriptors remain original; the rest of the meal scene is not bypassed.
+
+## Unlimited shop stock
+
+Closed generic MethodInfo allowlists cover WeaponShopData, ItemShopData and
+FleaMarketData. Stock reads return the game's infinity sentinel (-1), IsInfinity
+returns true and PurchaseImpl skips only saved stock deduction. Native callers
+still charge prices and grant goods with their original capacity checks.
+
+Content-list generation performs its own saved-stock dictionary lookup. During
+an allowlisted list build, only the exact key returned by a native shop stock-key
+factory is recognized at the next lookup; replace that returned integer, never
+the dictionary or global GameVariable behavior. This includes sold-out goods
+without bypassing chapter/additional-stock conditions. Restore nested context
+on return. Other shop types, clothing ownership, keys and values stay native.
+No extra loader exports, code caves, polling or save-variable writes are used.
+
 Target: Engage 2.0.0, Build ID `8C08B9719E085F91847B5E0F935D9488`, Cobalt 1.31.0. Addresses below are relative to the main module.
 
 ## Initialization
