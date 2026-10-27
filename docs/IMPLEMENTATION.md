@@ -8,9 +8,17 @@ CreateBind entry points keep their full descriptors and OnDispose. The wrapper
 runs original cleanup before reopening the parent and restoring the footer.
 Only Hub_Solanel sequence 4 is accepted. Remote ring rubbing is hidden because
 it requires the original ring-room scene; normal ring cleaning is unchanged.
-Cooking, training and minigame 3D scenes are not rebound remotely.
+Activity shortcuts bind the complete original facility sequences, including
+resource loading, actors and scene setup. They do not use reference-mod fake
+fish, fabricated results, extra allowances or hand-written arena settlement.
+Fishing, strength training and Wyvern Ride also check their remaining allowance
+before dispatch. Private sequence classes may have fewer virtual slots than a
+BasicMenuItem; callback validation uses the requested slot, not a menu-only minimum.
 
-On opening HubMenu, ready ordinary supports can bind the complete native
+After HubSequence.Init, the first idle Main tick in sequence 4 or 5 checks ready
+ordinary supports. Loading, script children and interactions take precedence;
+the check runs once per visit and resets even when a managed address is reused.
+HubMenu opening also checks newly ready pairs. Both entry points bind the complete native
 MyRoomRelianceSequence as a child. Private KeyCall overrides on its unit/pair
 menus return native ACall/BCall results to TickInput; they do not replace the
 dialogue sequence. Native IsLevelUpOnly/IsGodReliance gates, IsTalk,
@@ -20,6 +28,8 @@ existing narrow skip branch. Lua, rank advancement, completion callbacks and
 cleanup remain native. No rank/EXP/viewed write API is used by the dispatcher.
 Gallery and Pact Ring calls are excluded. Temporary menu mode flags are restored
 on disposal, independently of settings.
+Only menu-origin dispatch reopens a BasicMenu; scene-origin dispatch must not
+call menu virtual slots on HubSequence. Original OnDispose runs in both cases.
 
 Cooking preferences use stable PID strings and a bounded native outcome branch
 (0 = native; 1..3 = chef specialties; 4 = ordinary; 5 = native bad-result roll).

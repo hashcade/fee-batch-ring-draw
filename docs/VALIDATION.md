@@ -29,10 +29,13 @@ stable-PID chef selection, missing-join fallback, native cooking-branch scoping,
 missing-taste fallback, preservation of other preferences and independent files.
 Support dispatch returns native A/B results, excludes unready/special pairs,
 does not retry dispatched pairs and never writes relation ranks/EXP. Bond and
-gallery modes fall back to original input. The facility fixture binds all ten
+gallery modes fall back to original input. The facility fixture binds all seventeen
 menu entry points, tests native cleanup before reopening the parent/footer,
 checks unlock/Somniel gates and keeps the original classes unchanged. Remote
 ring rubbing is hidden on the private shortcut only.
+The scene-arrival fixture covers Somniel and post-battle exploration, busy/non-Main
+deferral, once-per-visit dispatch and restoration without invoking menu virtuals
+on HubSequence. Activity shortcuts reject exhausted allowances.
 
 Still requiring real-game validation: actual facility menus/resources and their
 header/footer appearance, end-to-end queued Lua support completion and viewed

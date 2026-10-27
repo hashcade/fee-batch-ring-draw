@@ -10,6 +10,9 @@ pub const CAN_ADVANCE: usize = 0x01C5A930;
 pub const SET_BOND: usize = 0x023960C0;
 pub const SET_READY_ONLY: usize = 0x023961B0;
 pub const READY_ONLY: usize = 0x02396140;
+pub const HUB_INIT: usize = 0x023EBCA0;
+pub const HUB_TICK: usize = 0x023F26D0;
+pub const HUB_IS_MAIN: usize = 0x023E6BD0;
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x02393B40, [0xA9BC7BFD, 0xF9000BF7, 0x910003FD, 0xA90257F6]),
   (0x023970A0, [0xA9BC7BFD, 0xF9000BF7, 0x910003FD, 0xA90257F6]),
@@ -21,6 +24,9 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x023960C0, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
   (0x023961B0, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
   (0x02396140, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xD001FC14]),
+  (0x023EBCA0, [0xA9BC7BFD, 0xF9000BF7, 0x910003FD, 0xA90257F6]),
+  (0x023F26D0, [0xFC1B0FE8, 0xA9017BFD, 0x910043FD, 0xA9025FF8]),
+  (0x023E6BD0, [0xA9BE7BFD, 0xF9000BF3, 0x910003FD, 0xAA1F03E1]),
 ];
 
 #[cfg(target_os = "switch")]
@@ -32,7 +38,7 @@ pub(crate) mod native {
     native::{base, field, list_count, object_at, Method, Object},
   };
   use core::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     ptr,
     sync::atomic::{AtomicUsize, Ordering},
   };
@@ -47,7 +53,8 @@ pub(crate) mod native {
   // menus. One attempt per pair per opening also bounds failures/cancellation.
   std::thread_local! {
     static ATTEMPTED: RefCell<BTreeSet<(usize, usize)>> = const { RefCell::new(BTreeSet::new()) };
-    static PREVIOUS_FLAGS: RefCell<Option<(bool, bool)>> = const { RefCell::new(None) };
+    static PREVIOUS_FLAGS: RefCell<Option<(bool, bool, bool)>> = const { RefCell::new(None) };
+    static ENTERED: Cell<usize> = const { Cell::new(0) };
   }
 
   macro_rules! native {
@@ -57,7 +64,45 @@ pub(crate) mod native {
   }
 
   pub(crate) fn install() {
-    skyline::install_hooks!(create_sequence, create_unit_menu, create_pair_menu);
+    skyline::install_hooks!(
+      create_sequence,
+      create_unit_menu,
+      create_pair_menu,
+      hub_init,
+      hub_tick
+    );
+  }
+
+  #[skyline::hook(offset = HUB_INIT)]
+  fn hub_init(hub: Object, method: Method) {
+    // Reset per visit, including when the managed allocator reuses an address.
+    ENTERED.with(|entered| entered.set(0));
+    call_original!(hub, method);
+  }
+
+  #[skyline::hook(offset = HUB_TICK)]
+  fn hub_tick(hub: Object, method: Method) {
+    call_original!(hub, method);
+    if hub.is_null()
+      || !config::current().auto_support
+      || ENTERED.with(|entered| entered.get() == hub as usize)
+    {
+      return;
+    }
+    unsafe {
+      let user = crate::native::user_data();
+      if user.is_null()
+        || !matches!(field::<i32>(user, 0x28), 4 | 5)
+        || !field::<Object>(hub, 0x38).is_null()
+        || !native!(HUB_IS_MAIN, unsafe extern "C" fn(Object, Method) -> bool)(hub, NONE)
+      {
+        return;
+      }
+      // Main is reached after scene entry/scripts. Never interrupt loading,
+      // a story child, battle logic or player interaction. Scan once per visit.
+      ENTERED.with(|entered| entered.set(hub as usize));
+      begin(hub, false);
+    }
   }
 
   #[skyline::hook(offset = CREATE_SEQUENCE)]
@@ -80,6 +125,15 @@ pub(crate) mod native {
       }
       let menu: Object = field(parent, 0x38);
       if menu.is_null() || !field::<Object>(menu, 0x38).is_null() {
+        return;
+      }
+      begin(menu, true);
+    }
+  }
+
+  unsafe fn begin(parent: Object, from_menu: bool) {
+    unsafe {
+      if PREVIOUS_FLAGS.with(|flags| flags.borrow().is_some()) {
         return;
       }
       let units = native!(crate::cooking::UNIT_LIST, unsafe extern "C" fn(Method) -> Object)(NONE);
@@ -106,23 +160,29 @@ pub(crate) mod native {
       let old_ready = native!(READY_ONLY, unsafe extern "C" fn(Method) -> bool)(NONE);
       native!(SET_BOND, unsafe extern "C" fn(bool, Method))(false, NONE);
       native!(SET_READY_ONLY, unsafe extern "C" fn(bool, Method))(true, NONE);
-      native!(CREATE_SEQUENCE, unsafe extern "C" fn(Object, Method))(menu, NONE);
-      let child: Object = field(menu, 0x38);
+      native!(CREATE_SEQUENCE, unsafe extern "C" fn(Object, Method))(parent, NONE);
+      let child: Object = field(parent, 0x38);
       if child.is_null() {
         native!(SET_BOND, unsafe extern "C" fn(bool, Method))(old_bond, NONE);
         native!(SET_READY_ONLY, unsafe extern "C" fn(bool, Method))(old_ready, NONE);
         return;
       }
-      PREVIOUS_FLAGS.with(|flags| *flags.borrow_mut() = Some((old_bond, old_ready)));
-      crate::menu_item::override_class(
+      if !crate::menu_item::override_class(
         child,
         &SEQUENCE_CLASS,
         &[(10, finished as *const () as usize)],
-      );
-      let class: Object = field(menu, 0);
-      let close: unsafe extern "C" fn(Object, Method) =
-        core::mem::transmute(field::<usize>(class, VTABLE + 23 * 16));
-      close(menu, field(class, VTABLE + 23 * 16 + 8));
+      ) {
+        native!(SET_BOND, unsafe extern "C" fn(bool, Method))(old_bond, NONE);
+        native!(SET_READY_ONLY, unsafe extern "C" fn(bool, Method))(old_ready, NONE);
+        return;
+      }
+      PREVIOUS_FLAGS.with(|flags| *flags.borrow_mut() = Some((old_bond, old_ready, from_menu)));
+      if from_menu {
+        let class: Object = field(parent, 0);
+        let close: unsafe extern "C" fn(Object, Method) =
+          core::mem::transmute(field::<usize>(class, VTABLE + 23 * 16));
+        close(parent, field(class, VTABLE + 23 * 16 + 8));
+      }
     }
   }
 
@@ -132,13 +192,16 @@ pub(crate) mod native {
       let original: unsafe extern "C" fn(Object, Method) =
         core::mem::transmute(field::<usize>(method as Object, 0));
       original(sequence, method);
-      if let Some((bond, ready)) = PREVIOUS_FLAGS.with(|flags| flags.borrow_mut().take()) {
+      if let Some((bond, ready, from_menu)) = PREVIOUS_FLAGS.with(|flags| flags.borrow_mut().take())
+      {
         native!(SET_BOND, unsafe extern "C" fn(bool, Method))(bond, NONE);
         native!(SET_READY_ONLY, unsafe extern "C" fn(bool, Method))(ready, NONE);
+        if from_menu {
+          crate::facilities::native::restore(menu);
+        }
       }
       OWNER.store(0, Ordering::Relaxed);
       ATTEMPTED.with(|set| set.borrow_mut().clear());
-      crate::facilities::native::restore(menu);
     }
   }
 

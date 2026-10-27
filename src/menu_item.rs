@@ -23,7 +23,7 @@ pub(crate) unsafe fn override_class(
       return false;
     }
     let count: u16 = field(class, 0x126);
-    if !(29..=128).contains(&count) || callbacks.iter().any(|(slot, _)| *slot >= usize::from(count))
+    if !(1..=128).contains(&count) || callbacks.iter().any(|(slot, _)| *slot >= usize::from(count))
     {
       return false;
     }

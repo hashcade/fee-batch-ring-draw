@@ -7,6 +7,8 @@ pub const CONTENT: usize = 0x028B78C0;
 pub const SHOW_FOOTER: usize = 0x021EDE30;
 pub const SCENE_NAME: usize = 0x02A71860;
 pub const RING_MENU: usize = 0x023397D0;
+pub const VARIABLE_NUMBER: usize = 0x0251E9D0;
+pub const FISHING_USES: usize = 0x0260B190;
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x024533F0, [0xD10203FF, 0xA9027BFD, 0x910083FD, 0xA9036FFC]),
   (0x02454310, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0x9001F634]),
@@ -25,6 +27,15 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x021EDE30, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xD0020954]),
   (0x02A71860, [0xD10103FF, 0xA9017BFD, 0x910043FD, 0xF90013F5]),
   (0x023397D0, [0xA9BA7BFD, 0xA9016FFC, 0x910003FD, 0xA90267FA]),
+  (0x01CA5330, [0xD10283FF, 0xA9047BFD, 0x910103FD, 0xA9056FFC]),
+  (0x02D84750, [0xD10283FF, 0xA9047BFD, 0x910103FD, 0xA9056FFC]),
+  (0x028B5E40, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
+  (0x02DD8250, [0xD10283FF, 0xA9047BFD, 0x910103FD, 0xA9056FFC]),
+  (0x0260A4A0, [0xD10203FF, 0xA9027BFD, 0x910083FD, 0xA9036FFC]),
+  (0x02AD6C40, [0xD102C3FF, 0xA9057BFD, 0x910143FD, 0xA9066FFC]),
+  (0x022BC190, [0xA9BC7BFD, 0xA9015FF8, 0x910003FD, 0xA90257F6]),
+  (0x0260B190, [0xA9BA7BFD, 0xF9000BFB, 0x910003FD, 0xA90267FA]),
+  (0x0251E9D0, [0xD10103FF, 0xA9017BFD, 0x910043FD, 0xA90257F6]),
 ];
 
 pub struct Facility {
@@ -46,6 +57,13 @@ pub const FACILITIES: &[Facility] = &[
   Facility {
     name: "MID_Hub_CafeTerrace_Jukebox", aid: "AID_ジュークボックス", bind: 0x0205B740
   },
+  Facility { name: "MID_Hub_Arena", aid: "AID_闘技場", bind: 0x01CA5330 },
+  Facility { name: "MID_Hub_Cafe", aid: "AID_料理", bind: 0x02D84750 },
+  Facility { name: "MID_Hub_Mascot_Spot", aid: "M004", bind: 0x028B5E40 },
+  Facility { name: "MID_Hub_TrainingSpot", aid: "AID_筋肉体操", bind: 0x02DD8250 },
+  Facility { name: "MID_Hub_Talk_Fishing", aid: "AID_釣り", bind: 0x0260A4A0 },
+  Facility { name: "MID_Hub_Talk_DragonRide", aid: "AID_ドラゴンライド", bind: 0x02AD6C40 },
+  Facility { name: "MID_Hub_Poolside", aid: "AID_水遊び", bind: 0x022BC190 },
 ];
 
 #[cfg(target_os = "switch")]
@@ -65,8 +83,10 @@ pub(crate) mod native {
   static ENTRY_CLASS: AtomicUsize = AtomicUsize::new(0);
   static MENU_CLASS: AtomicUsize = AtomicUsize::new(0);
   static CLEANING_CLASS: AtomicUsize = AtomicUsize::new(0);
-  static ITEM_CLASSES: [AtomicUsize; 10] = [const { AtomicUsize::new(0) }; 10];
-  static SEQUENCE_CLASSES: [AtomicUsize; 10] = [const { AtomicUsize::new(0) }; 10];
+  static ITEM_CLASSES: [AtomicUsize; FACILITIES.len()] =
+    [const { AtomicUsize::new(0) }; FACILITIES.len()];
+  static SEQUENCE_CLASSES: [AtomicUsize; FACILITIES.len()] =
+    [const { AtomicUsize::new(0) }; FACILITIES.len()];
 
   macro_rules! native {
     ($address:expr, $signature:ty) => {
@@ -155,9 +175,40 @@ pub(crate) mod native {
         )(new_text(facility.aid), NONE)
       }
     {
-      1
+      unsafe { available(facility.bind) }
     } else {
       4
+    }
+  }
+
+  unsafe fn available(entry: usize) -> i32 {
+    unsafe {
+      if entry == 0x0260A4A0 {
+        return if native!(FISHING_USES, unsafe extern "C" fn(Method) -> i32)(NONE) > 0 {
+          1
+        } else {
+          2
+        };
+      }
+      let key = match entry {
+        0x02DD8250 => "G_MuscleExercise_GetPrize",
+        0x02AD6C40 => "G_DragonRide_GetPrize",
+        _ => return 1,
+      };
+      let variable: Object = field(user_data(), 0x50);
+      if variable.is_null() {
+        return 2;
+      }
+      if native!(VARIABLE_NUMBER, unsafe extern "C" fn(Object, Object, Method) -> i32)(
+        variable,
+        new_text(key),
+        NONE,
+      ) == 0
+      {
+        1
+      } else {
+        2
+      }
     }
   }
 
@@ -371,8 +422,14 @@ pub(crate) mod native {
         return 2048;
       }
       let entry = FACILITIES[index].bind;
-      if entry == 0x028A8700 {
+      if matches!(entry, 0x028A8700 | 0x02AD6C40) {
         native!(entry, unsafe extern "C" fn(Object, bool, Method))(menu, false, NONE);
+      } else if entry == 0x022BC190 {
+        native!(entry, unsafe extern "C" fn(Object, Object, Method))(
+          menu,
+          new_text(FACILITIES[index].aid),
+          NONE,
+        );
       } else if entry == 0x02174D70 {
         // Enter the native accessory room first; the shop child needs its
         // preview/resources. Do not bind HubAccessoryShopSequence directly.
@@ -380,6 +437,8 @@ pub(crate) mod native {
       } else if entry == 0x01C9BB30 {
         let _ = native!(entry, unsafe extern "C" fn(Object, Method) -> Object)(menu, NONE);
       } else {
+        // Keep each activity's complete native scene/resource setup and
+        // settlement; do not construct fake fish, actors or reward flows.
         native!(entry, unsafe extern "C" fn(Object, Method))(menu, NONE);
       }
       let child: Object = field(menu, 0x38);

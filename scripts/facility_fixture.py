@@ -32,6 +32,10 @@ class FacilityFixture(CollectorFixture):
     elif name == "EMPTY_UNIT_LIST": result = self.ready_units if self.ready_units else self.list()
     elif name == "RELATION": result = self.relation
     elif name == "CAN_ADVANCE": result = 1
+    elif name in ("HUB_INIT", "HUB_TICK"): self.events.append((name, a))
+    elif name == "HUB_IS_MAIN": result = self.is_main
+    elif name == "VARIABLE_NUMBER": result = self.activity_used
+    elif name == "FISHING_USES": result = 3 if not self.activity_used else 0
     elif name == "IS_BOND": result = self.mode[0]
     elif name == "READY_ONLY": result = self.mode[1]
     elif name == "SET_BOND": self.mode[0] = bool(a)
@@ -47,7 +51,8 @@ class FacilityFixture(CollectorFixture):
     elif name == "IS_COMPLETE": result = int(self.unlocked)
     elif name == "FACILITY_BIND":
       self.events.append(("bind", pc))
-      if pc in (self.game + 0x028A8700, self.game + 0x02174D70): assert b == 0
+      if pc in (self.game + 0x028A8700, self.game + 0x02174D70, self.game + 0x02AD6C40): assert b == 0
+      if pc == self.game + 0x022BC190: assert self.read_string(b) == "AID_水遊び"
       child = self.alloc()
       self.qword(child, self.sequence_class)
       self.qword(child + 0x30, a)
@@ -74,11 +79,13 @@ class FacilityFixture(CollectorFixture):
   def c_read(self, pointer):
     return bytes(self.cpu.mem_read(pointer, 128)).split(b"\0", 1)[0]
 
-  def exercise(self, hook, ring_hook, stop, stack, profile):
+  def exercise(self, hook, ring_hook, stop, stack, profile, support_hooks=None):
     self.active = True
     self.reset(4)
     self.ready_units = 0
     self.unlocked = True
+    self.activity_used, self.is_main = 0, True
+    self.qword(self.user + 0x50, self.alloc())
     self.image, self.title, self.title_class, fields = (self.alloc() for _ in range(4))
     self.qword(self.title_class + 0xB8, fields)
     self.qword(fields, self.title)
@@ -100,7 +107,7 @@ class FacilityFixture(CollectorFixture):
     for slot, name in ((10, "DISPOSE"), (18, "CREATE_DESC"), (21, "OPEN"), (23, "CLOSE")):
       vtable(self.menu_class, slot, name)
     self.sequence_class = self.alloc(0x138 + 32 * 16)
-    self.write(self.sequence_class + 0x126, struct.pack("<H", 32))
+    self.write(self.sequence_class + 0x126, struct.pack("<H", 19))
     vtable(self.sequence_class, 10, "DISPOSE")
     cls, methods, ctor = (self.alloc() for _ in range(3))
     self.qword(ctor, self.game + 0x03DE8880)
@@ -110,7 +117,7 @@ class FacilityFixture(CollectorFixture):
     self.write(cls + 0x11C, struct.pack("<H", 1))
     self.qword(self.full_list, cls)
     binds = [int(value, 16) for value in re.findall(r'bind: (0x[0-9A-Fa-f]+)', profile)]
-    assert len(binds) == 10
+    assert len(binds) == 17
     for offset in binds: self.functions[self.game + offset] = "FACILITY_BIND"
 
     def call(address, *args):
@@ -132,7 +139,7 @@ class FacilityFixture(CollectorFixture):
     quick = self.pointer(self.menu + 0x38)
     assert quick and self.pointer(quick + 0x30) == self.menu
     choices = self.values(self.pointer(quick + 0x80))
-    assert len(choices) == 10
+    assert len(choices) == len(binds)
     original = bytes(self.cpu.mem_read(self.sequence_class, 0x138 + 32 * 16))
     for index, item in enumerate(choices):
       self.qword(item + 0x10, quick)
@@ -159,6 +166,11 @@ class FacilityFixture(CollectorFixture):
       assert self.events[-3:] == [("dispose", child), ("open", quick), ("footer", self.title)]
       assert self.pointer(quick + 0x38) == 0
     assert bytes(self.cpu.mem_read(self.sequence_class, len(original))) == original
+    self.activity_used = 1
+    for index in (13, 14, 15):
+      assert call(method(choices[index], 8), choices[index]) == 2
+      assert call(method(choices[index], 18), choices[index]) == 2048
+    self.activity_used = 0
     self.unlocked = False
     assert call(method(choices[1], 8), choices[1]) == 4
     assert call(method(choices[1], 18), choices[1]) == 2048
@@ -182,4 +194,28 @@ class FacilityFixture(CollectorFixture):
     assert self.mode == [True, False] and self.pointer(self.menu + 0x38) == 0
     assert bytes(self.cpu.mem_read(self.relation, 0x40)) == before
     assert self.events[-3:] == [("dispose", support), ("open", self.menu), ("footer", self.title)]
+    if support_hooks:
+      hub = self.alloc()
+      for sequence in (4, 5):
+        self.integer(self.user + 0x28, sequence)
+        call(support_hooks["HUB_INIT"], hub)
+        self.is_main = False
+        call(support_hooks["HUB_TICK"], hub)
+        assert self.pointer(hub + 0x38) == 0
+        self.is_main = True
+        busy = self.alloc()
+        self.qword(hub + 0x38, busy)
+        call(support_hooks["HUB_TICK"], hub)
+        assert self.pointer(hub + 0x38) == busy
+        self.qword(hub + 0x38, 0)
+        call(support_hooks["HUB_TICK"], hub)
+        child = self.pointer(hub + 0x38)
+        assert child and self.mode == [False, True]
+        method_info = self.pointer(self.pointer(child) + 0x138 + 10 * 16 + 8)
+        before_events = len(self.events)
+        call(method(child, 10), child, method_info)
+        assert self.events[before_events:] == [("dispose", child)], "HubSequence is not a BasicMenu"
+        assert self.mode == [True, False]
+        call(support_hooks["HUB_TICK"], hub)
+        assert self.pointer(hub + 0x38) == 0, "scan only once per scene visit"
     self.active = False

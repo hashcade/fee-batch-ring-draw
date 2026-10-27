@@ -86,7 +86,7 @@ def smoke(data: bytes, case: str) -> int:
   )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings_profile + well_profile + cooking_profile + support_profile + facility_profile + shop_profile)]
   expected_cooking_hooks = {int(value, 16) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cooking_profile)
-    if name in ("CURRENT_CHEF", "GET_COOK_DATA", "COOK", "DETERMINE_TASTE")}
+    if name in ("CURRENT_CHEF", "GET_COOK_DATA", "COOK", "DETERMINE_TASTE", "ANIMATION_CREATE")}
   id_values = re.search(r"pub const BUILD_ID:.*?=\s*\[(.*?)\];", profile, re.S).group(1)
   build_id = bytes(int(word, 16) for word in re.findall(r"0x[0-9A-Fa-f]+", id_values))
   expected_hooks = {offset(name) for name in (
@@ -99,7 +99,7 @@ def smoke(data: bytes, case: str) -> int:
   expected_hooks.add(ring_menu)
   expected_hooks.update(int(value, 16) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", support_profile)
-    if name in ("CREATE_SEQUENCE", "CREATE_UNIT_MENU", "CREATE_PAIR_MENU"))
+    if name in ("CREATE_SEQUENCE", "CREATE_UNIT_MENU", "CREATE_PAIR_MENU", "HUB_INIT", "HUB_TICK"))
   expected_hooks.update(int(re.search(
     rf"pub const {name}: usize = (0x[0-9A-Fa-f]+)", meld_profile).group(1), 16)
     for name in ("ON_SELECT", "ON_DECIDE", "ON_YES", "ON_CANCEL", "DESTROY_MENU",
@@ -343,7 +343,7 @@ def smoke(data: bytes, case: str) -> int:
   cpu.emu_start(BASE + main, STOP + 4, count=100_000)
   if cpu.reg_read(registers.UC_ARM64_REG_PC) != STOP:
     raise AssertionError(f"{case}: initialization did not return")
-  supported = case in ("supported", "shops", "mount_failed") or case in configs
+  supported = case in ("supported", "shops", "facilities", "convenience", "mount_failed") or case in configs
   expected = expected_hooks if supported else set()
   if set(hooks) != expected or len(hooks) != len(expected):
     raise AssertionError(f"{case}: incorrect hook registration: {hooks}")
@@ -353,7 +353,7 @@ def smoke(data: bytes, case: str) -> int:
     assert fs_calls.count("unmount") == (case != "mount_failed")
     assert fs_calls.count("close") == (case in configs)
     expected_count = {"config_ten": 10, "config_low": 2, "config_custom": 600, "config_high": 1000}.get(case, 300)
-    if case != "shops":
+    if case not in ("shops", "facilities", "convenience"):
       draw_menu.exercise(replacements[offset("COUNT_MENU")], STOP,
         STACK + 0x20000 - 0x20, expected_count)
     if case in ("supported", "shops"):
@@ -384,8 +384,7 @@ def smoke(data: bytes, case: str) -> int:
       print("supported: compiled Wyvern hook uses per-difficulty SSS boundaries; guarded fallbacks and native tick preserved")
       collector_game.exercise(replacements[next(iter(collector_hooks))], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled collection menu handles native claim gates, donation quantities, capacity, adoption restrictions and repeated dispatch")
-      facility_game.exercise(replacements[next(iter(collector_hooks))], replacements[ring_menu], STOP, STACK + 0x20000 - 0x20, facility_profile)
-      print("supported: compiled facility menu binds ten native entries, retains original cleanup, restores parent/footer and rejects locked or off-Somniel access")
+    if case in ("supported", "convenience"):
       settings_game.exercise(settings_callbacks[0], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled Plugin Settings adjusts counts, persists independent files, retains old values on failure and leaves original classes unchanged")
       new_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
@@ -393,6 +392,11 @@ def smoke(data: bytes, case: str) -> int:
         if int(value, 16) in replacements}
       settings_game.exercise_new(settings_callbacks, new_hooks, STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled cooking choices preserve independent settings and context; support dispatch uses native A/B actions, excludes special/unready pairs and never writes ranks")
+    if case in ("supported", "facilities"):
+      support_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
+        r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", support_profile) if int(value, 16) in replacements}
+      facility_game.exercise(replacements[next(iter(collector_hooks))], replacements[ring_menu], STOP, STACK + 0x20000 - 0x20, facility_profile, support_hooks)
+      print(f"{case}: seventeen native facility entries, allowances, cleanup and scene-ready support dispatch passed modeled boundaries")
   else:
     assert not fs_calls, "unsupported executables must not read configuration"
     assert not settings_callbacks, "unsupported executables must not register settings"
