@@ -12,6 +12,7 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 - **Quick relationship dialogues:** automatically skip messages in selected C/B/A support and Emblem bond conversations, including paid training. Keep native scripts, viewed records, rank advancement and callbacks. Story and Pact Ring conversations stay unchanged.
 - **Fast fishing:** shorten the bite wait and simplify landing fish while keeping the original fishing allowance and rewards.
 - **Cumulative level display:** the character status screen shows current/total level. Total means stored current level plus internal level; no level, EXP or growth values are changed.
+- **Ancient Well preview and reroll:** the original well menu includes Preview Results and Reroll Results for a pending exchange. Preview uses a private RNG and lists item quantities without claiming anything. Reroll changes only that exchange's seed; normal waiting, deposits and collection remain.
 - **Fast perfect strength training:** quickly finish push-ups, sit-ups, and squats with perfect results while keeping the original training allowance.
 - **Fast SSS Wyvern Ride:** after the opening, finish at the selected difficulty's SSS score threshold and continue through the original result and reward flow. Keep difficulty unlocks and reward eligibility unchanged.
 - **Repeatable cooking and food selection:** cook multiple times between battles and select food without the usual stock restriction.
@@ -66,7 +67,7 @@ setting's help text reports the failure.
 - [skyline-rs](https://github.com/ultimate-research/skyline-rs) — plugin runtime bindings.
 - [engage-il2cpp](https://github.com/DivineDragonFanClub/engage-il2cpp) — native interface references.
 - [KaitoB](https://tekqart.com/thread-327061-1-1.html) — original activity and gift patch references.
-- [Triabolical / MyCodeMods](https://github.com/triabolicals/triabolical-code-mods) — collection-menu behavior reference.
+- [Triabolical / MyCodeMods](https://github.com/triabolicals/triabolical-code-mods) — collection, facility and relationship-convenience behavior references.
 
 Fire Emblem and related names are trademarks of Nintendo and Intelligent Systems.
 This unofficial fan project is not affiliated with or endorsed by them.

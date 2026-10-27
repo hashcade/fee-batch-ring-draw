@@ -14,8 +14,11 @@ pub mod profile;
 pub mod random;
 pub mod session;
 pub mod settings;
+pub mod well;
 pub mod wyvern;
 
+#[cfg(target_os = "switch")]
+mod menu_item;
 #[cfg(target_os = "switch")]
 mod native;
 #[cfg(target_os = "switch")]

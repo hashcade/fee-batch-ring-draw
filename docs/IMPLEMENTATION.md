@@ -4,6 +4,25 @@ Target: Engage 2.0.0, Build ID `8C08B9719E085F91847B5E0F935D9488`, Cobalt 1.31.0
 
 ## Initialization
 
+Ancient Well menu extensions use a private BasicMenuItem class per action, shared
+factory code with collection, and native `WellTopMenu.CreateBind` (`0x0293C6A0`).
+Original choices and their indices remain before two appended entries. Both
+entries require a native pending/ready exchange (flags 1/2) and level 1–5.
+Callbacks recheck state and require an idle menu with its original parent.
+There are no extra hotkeys or replacement facility scenes.
+
+Preview allocates native Random (`0x06287BF8`), seeds it with the stored exchange
+seed (`0x02374F10`) and calls `CalcItemExchange` (`0x0293C890`) with explicit
+sequence, level and private RNG arguments. This ABI and argument order were
+checked against the original GetItem call site (`0x0293CC20`). Duplicate ItemData
+references are counted, translated through Mess, and displayed with native
+GameMessage.CreateKeyWait. No grant, acquired-record or use-flag method is called.
+Only explicit reroll draws once from the system RNG and replaces the native
+exchange seed; failed calculation/display restores the previous seed. Preview
+does not advance any live RNG. Deposits, exchange level, waiting and native
+collection remain unchanged. This is a normal native seed change, not a custom
+mod-settings variable in the save.
+
 The native unit-status SetLevel hook (`0x01C66980`) runs the complete original
 setter first, then replaces only its level title/value through TrySetText
 (`0x0290F0A0`). The localized title distinguishes current/total. Current display

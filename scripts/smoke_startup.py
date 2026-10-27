@@ -23,6 +23,7 @@ from arena_fixture import ArenaFixture
 from bond_talk_fixture import BondTalkFixture
 from settings_fixture import SettingsFixture
 from level_fixture import LevelFixture
+from well_fixture import WellFixture
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -67,6 +68,7 @@ def smoke(data: bytes, case: str) -> int:
   bond_talk = (ROOT / "src/bond_talk.rs").read_text(encoding="utf-8")
   settings_profile = (ROOT / "src/settings.rs").read_text(encoding="utf-8")
   level_profile = (ROOT / "src/level.rs").read_text(encoding="utf-8")
+  well_profile = (ROOT / "src/well.rs").read_text(encoding="utf-8")
   patches = [(int(address, 16), int(original, 16), int(replacement, 16))
     for address, original, replacement in re.findall(
       r"\((0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+)\)", activities)]
@@ -76,7 +78,7 @@ def smoke(data: bytes, case: str) -> int:
 
   signatures = [(int(address, 16), b"".join(
     struct.pack("<I", int(word, 16)) for word in re.findall(r"0x[0-9A-Fa-f]+", words)
-  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings_profile + level_profile)]
+  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings_profile + level_profile + well_profile)]
   id_values = re.search(r"pub const BUILD_ID:.*?=\s*\[(.*?)\];", profile, re.S).group(1)
   build_id = bytes(int(word, 16) for word in re.findall(r"0x[0-9A-Fa-f]+", id_values))
   expected_hooks = {offset(name) for name in (
@@ -101,6 +103,8 @@ def smoke(data: bytes, case: str) -> int:
   expected_hooks.add(talk_tick)
   set_level = int(re.search(r"pub const SET_LEVEL: usize = (0x[0-9A-Fa-f]+)", level_profile).group(1), 16)
   expected_hooks.add(set_level)
+  well_menu = int(re.search(r"pub const CREATE_MENU: usize = (0x[0-9A-Fa-f]+)", well_profile).group(1), 16)
+  expected_hooks.add(well_menu)
   symbols, relocations = metadata(data)
   main = next(value for name, section, value in symbols if name == "main" and section)
   cpu = Uc(UC_ARCH_ARM64, UC_MODE_ARM)
@@ -139,6 +143,8 @@ def smoke(data: bytes, case: str) -> int:
     write_game(GAME + 0x025379A0, bytes(4))
   if case == "wrong_level_instruction":
     write_game(GAME + set_level, bytes(4))
+  if case == "wrong_well_instruction":
+    write_game(GAME + well_menu, bytes(4))
   stubs = {name: STUB + index * 16 for index, name in enumerate(sorted(required_imports(data)))}
   names = {address: name for name, address in stubs.items()}
   for target, info, addend in relocations:
@@ -177,6 +183,7 @@ def smoke(data: bytes, case: str) -> int:
   bond_dialogue = BondTalkFixture(cpu, GAME, write_game, bond_talk, profile)
   settings_game = SettingsFixture(cpu, GAME, write_game, settings_profile, profile)
   level_game = LevelFixture(cpu, GAME, write_game, level_profile, profile)
+  well_game = WellFixture(cpu, GAME, write_game, well_profile + collector, profile)
 
   def string_at(address: int) -> bytes:
     result = bytearray()
@@ -201,6 +208,8 @@ def smoke(data: bytes, case: str) -> int:
     if settings_game.handle(pc, names.get(pc)):
       return
     if level_game.handle(pc, names.get(pc)):
+      return
+    if well_game.handle(pc, names.get(pc)):
       return
     if collector_game.handle(pc, names.get(pc)):
       return
@@ -323,6 +332,8 @@ def smoke(data: bytes, case: str) -> int:
         expected_count)
       print(f"{case}: compiled row text uses exact k prices; native geometry and single row unchanged")
     if case == "supported":
+      well_game.exercise(replacements[well_menu], STOP, STACK + 0x20000 - 0x20)
+      print("supported: compiled well entries preview grouped native results with private RNG; explicit reseed only, no grants or global class edits")
       level_game.exercise(replacements[set_level], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled level labels show current/total in all languages, retain native setter and do not write unit data")
       arena_game.exercise(replacements[arena_create], STOP, STACK + 0x20000 - 0x20)
@@ -365,7 +376,7 @@ def main() -> None:
   args = parser.parse_args()
   verify_nro(args.nro)
   for case in ("supported", "wrong_version", "wrong_build_id", "wrong_instruction", "wrong_segment_layout",
-    "wrong_activity_instruction", "wrong_wyvern_instruction", "wrong_collector_instruction", "wrong_cleaning_instruction", "wrong_arena_instruction", "wrong_bond_talk_instruction", "wrong_settings_instruction", "wrong_level_instruction", "patch_failed",
+    "wrong_activity_instruction", "wrong_wyvern_instruction", "wrong_collector_instruction", "wrong_cleaning_instruction", "wrong_arena_instruction", "wrong_bond_talk_instruction", "wrong_settings_instruction", "wrong_level_instruction", "wrong_well_instruction", "patch_failed",
     "mount_failed", "config_ten", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
     "config_large", "config_short", "config_empty"):
     count = smoke(args.nro.read_bytes(), case)

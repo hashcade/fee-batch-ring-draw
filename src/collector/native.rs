@@ -3,18 +3,17 @@
 use super::{profile as offsets, Candidate, Capacity, Reservations};
 use crate::{
   meld::native::{new_text, text},
+  menu_item::{named, VTABLE},
   native::{base, field, list_count, metadata, object_at, reference, user_data, Method, Object},
   profile,
 };
 use core::{
-  ffi::c_char,
   ptr,
   sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 use std::collections::BTreeSet;
 
 const NONE: Method = ptr::null();
-const VTABLE: usize = 0x138;
 const CONVOY: usize = 1;
 const MONEY: usize = 2;
 const FRAGMENTS: usize = 3;
@@ -46,64 +45,19 @@ unsafe extern "C" fn help(_: Object, _: Method) -> Object {
   unsafe { message("MID_Hub_Well_ItemExchange_Get") }
 }
 
-/// Bounded metadata names; never edit the original runtime class or MethodInfo.
-unsafe fn named(pointer: *const c_char, expected: &[u8]) -> bool {
-  !pointer.is_null()
-    && unsafe {
-      expected.iter().enumerate().all(|(i, &byte)| pointer.add(i).read() as u8 == byte)
-        && pointer.add(expected.len()).read() == 0
-    }
-}
-
 unsafe fn make_item(first: Object) -> Option<Object> {
-  let mut class: Object = unsafe { field(first, 0) };
-  let mut found = false;
-  for _ in 0..16 {
-    if class.is_null() {
-      return None;
-    }
-    if unsafe { named(field(class, 0x10), b"BasicMenuItem") } {
-      found = true;
-      break;
-    }
-    class = unsafe { field(class, 0x58) };
+  unsafe {
+    crate::menu_item::create(
+      first,
+      &ITEM_CLASS,
+      &[
+        (4, name as *const () as usize),
+        (8, attribute as *const () as usize),
+        (18, collect as *const () as usize),
+        (28, help as *const () as usize),
+      ],
+    )
   }
-  if !found {
-    return None;
-  }
-  let count: u16 = unsafe { field(class, 0x126) };
-  let size: u32 = unsafe { field(class, 0xF8) };
-  if !(29..=128).contains(&count) || !(0x60..=0x200).contains(&size) {
-    return None;
-  }
-  let allocate =
-    unsafe { native!(profile::ALLOCATE_OBJECT, unsafe extern "C" fn(Object) -> Object) };
-  let ctor = unsafe { native!(offsets::ITEM_CTOR, unsafe extern "C" fn(Object, Method)) };
-  let item = unsafe { allocate(class) };
-  if item.is_null() {
-    return None;
-  }
-  unsafe { ctor(item, NONE) };
-  let mut private = ITEM_CLASS.load(Ordering::Relaxed);
-  if private == 0 {
-    let words = (VTABLE + usize::from(count) * 16) / 8;
-    let mut copy = unsafe { core::slice::from_raw_parts(class.cast::<usize>(), words) }
-      .to_vec()
-      .into_boxed_slice();
-    for (slot, function) in [
-      (4, name as *const () as usize),
-      (8, attribute as *const () as usize),
-      (18, collect as *const () as usize),
-      (28, help as *const () as usize),
-    ] {
-      copy[(VTABLE + slot * 16) / 8] = function;
-    }
-    // One process-lifetime class, allocated only on the original menu thread.
-    private = Box::leak(copy).as_mut_ptr() as usize;
-    ITEM_CLASS.store(private, Ordering::Relaxed);
-  }
-  unsafe { item.cast::<usize>().write(private) };
-  Some(item)
 }
 
 #[skyline::hook(offset = offsets::CREATE_MENU)]

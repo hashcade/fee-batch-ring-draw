@@ -103,7 +103,8 @@ def verify_game(path: Path) -> int:
   bond_talk = (ROOT / "src/bond_talk.rs").read_text(encoding="utf-8")
   settings = (ROOT / "src/settings.rs").read_text(encoding="utf-8")
   level = (ROOT / "src/level.rs").read_text(encoding="utf-8")
-  signatures = re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings + level)
+  well = (ROOT / "src/well.rs").read_text(encoding="utf-8")
+  signatures = re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings + level + well)
   if not signatures:
     raise ValueError("no instruction signatures found")
   for address, values in signatures:

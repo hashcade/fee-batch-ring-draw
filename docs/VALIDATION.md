@@ -4,11 +4,12 @@
 
 - Build the combined Switch NRO with the pinned Skyline dependency.
 - Verify actual relocation-backed imports against Cobalt 1.31.0 / Engage 2.0.0. No unavailable `get_program_id`, NRO-load/unload hook, or plugin-address API is accepted.
-- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **230** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/level instruction signatures.
+- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **243** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/level/well instruction signatures.
 - Focused meld planning/session/confirmation tests retain cost, capacity, equipped-copy, repeated-dispatch, and fragment-refill protections.
 - Presentation-session tests cover matching owner, one-shot consumption, cancellation/cleanup, stale ownership, and null ownership.
 - Activity tests cover all **32** instruction replacements, whole-set preflight, readback, each possible failed write and restoration, and separation from arena/rewind/resource code.
-- Compiled-NRO AArch64 startup smoke checks: supported game registers **25 hooks** and writes precisely the activity replacements; wrong game/version/layout/instruction and conflicting activity/Wyvern/collection/cleaning/arena/dialogue/level instructions register none and write nothing.
+- Compiled-NRO AArch64 startup smoke checks: supported game registers **26 hooks** and writes precisely the activity replacements; wrong game/version/layout/instruction and conflicting activity/Wyvern/collection/cleaning/arena/dialogue/level/well instructions register none and write nothing.
+- Well tests and compiled callbacks cover explicit localized entries, duplicate insertion prevention, unchanged original metadata, pending/ready/invalid state and level gates, grouped quantities, independent RNG, explicit-only reseeding and failed-preview seed recovery. No inventory-grant API is modeled or callable in this path. Actual rendered menus, waiting/collection and preview-to-claimed consistency still require in-game verification.
 - Focused level tests verify current + internal, initial/capped levels, malformed values and compact headings. The compiled fixture covers all game languages, enhanced display versus stored total, original-setter ordering and unchanged unit memory. Actual status-screen sizing requires in-game verification.
 - Focused and compiled arena cases cover both ordinary and paid training, rejecting special challenges, inconsistent mode/EXP values and mismatched or modified children. The same native growth/fade steps remain in order for both modes. Real ordinary EXP, support and activity-use settlement still require in-game verification.
 - A compiled failed-write case restores the original instructions, returns normally, and installs no hooks.
