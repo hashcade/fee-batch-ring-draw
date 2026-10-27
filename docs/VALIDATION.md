@@ -4,11 +4,11 @@
 
 - Build the combined Switch NRO with the pinned Skyline dependency.
 - Verify actual relocation-backed imports against Cobalt 1.31.0 / Engage 2.0.0. No unavailable `get_program_id`, NRO-load/unload hook, or plugin-address API is accepted.
-- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **300** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/well/cooking/support/facility/shop instruction signatures.
+- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **301** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/well/cooking/support/facility/shop instruction signatures.
 - Focused meld planning/session/confirmation tests retain cost, capacity, equipped-copy, repeated-dispatch, and fragment-refill protections.
 - Presentation-session tests cover matching owner, one-shot consumption, cancellation/cleanup, stale ownership, and null ownership.
 - Activity tests cover all **32** instruction replacements, whole-set preflight, readback, each possible failed write and restoration, and separation from arena/rewind/resource code.
-- Focused compiled-NRO AArch64 startup checks register **44 hooks** and write precisely the activity replacements. New shop/facility/cooking fixtures pass their modeled boundaries. A changed shop signature registers no hooks and writes nothing. CI retains the full version/layout/conflict/configuration regression matrix.
+- Focused compiled-NRO AArch64 startup checks register **40 hooks** and write precisely the activity replacements. Shop/facility/cooking/dialogue fixtures pass their modeled boundaries. Changed shop-entry and call-site signatures register no hooks and write nothing. CI retains the full version/layout/conflict/configuration regression matrix.
 - Well tests and compiled callbacks cover explicit localized entries, duplicate insertion prevention, unchanged original metadata, pending/ready/invalid state and level gates, grouped quantities, independent RNG, explicit-only reseeding and failed-preview seed recovery. No inventory-grant API is modeled or callable in this path. Actual rendered menus, waiting/collection and preview-to-claimed consistency still require in-game verification.
 - Focused and compiled arena cases cover both ordinary and paid training, rejecting special challenges, inconsistent mode/EXP values and mismatched or modified children. The same native growth/fade steps remain in order for both modes. Real ordinary EXP, support and activity-use settlement still require in-game verification.
 - A compiled failed-write case restores the original instructions, returns normally, and installs no hooks.
@@ -42,9 +42,16 @@ conditional labels and context-scoped outcome selection. The animation factory
 retains its result and only completes a fresh, settled, recognized iterator;
 already-started, changed, off-Somniel or unsettled cases are unchanged.
 Compiled shop checks cover each allowlisted store with missing, infinite, zero,
-one and positive stocks, unrelated keys/generic types, and post-list context
-cleanup. Saved dictionaries are not written. All 300 pinned instruction windows
-were compared with the supplied NSO; startup rejects a changed shop signature.
+one and positive stocks, unrelated/null generic MethodInfo and ordinary same-key
+dictionary reads. The fixture enters through a modeled native far jump, executes
+the compiled bridge and native continuation branch, and checks SP, x19-x29,
+d8-d15, return address, comparison flags and one original lookup. Saved dictionaries
+are not written and the general dictionary function has no hook. All 301 pinned
+instruction windows match the supplied NSO; startup rejects a changed call site.
+An independent configuration with a nonempty chef PID verifies no allocations
+on deferred or repeated idle support ticks. Dialogue non-Main labels do not
+initialize class metadata; each required class initializes at most once.
+No combat frame-time or FPS improvement has been measured in the actual game.
 
 The shop fixture does not execute native purchase settlement. Verify actual
 prices, capacity refusal, sold-out unlocked goods and locked chapters in game.
@@ -80,7 +87,7 @@ callbacks and data objects remain unchanged; no global skip flag is set.
 
 Use a temporary test save or the user's explicitly chosen test environment. Do not automatically install anything or modify the main save.
 
-- Start with only the combined plugin, then with the retained resource/stock cheats. Confirm there is no loading stall and both ring menus work.
+- Start with only the combined plugin, then with the user's other enabled modifications. Confirm there is no loading stall and both ring menus work. Compare the same battle scene against the previous release for frame time; do not infer performance from hook counts alone.
 - Create one ring, ten rings and a configured batch; check all menu entries, costs, acquired results, capacity stopping, and original RNG/probabilities. Check configuration ten does not add a duplicate row.
 - Adjust the batch count through Plugin Settings, reopen ring creation and check labels, prices and actual counts. Restart and switch save slots to confirm independent persistence; check localized labels and an unwritable SD card. These Unity/rendering/storage-device checks are not proven by the compiled fixture.
 - Meld C→B, B→A, A→S; check exact material/fragment costs, equipped copies, capacity, first/repeat acquisitions, cancellation, and consecutive transactions.

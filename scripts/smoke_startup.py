@@ -93,8 +93,8 @@ def smoke(data: bytes, case: str) -> int:
     "COUNT_MENU", "BUILD_TEXT", "EXECUTE_GACHA", "UNLOAD", "DRAW", "CREATE_DEMO"
   )}
   expected_hooks.update(expected_cooking_hooks)
-  expected_hooks.update(int(value, 16) for value in re.findall(
-    r"pub const \w+: usize = (0x[0-9A-Fa-f]+)", shop_profile))
+  expected_hooks.update(int(value, 16) for name, value in re.findall(
+    r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", shop_profile) if name != "LOOKUP")
   ring_menu = int(re.search(r"pub const RING_MENU: usize = (0x[0-9A-Fa-f]+)", facility_profile).group(1), 16)
   expected_hooks.add(ring_menu)
   expected_hooks.update(int(value, 16) for name, value in re.findall(
@@ -153,6 +153,8 @@ def smoke(data: bytes, case: str) -> int:
     write_game(GAME + arena_create, bytes(4))
   if case == "wrong_bond_talk_instruction":
     write_game(GAME + talk_tick, bytes(4))
+  if case == "wrong_shop_callsite":
+    write_game(GAME + 0x031FD608, bytes(4))
   if case == "wrong_settings_instruction":
     write_game(GAME + 0x025379A0, bytes(4))
   if case == "wrong_well_instruction":
@@ -186,7 +188,8 @@ def smoke(data: bytes, case: str) -> int:
   configs = {"config_ten": b"draw_count=10\n", "config_low": b"draw_count=2\n", "config_custom": b"draw_count=600\n",
     "config_high": b"draw_count=1000\n", "config_invalid": b"draw_count=1001\n",
     "config_utf8": b"\xff", "config_large": b" " * 4097,
-    "config_short": b"draw_count=600\n", "config_empty": b""}
+    "config_short": b"draw_count=600\n", "config_empty": b"",
+    "performance": b"draw_count=300\nchef=PID_performance\n"}
   text = TextFixture(cpu, GAME, STUB + 0xE000, write_game, offset)
   wyvern_game = WyvernFixture(cpu, GAME, write_game, wyvern)
   collector_game = CollectorFixture(cpu, GAME, write_game, collector, profile)
@@ -343,7 +346,7 @@ def smoke(data: bytes, case: str) -> int:
   cpu.emu_start(BASE + main, STOP + 4, count=100_000)
   if cpu.reg_read(registers.UC_ARM64_REG_PC) != STOP:
     raise AssertionError(f"{case}: initialization did not return")
-  supported = case in ("supported", "shops", "facilities", "convenience", "mount_failed") or case in configs
+  supported = case in ("supported", "shops", "facilities", "convenience", "dialogue", "mount_failed") or case in configs
   expected = expected_hooks if supported else set()
   if set(hooks) != expected or len(hooks) != len(expected):
     raise AssertionError(f"{case}: incorrect hook registration: {hooks}")
@@ -353,25 +356,26 @@ def smoke(data: bytes, case: str) -> int:
     assert fs_calls.count("unmount") == (case != "mount_failed")
     assert fs_calls.count("close") == (case in configs)
     expected_count = {"config_ten": 10, "config_low": 2, "config_custom": 600, "config_high": 1000}.get(case, 300)
-    if case not in ("shops", "facilities", "convenience"):
+    if case not in ("shops", "facilities", "convenience", "dialogue", "performance"):
       draw_menu.exercise(replacements[offset("COUNT_MENU")], STOP,
         STACK + 0x20000 - 0x20, expected_count)
     if case in ("supported", "shops"):
       shop_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
-        r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", shop_profile)}
+        r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", shop_profile) if int(value, 16) in replacements}
       shop_game.exercise(shop_replacements, STOP, STACK + 0x20000 - 0x20, shop_profile)
       print(f"{case}: compiled shop hooks retain unlock lookups, scope unlimited stock and leave saved counts unchanged")
     if case in ("supported", "config_low", "config_custom", "config_high"):
       text.exercise(replacements[offset("BUILD_TEXT")], STOP, STACK + 0x20000 - 0x20,
         expected_count)
       print(f"{case}: compiled row text uses exact k prices; native geometry and single row unchanged")
+    if case in ("supported", "dialogue"):
+      bond_dialogue.exercise(replacements[talk_tick], STOP, STACK + 0x20000 - 0x20)
+      print(f"{case}: compiled dialogue hook retains native skip scoping; non-Main labels avoid metadata and classes initialize once")
     if case == "supported":
       well_game.exercise(replacements[well_menu], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled well entries preview grouped native results with private RNG; explicit reseed only, no grants or global class edits")
       arena_game.exercise(replacements[arena_create], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled arena hook keeps native growth/fades for ordinary/paid training and rejects special, stale or changed children")
-      bond_dialogue.exercise(replacements[talk_tick], STOP, STACK + 0x20000 - 0x20)
-      print("supported: compiled dialogue hook uses native skip for relationship calls; Pact Ring, story, callbacks and global skip state untouched")
       meld_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", meld_profile) if int(value, 16) in replacements}
       meld_dialog.exercise(meld_replacements, STOP, STACK + 0x20000 - 0x20)
@@ -392,7 +396,7 @@ def smoke(data: bytes, case: str) -> int:
         if int(value, 16) in replacements}
       settings_game.exercise_new(settings_callbacks, new_hooks, STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled cooking choices preserve independent settings and context; support dispatch uses native A/B actions, excludes special/unready pairs and never writes ranks")
-    if case in ("supported", "facilities"):
+    if case in ("supported", "facilities", "performance"):
       support_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", support_profile) if int(value, 16) in replacements}
       facility_game.exercise(replacements[next(iter(collector_hooks))], replacements[ring_menu], STOP, STACK + 0x20000 - 0x20, facility_profile, support_hooks)
@@ -420,8 +424,8 @@ def main() -> None:
   verify_nro(args.nro)
   for case in ("supported", "wrong_version", "wrong_build_id", "wrong_instruction", "wrong_segment_layout",
     "wrong_activity_instruction", "wrong_wyvern_instruction", "wrong_collector_instruction", "wrong_cleaning_instruction", "wrong_arena_instruction", "wrong_bond_talk_instruction", "wrong_settings_instruction", "wrong_well_instruction", "patch_failed",
-    "wrong_cooking_instruction", "wrong_support_instruction", "wrong_facility_instruction", "wrong_shop_instruction",
-    "mount_failed", "config_ten", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
+    "wrong_cooking_instruction", "wrong_support_instruction", "wrong_facility_instruction", "wrong_shop_instruction", "wrong_shop_callsite",
+    "mount_failed", "performance", "config_ten", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
     "config_large", "config_short", "config_empty"):
     count = smoke(args.nro.read_bytes(), case)
     print(f"{case}: initialization returned normally; {count} hooks; no unavailable API call")

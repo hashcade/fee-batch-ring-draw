@@ -84,8 +84,8 @@ pub(crate) mod native {
   fn hub_tick(hub: Object, method: Method) {
     call_original!(hub, method);
     if hub.is_null()
-      || !config::current().auto_support
       || ENTERED.with(|entered| entered.get() == hub as usize)
+      || !config::auto_support()
     {
       return;
     }
@@ -115,7 +115,7 @@ pub(crate) mod native {
   }
 
   pub(crate) unsafe fn on_hub_menu(parent: Object) {
-    if parent.is_null() || !config::current().auto_support {
+    if parent.is_null() || !config::auto_support() {
       return;
     }
     unsafe {
@@ -206,7 +206,7 @@ pub(crate) mod native {
   }
 
   unsafe fn active() -> bool {
-    config::current().auto_support
+    config::auto_support()
       && !unsafe { native!(IS_BOND, unsafe extern "C" fn(Method) -> bool)(NONE) }
       && unsafe { native!(READY_ONLY, unsafe extern "C" fn(Method) -> bool)(NONE) }
   }

@@ -1,12 +1,9 @@
 //! Unlimited native stock, scoped to armory, item shop and flea market tables.
 
-pub const CONTENTS: usize = 0x031FC8E0;
+pub const LIST_LOOKUP: usize = 0x031FD608;
 pub const STOCK: usize = 0x031FE610;
 pub const INFINITY: usize = 0x031FE750;
 pub const PURCHASE: usize = 0x031FE360;
-pub const WEAPON_KEY: usize = 0x021D2AA0;
-pub const ITEM_KEY: usize = 0x02050CE0;
-pub const FLEA_KEY: usize = 0x0260E5C0;
 pub const LOOKUP: usize = 0x03C742D0;
 
 // Closed generic MethodInfo slots: armory, item shop, flea market. Other
@@ -21,9 +18,10 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x031FE610, [0xD10143FF, 0xA9017BFD, 0x910043FD, 0xA9025FF8]),
   (0x031FE750, [0xD10143FF, 0xA9017BFD, 0x910043FD, 0xA9025FF8]),
   (0x031FE360, [0xD10183FF, 0xA9017BFD, 0x910043FD, 0xF90013F9]),
-  (0x021D2AA0, [0xA9BD7BFD, 0xA90157F6, 0x910003FD, 0xA9024FF4]),
-  (0x02050CE0, [0xA9BD7BFD, 0xA90157F6, 0x910003FD, 0xA9024FF4]),
-  (0x0260E5C0, [0xA9BD7BFD, 0xA90157F6, 0x910003FD, 0xA9024FF4]),
+  (0x031FC908, [0xAA0203F3, 0xF9000BE1, 0xF90003E0, 0x37000A28]),
+  (0x031FCA68, [0xF8418E74, 0x3944CA88, 0x360000E8, 0xF9406288]),
+  (0x031FD600, [0x9100A3E2, 0xAA1403E1, 0x9429DB32, 0xB9402BE8]),
+  (0x031FD610, [0x7200001F, 0x1A9F1108, 0x3100051F, 0x54FFD6C0]),
   (0x03C742D0, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xF9400C68]),
 ];
 
@@ -31,12 +29,36 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
 pub(crate) mod native {
   use super::*;
   use crate::native::{base, field, Method, Object};
-  use core::cell::Cell;
+  use core::sync::atomic::{AtomicUsize, Ordering};
 
-  // The generated key stays rooted by the native caller. Consume it at the
-  // very next matching lookup, and never keep it after the list build ends.
-  std::thread_local! {
-    static LIST: Cell<(bool, usize)> = const { Cell::new((false, 0)) };
+  static LIST_RESUME: AtomicUsize = AtomicUsize::new(0);
+
+  // Replace only this BL site, not Dictionary.TryGetValue itself. At this
+  // point x19 is MethodInfo+0x18 and the native out Value is at sp+0x28.
+  // The replaced call follows AAPCS64, so Rust preserves x19-x29 and d8-d15.
+  // Replay all four following instructions (including NZCV), then resume at
+  // the native conditional branch. x16 is call-clobbered by the original BL.
+  core::arch::global_asm!(
+    ".p2align 2",
+    ".global fee_shop_list_lookup",
+    ".hidden fee_shop_list_lookup",
+    "fee_shop_list_lookup:",
+    "sub x4, x19, #0x18",
+    "bl {lookup}",
+    "ldr w8, [sp, #0x28]",
+    "tst w0, #1",
+    "csel w8, w8, wzr, ne",
+    "cmn w8, #1",
+    "adrp x16, {resume}",
+    "ldr x16, [x16, :lo12:{resume}]",
+    "sub x30, x16, #0x10",
+    "br x16",
+    lookup = sym list_lookup,
+    resume = sym LIST_RESUME,
+  );
+
+  extern "C" {
+    fn fee_shop_list_lookup();
   }
 
   unsafe fn matches(method: Method, slots: &[usize; 3]) -> bool {
@@ -50,53 +72,29 @@ pub(crate) mod native {
   }
 
   pub(crate) fn install() {
-    skyline::install_hooks!(
-      contents, stock, infinity, purchase, weapon_key, item_key, flea_key, lookup
-    );
+    LIST_RESUME.store(base() + LIST_LOOKUP + 0x14, Ordering::Relaxed);
+    unsafe {
+      let mut unused = core::ptr::null_mut();
+      skyline::hooks::A64HookFunction(
+        (base() + LIST_LOOKUP) as _,
+        fee_shop_list_lookup as *const () as _,
+        &mut unused,
+      );
+    }
+    skyline::install_hooks!(stock, infinity, purchase);
   }
 
-  #[skyline::hook(offset = CONTENTS)]
-  fn contents(added_key: Object, stock_key: Object, method: Method) -> Object {
-    let active = unsafe { matches(method, &CONTENT_METHODS) };
-    let previous = LIST.with(|state| state.replace((active, 0)));
-    let result = call_original!(added_key, stock_key, method);
-    LIST.with(|state| state.set(previous));
-    result
-  }
-
-  fn remember(key: Object) -> Object {
-    LIST.with(|state| {
-      if state.get().0 {
-        state.set((true, key as usize));
-      }
-    });
-    key
-  }
-
-  #[skyline::hook(offset = WEAPON_KEY)]
-  fn weapon_key(iid: Object, method: Method) -> Object {
-    remember(call_original!(iid, method))
-  }
-
-  #[skyline::hook(offset = ITEM_KEY)]
-  fn item_key(iid: Object, method: Method) -> Object {
-    remember(call_original!(iid, method))
-  }
-
-  #[skyline::hook(offset = FLEA_KEY)]
-  fn flea_key(iid: Object, method: Method) -> Object {
-    remember(call_original!(iid, method))
-  }
-
-  #[skyline::hook(offset = LOOKUP)]
-  fn lookup(dictionary: Object, key: Object, value: *mut i32, method: Method) -> bool {
-    let override_stock = LIST.with(|state| {
-      let (active, expected) = state.get();
-      state.set((active, 0));
-      active && expected != 0 && expected == key as usize
-    });
-    let found = call_original!(dictionary, key, value, method);
-    if override_stock && !value.is_null() {
+  unsafe extern "C" fn list_lookup(
+    dictionary: Object,
+    key: Object,
+    value: *mut i32,
+    method: Method,
+    list_method: Method,
+  ) -> bool {
+    let lookup: unsafe extern "C" fn(Object, Object, *mut i32, Method) -> bool =
+      unsafe { core::mem::transmute(base() + LOOKUP) };
+    let found = unsafe { lookup(dictionary, key, value, method) };
+    if !value.is_null() && unsafe { matches(list_method, &CONTENT_METHODS) } {
       // Replace only the returned integer, not the dictionary, variant tag,
       // reference field, unlock keys or persistent stock. -1 is native infinity.
       unsafe { value.write(-1) };

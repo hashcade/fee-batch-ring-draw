@@ -65,6 +65,11 @@ pub fn current() -> Settings {
   SETTINGS.with(|value| value.borrow().clone())
 }
 
+#[cfg(target_os = "switch")]
+pub fn auto_support() -> bool {
+  SETTINGS.with(|value| value.borrow().auto_support)
+}
+
 pub fn valid_count(count: u32) -> bool {
   (2..=MAX_DRAW_COUNT).contains(&count)
 }

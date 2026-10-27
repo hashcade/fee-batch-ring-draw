@@ -14,6 +14,8 @@ class FacilityFixture(CollectorFixture):
   def handle(self, pc, import_name):
     if not self.active: return False
     name = self.functions.get(pc, import_name)
+    if self.forbid_allocations:
+      assert name not in ("malloc", "calloc", "ALLOCATE_OBJECT"), "idle support ticks must not allocate"
     args = [self.cpu.reg_read(getattr(reg, f"UC_ARM64_REG_X{i}")) for i in range(6)]
     a, b = args[:2]
     result = None
@@ -81,6 +83,7 @@ class FacilityFixture(CollectorFixture):
 
   def exercise(self, hook, ring_hook, stop, stack, profile, support_hooks=None):
     self.active = True
+    self.forbid_allocations = False
     self.reset(4)
     self.ready_units = 0
     self.unlocked = True
@@ -200,8 +203,10 @@ class FacilityFixture(CollectorFixture):
         self.integer(self.user + 0x28, sequence)
         call(support_hooks["HUB_INIT"], hub)
         self.is_main = False
+        self.forbid_allocations = True
         call(support_hooks["HUB_TICK"], hub)
         assert self.pointer(hub + 0x38) == 0
+        self.forbid_allocations = False
         self.is_main = True
         busy = self.alloc()
         self.qword(hub + 0x38, busy)
@@ -216,6 +221,8 @@ class FacilityFixture(CollectorFixture):
         call(method(child, 10), child, method_info)
         assert self.events[before_events:] == [("dispose", child)], "HubSequence is not a BasicMenu"
         assert self.mode == [True, False]
-        call(support_hooks["HUB_TICK"], hub)
+        self.forbid_allocations = True
+        for _ in range(16): call(support_hooks["HUB_TICK"], hub)
+        self.forbid_allocations = False
         assert self.pointer(hub + 0x38) == 0, "scan only once per scene visit"
     self.active = False

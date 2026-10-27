@@ -13,7 +13,7 @@ class BondTalkFixture(CollectorFixture):
     if not self.active: return False
     name = self.functions.get(pc, import_name)
     this = self.cpu.reg_read(reg.UC_ARM64_REG_X0)
-    if name == "INITIALIZE_METADATA": pass
+    if name == "INITIALIZE_METADATA": self.metadata_calls += 1
     elif name == "GET_LABEL":
       assert this == self.talk
       self.cpu.reg_write(reg.UC_ARM64_REG_X0, self.label)
@@ -30,6 +30,7 @@ class BondTalkFixture(CollectorFixture):
 
   def exercise(self, replacement, stop, stack):
     self.active = True
+    self.metadata_calls = 0
     dialog_class = self.metadata(0x062A3CB8)
     combat_class = self.metadata(0x06291678)
     order_class = self.metadata(0x062917C0)
@@ -65,6 +66,7 @@ class BondTalkFixture(CollectorFixture):
       snapshots = [(value, bytes(self.cpu.mem_read(value, 0x100))) for value in
         (self.talk, dialog, combat, order, unit, god)]
       for self.label in (0, 1, 2, 3, 4, 6, 7, 8, 9):
+        before_metadata = self.metadata_calls
         self.jumps, self.original_calls = 0, 0
         for index in range(8): self.cpu.reg_write(getattr(reg, f"UC_ARM64_REG_X{index}"), self.talk if index == 0 else 0)
         self.cpu.reg_write(reg.UC_ARM64_REG_SP, stack)
@@ -74,5 +76,8 @@ class BondTalkFixture(CollectorFixture):
         skip = case in ("paid", "nested", "repeat", "support_c", "support_b", "support_a", "outside", "wrong_combat") and self.label == 3
         assert self.jumps == int(skip), (case, self.label)
         assert self.original_calls == int(not skip), (case, self.label)
+        if self.label != 3:
+          assert self.metadata_calls == before_metadata
+        assert self.metadata_calls <= 3, "class metadata must initialize at most once per class"
         assert all(bytes(self.cpu.mem_read(address, len(before))) == before for address, before in snapshots)
     self.active = False

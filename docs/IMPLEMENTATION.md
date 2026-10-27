@@ -30,6 +30,10 @@ Gallery and Pact Ring calls are excluded. Temporary menu mode flags are restored
 on disposal, independently of settings.
 Only menu-origin dispatch reopens a BasicMenu; scene-origin dispatch must not
 call menu virtual slots on HubSequence. Original OnDispose runs in both cases.
+Idle support ticks read only the boolean preference, not a cloned Settings/chef
+string. The already-checked visit gate precedes preference access. Dialogue
+skipping checks Main before inspecting ancestors and caches only process-lifetime
+IL2CPP class metadata; live dialogue pointers and eligibility are never cached.
 
 Cooking preferences use stable PID strings and a bounded native outcome branch
 (0 = native; 1..3 = chef specialties; 4 = ordinary; 5 = native bad-result roll).
@@ -60,13 +64,20 @@ FleaMarketData. Stock reads return the game's infinity sentinel (-1), IsInfinity
 returns true and PurchaseImpl skips only saved stock deduction. Native callers
 still charge prices and grant goods with their original capacity checks.
 
-Content-list generation performs its own saved-stock dictionary lookup. During
-an allowlisted list build, only the exact key returned by a native shop stock-key
-factory is recognized at the next lookup; replace that returned integer, never
-the dictionary or global GameVariable behavior. This includes sold-out goods
-without bypassing chapter/additional-stock conditions. Restore nested context
-on return. Other shop types, clothing ownership, keys and values stay native.
-No extra loader exports, code caves, polling or save-variable writes are used.
+Content-list generation performs its own saved-stock dictionary lookup. Intercept
+only that BL site at `0x031FD608`, not the shared dictionary function. The local
+bridge passes the enclosing MethodInfo (`x19 - 0x18`) to an allowlisted read
+override, calls native TryGetValue once and replaces only its returned integer.
+This includes sold-out goods without bypassing chapter/additional-stock checks.
+Other shop types, clothing ownership, keys and saved values stay native.
+
+The bridge uses Cobalt's existing A64HookFunction export. It replays the four
+post-call instructions, preserving AAPCS64 callee-saved registers and the native
+comparison flags, then resumes at `0x031FD61C`. Both the call and continuation
+windows are preflighted. No general dictionary, list-entry or stock-key hooks,
+thread-local stock context, new loader imports, code caves or polling remain.
+Battle dictionary reads no longer dispatch into this plugin. This removes that
+specific overhead; it is not an in-game frame-time measurement.
 
 Target: Engage 2.0.0, Build ID `8C08B9719E085F91847B5E0F935D9488`, Cobalt 1.31.0. Addresses below are relative to the main module.
 

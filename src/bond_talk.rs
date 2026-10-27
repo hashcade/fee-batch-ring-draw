@@ -32,6 +32,24 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
 pub(crate) mod native {
   use super::*;
   use crate::native::{base, field, metadata, Method, Object};
+  use core::sync::atomic::{AtomicUsize, Ordering};
+
+  // IL2CPP class metadata is process-lifetime data, unlike dialogue instances.
+  // Do not cache Talk/parent pointers or eligibility across native lifecycle changes.
+  static DIALOG: AtomicUsize = AtomicUsize::new(0);
+  static COMBAT: AtomicUsize = AtomicUsize::new(0);
+  static ORDER: AtomicUsize = AtomicUsize::new(0);
+
+  unsafe fn cached_class(cache: &AtomicUsize, offset: usize) -> Object {
+    let mut class = cache.load(Ordering::Relaxed);
+    if class == 0 {
+      class = unsafe { metadata(offset) } as usize;
+      if class != 0 {
+        cache.store(class, Ordering::Relaxed);
+      }
+    }
+    class as Object
+  }
 
   pub(crate) fn install() {
     skyline::install_hooks!(talk_tick);
@@ -46,7 +64,7 @@ pub(crate) mod native {
       return false;
     }
     unsafe {
-      let dialog_class = metadata(DIALOG_CLASS);
+      let dialog_class = cached_class(&DIALOG, DIALOG_CLASS);
       let mut ancestor = field::<Object>(talk, 0x30);
       // Talk -> Lua/event children -> MyRoomRelianceCallSequence. Keep the
       // native script running; only skip its message presentation.
@@ -68,13 +86,13 @@ pub(crate) mod native {
             return false;
           }
           let combat: Object = field(ancestor, 0x30);
-          if !is_class(combat, metadata(COMBAT_CLASS)) {
+          if !is_class(combat, cached_class(&COMBAT, COMBAT_CLASS)) {
             // The game already selected and bound this native bond event.
             // Keep its Lua, viewed records, rank caps and exit callbacks.
             return true;
           }
           let order: Object = field(combat, 0x30);
-          return is_class(order, metadata(ORDER_CLASS))
+          return is_class(order, cached_class(&ORDER, ORDER_CLASS))
             && field::<Object>(order, 0x38) == combat
             && field::<u8>(order, 0x88) == 1
             && field::<u8>(order, 0x89) == 0
@@ -91,10 +109,12 @@ pub(crate) mod native {
   #[skyline::hook(offset = TALK_TICK)]
   fn talk_tick(talk: Object, method: Method) {
     unsafe {
-      if is_relationship_dialogue(talk) {
+      if !talk.is_null() {
         let get_label: unsafe extern "C" fn(Object, Method) -> i32 =
           core::mem::transmute(base() + GET_LABEL);
-        if get_label(talk, core::ptr::null()) == 3 {
+        // Loading, closing and wait labels cannot take the skip branch. Avoid
+        // metadata and ancestor checks until the message is actually in Main.
+        if get_label(talk, core::ptr::null()) == 3 && is_relationship_dialogue(talk) {
           // Match Tick's native GameSkip branch: Main (3) -> Skip (6).
           // Skip processes remaining tags, then Close/Finish return to Lua.
           // Do not set a global skip/input flag or bypass event callbacks.
