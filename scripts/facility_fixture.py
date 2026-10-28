@@ -143,6 +143,9 @@ class FacilityFixture(CollectorFixture):
     assert quick and self.pointer(quick + 0x30) == self.menu
     choices = self.values(self.pointer(quick + 0x80))
     assert len(choices) == len(binds)
+    assert self.item_ctors and set(self.item_ctors) == {"MAP_ITEM_CTOR"}
+    for item in [entry] + choices:
+      assert self.class_name(self.pointer(item)) == b"MapBasicMenuItem"
     original = bytes(self.cpu.mem_read(self.sequence_class, 0x138 + 32 * 16))
     for index, item in enumerate(choices):
       self.qword(item + 0x10, quick)

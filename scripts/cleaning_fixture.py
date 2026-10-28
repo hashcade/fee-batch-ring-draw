@@ -61,7 +61,7 @@ class CleaningFixture(MeldDialogFixture):
     self.metadata(0x06286A70)
     item_class = self.alloc()
     self.integer(item_class + 0xF8, 0x88)
-    self.write(item_class + 0x126, struct.pack("<H", 30))
+    self.write(item_class + 0x126, struct.pack("<H", 27))
     self.qword(item_class + 0x138 + 18 * 16, self.game + 0x02347210)
     self.gods = [self.alloc() for _ in range(5)]
     self.originals = []

@@ -6,6 +6,7 @@
 - Keep commits atomic. Do not release or install unless explicitly requested.
 - Retain the existing ring transaction safety checks and Cobalt 1.31 ABI conventions.
 - Scope local verification to the change; CI owns full regression checks.
+- Model native menu inheritance accurately: BasicMenuItem has 27 virtual slots; MapBasicMenuItem adds flag/help/map-attribute slots 27-29. Never fabricate extra base-class slots in fixtures. Select the actual native item type and constructor, and check only the interfaces that the feature uses.
 - Never modify user saves or installations. Supplied executable analysis is read-only.
 - Check game version, Build ID, and every native entry/signature before hooking.
 - Run transactions synchronously on the original game menu thread.

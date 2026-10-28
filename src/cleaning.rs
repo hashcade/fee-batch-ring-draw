@@ -146,7 +146,7 @@ pub(crate) mod native {
         let class: Object = field(item, 0);
         if class.is_null()
           || !(0x88..=0x100).contains(&field::<u32>(class, 0xF8))
-          || !(29..=128).contains(&field::<u16>(class, 0x126))
+          || !(27..=128).contains(&field::<u16>(class, 0x126))
         {
           return None;
         }
@@ -197,7 +197,7 @@ pub(crate) mod native {
     }
     let slots: u16 = unsafe { field(class, 0x126) };
     let size: u32 = unsafe { field(class, 0xF8) };
-    if !(29..=128).contains(&slots)
+    if !(27..=128).contains(&slots)
       || !(0x88..=0x100).contains(&size)
       || unsafe { field::<usize>(class, VTABLE + 18 * 16) } != base() + ITEM_DECIDE
     {

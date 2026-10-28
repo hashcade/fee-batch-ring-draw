@@ -155,6 +155,8 @@ def smoke(data: bytes, case: str) -> int:
     write_game(GAME + talk_tick, bytes(4))
   if case == "wrong_shop_callsite":
     write_game(GAME + 0x031FD608, bytes(4))
+  if case == "wrong_map_item_constructor":
+    write_game(GAME + 0x01F039F0, bytes(4))
   if case == "wrong_settings_instruction":
     write_game(GAME + 0x025379A0, bytes(4))
   if case == "wrong_well_instruction":
@@ -346,7 +348,7 @@ def smoke(data: bytes, case: str) -> int:
   cpu.emu_start(BASE + main, STOP + 4, count=100_000)
   if cpu.reg_read(registers.UC_ARM64_REG_PC) != STOP:
     raise AssertionError(f"{case}: initialization did not return")
-  supported = case in ("supported", "shops", "facilities", "convenience", "dialogue", "mount_failed") or case in configs
+  supported = case in ("supported", "shops", "facilities", "convenience", "dialogue", "menus", "mount_failed") or case in configs
   expected = expected_hooks if supported else set()
   if set(hooks) != expected or len(hooks) != len(expected):
     raise AssertionError(f"{case}: incorrect hook registration: {hooks}")
@@ -356,7 +358,7 @@ def smoke(data: bytes, case: str) -> int:
     assert fs_calls.count("unmount") == (case != "mount_failed")
     assert fs_calls.count("close") == (case in configs)
     expected_count = {"config_ten": 10, "config_low": 2, "config_custom": 600, "config_high": 1000}.get(case, 300)
-    if case not in ("shops", "facilities", "convenience", "dialogue", "performance"):
+    if case not in ("shops", "facilities", "convenience", "dialogue", "menus", "performance"):
       draw_menu.exercise(replacements[offset("COUNT_MENU")], STOP,
         STACK + 0x20000 - 0x20, expected_count)
     if case in ("supported", "shops"):
@@ -388,6 +390,16 @@ def smoke(data: bytes, case: str) -> int:
       print("supported: compiled Wyvern hook uses per-difficulty SSS boundaries; guarded fallbacks and native tick preserved")
       collector_game.exercise(replacements[next(iter(collector_hooks))], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled collection menu handles native claim gates, donation quantities, capacity, adoption restrictions and repeated dispatch")
+    if case == "menus":
+      well_game.exercise(replacements[well_menu], STOP, STACK + 0x20000 - 0x20)
+      collector_game.exercise(replacements[next(iter(collector_hooks))], STOP, STACK + 0x20000 - 0x20)
+      meld_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
+        r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", meld_profile) if int(value, 16) in replacements}
+      meld_dialog.exercise(meld_replacements, STOP, STACK + 0x20000 - 0x20)
+      cleaning_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
+        r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cleaning) if int(value, 16) in replacements}
+      cleaning_game.exercise(cleaning_replacements, STOP, STACK + 0x20000 - 0x20)
+      print("menus: compiled well/collection entries use real 27-slot basic and 30-slot map inheritance; repeated openings and callbacks passed")
     if case in ("supported", "convenience"):
       settings_game.exercise(settings_callbacks[0], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled Plugin Settings adjusts counts, persists independent files, retains old values on failure and leaves original classes unchanged")
@@ -396,7 +408,7 @@ def smoke(data: bytes, case: str) -> int:
         if int(value, 16) in replacements}
       settings_game.exercise_new(settings_callbacks, new_hooks, STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled cooking choices preserve independent settings and context; support dispatch uses native A/B actions, excludes special/unready pairs and never writes ranks")
-    if case in ("supported", "facilities", "performance"):
+    if case in ("supported", "facilities", "performance", "menus"):
       support_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", support_profile) if int(value, 16) in replacements}
       facility_game.exercise(replacements[next(iter(collector_hooks))], replacements[ring_menu], STOP, STACK + 0x20000 - 0x20, facility_profile, support_hooks)
@@ -424,7 +436,7 @@ def main() -> None:
   verify_nro(args.nro)
   for case in ("supported", "wrong_version", "wrong_build_id", "wrong_instruction", "wrong_segment_layout",
     "wrong_activity_instruction", "wrong_wyvern_instruction", "wrong_collector_instruction", "wrong_cleaning_instruction", "wrong_arena_instruction", "wrong_bond_talk_instruction", "wrong_settings_instruction", "wrong_well_instruction", "patch_failed",
-    "wrong_cooking_instruction", "wrong_support_instruction", "wrong_facility_instruction", "wrong_shop_instruction", "wrong_shop_callsite",
+    "wrong_cooking_instruction", "wrong_support_instruction", "wrong_facility_instruction", "wrong_shop_instruction", "wrong_shop_callsite", "wrong_map_item_constructor",
     "mount_failed", "performance", "config_ten", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
     "config_large", "config_short", "config_empty"):
     count = smoke(args.nro.read_bytes(), case)

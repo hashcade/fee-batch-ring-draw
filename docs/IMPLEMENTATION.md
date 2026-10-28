@@ -3,7 +3,12 @@
 ## Facility, support and cooking extensions
 
 The outdoor HubMenu receives a separate facility entry. Its BasicMenu and item
-classes are private copies, not shared-vtable mutations. Native facility
+classes are private copies, not shared-vtable mutations. Map entries instantiate
+the native MapBasicMenuItem ancestor (30 slots, including help at 28), not its
+27-slot BasicMenuItem parent. Ordinary well entries need only BasicMenuItem and
+do not register a nonexistent help slot. Each uses its own native constructor.
+The factory validates the actual inheritance, instance size and requested slots
+even when a private class was cached by an earlier menu. Native facility
 CreateBind entry points keep their full descriptors and OnDispose. The wrapper
 runs original cleanup before reopening the parent and restoring the footer.
 Only Hub_Solanel sequence 4 is accepted. Remote ring rubbing is hidden because
@@ -213,7 +218,7 @@ References: [KaitoB's publication](https://tekqart.com/thread-327061-1-1.html), 
 
 One hook appends an independently implemented item to `HubMenu.CreateBind`
 (`0x028B6EF0`) and moves it to the first position with managed write barriers.
-Its four callbacks live in one process-lifetime private copy of BasicMenuItem's
+Its four callbacks live in one process-lifetime private copy of MapBasicMenuItem's
 vtable; original classes and MethodInfo structures are not modified. Labels
 come from the game's existing message table. The entry is hidden when nothing
 eligible fits, and dispatch rechecks the live source list. There is no automatic

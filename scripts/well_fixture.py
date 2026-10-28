@@ -16,7 +16,10 @@ class WellFixture(CollectorFixture):
     args = [self.cpu.reg_read(getattr(reg, f"UC_ARM64_REG_X{i}")) for i in range(4)]
     result = None
     if name == "CREATE_MENU": self.original_calls += 1
-    elif name in ("INITIALIZE_METADATA", "WRITE_BARRIER", "ITEM_CTOR"): pass
+    elif name == "ITEM_CTOR":
+      assert self.pointer(args[0]) == self.base_class
+      self.item_ctors.append(name)
+    elif name in ("INITIALIZE_METADATA", "WRITE_BARRIER"): pass
     elif name == "ALLOCATE_OBJECT":
       result = self.alloc()
       self.qword(result, args[0])
@@ -68,7 +71,7 @@ class WellFixture(CollectorFixture):
 
   def exercise(self, replacement, stop, stack):
     self.active, self.stop, self.stack = True, stop, stack
-    self.reset()
+    self.reset(map_items=False)
     self.random_class = self.metadata(0x06287BF8)
     self.system = self.alloc()
     self.flag, self.level, self.seed, self.new_seed, self.language = 1, 5, 12345, 54321, 10
@@ -94,12 +97,15 @@ class WellFixture(CollectorFixture):
     callbacks = []
     for item in values[1:]:
       klass = self.pointer(item)
+      assert self.class_name(klass) == b"BasicMenuItem"
+      assert int.from_bytes(self.cpu.mem_read(klass + 0x126, 2), "little") == 27
       callbacks.append(self.pointer(klass + 0x138 + 18 * 16))
       for self.language in range(12):
         label = self.call(self.pointer(klass + 0x138 + 4 * 16), item, 0)
         assert self.read_string(label)
     self.call(replacement, self.parent, 0, 0, 0)
     assert self.values(self.full_list) == values
+    assert self.item_ctors == ["ITEM_CTOR", "ITEM_CTOR"]
     assert bytes(self.cpu.mem_read(self.base_class, 0x400)) == before_class
     for flag, level in [(1, 1), (1, 5), (2, 3), (0, 5), (3, 5), (-1, 5), (1, 0), (1, 6)]:
       self.flag, self.level = flag, level

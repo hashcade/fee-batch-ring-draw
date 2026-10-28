@@ -53,6 +53,9 @@ class CollectorFixture:
     self.write(result, value.encode() + b"\0")
     return result
 
+  def class_name(self, klass):
+    return bytes(self.cpu.mem_read(self.pointer(klass + 0x10), 64)).split(b"\0", 1)[0]
+
   def metadata(self, offset, value=None):
     value = self.alloc() if value is None else value
     cell = self.alloc(8)
@@ -84,7 +87,7 @@ class CollectorFixture:
     array = self.pointer(result + 0x10)
     return [self.pointer(array + 0x20 + index * 8) for index in range(self.number(result + 0x18))]
 
-  def reset(self, sequence=5):
+  def reset(self, sequence=5, map_items=True):
     self.flags, self.inventory, self.items, self.animals = {}, {}, {}, {}
     self.counts, self.effects, self.events, self.adoptions = {}, [], [], []
     self.user, self.hub, self.manager, self.group = [self.alloc() for _ in range(4)]
@@ -112,10 +115,23 @@ class CollectorFixture:
     self.write(self.item_list_class + 0x11C, struct.pack("<H", 1))
     self.base_class = self.alloc()
     self.qword(self.base_class + 0x10, self.c_string("BasicMenuItem"))
-    self.integer(self.base_class + 0xF8, 0x60)
-    self.write(self.base_class + 0x126, struct.pack("<H", 30))
+    self.integer(self.base_class + 0xF8, 0x68)
+    self.write(self.base_class + 0x126, struct.pack("<H", 27))
+    self.menu_item_classes = [self.base_class]
+    parent_class = self.base_class
+    hierarchy = ("MapBasicMenuItem", "HubMenuItem", "GodItem") if map_items else ("ItemExchangeMenuItem",)
+    for name in hierarchy:
+      cls = self.alloc()
+      self.qword(cls + 0x10, self.c_string(name))
+      self.qword(cls + 0x58, parent_class)
+      self.integer(cls + 0xF8, 0x68 if map_items else 0x70)
+      self.write(cls + 0x126, struct.pack("<H", 30 if map_items else 27))
+      self.menu_item_classes.append(cls)
+      parent_class = cls
+    self.map_items = map_items
+    self.item_ctors = []
     self.parent, self.menu, self.original = self.alloc(), self.alloc(), self.alloc()
-    self.qword(self.original, self.base_class)
+    self.qword(self.original, parent_class)
     self.menu_class = self.alloc()
     self.write(self.menu_class + 0x126, struct.pack("<H", 24))
     self.qword(self.menu_class + 0x138 + 23 * 16, self.close)
@@ -163,7 +179,11 @@ class CollectorFixture:
     args = [self.cpu.reg_read(registers.UC_ARM64_REG_X0 + index) for index in range(6)]
     x0, x1, x2, x3, _, _ = args
     result = None
-    if name in ("INITIALIZE_METADATA", "WRITE_BARRIER", "ITEM_CTOR", "free"):
+    if name in ("ITEM_CTOR", "MAP_ITEM_CTOR"):
+      expected = b"MapBasicMenuItem" if name == "MAP_ITEM_CTOR" else b"BasicMenuItem"
+      assert self.class_name(self.pointer(x0)) == expected, "constructor must match the allocated native menu type"
+      self.item_ctors.append(name)
+    elif name in ("INITIALIZE_METADATA", "WRITE_BARRIER", "free"):
       pass
     elif name == "CREATE_MENU":
       assert x0 == self.parent
@@ -280,16 +300,18 @@ class CollectorFixture:
       return self.cpu.reg_read(registers.UC_ARM64_REG_X0)
 
     def menu():
-      original_class = bytes(self.cpu.mem_read(self.base_class, 0x400))
+      original_classes = [(cls, bytes(self.cpu.mem_read(cls, 0x400))) for cls in self.menu_item_classes]
       call(replacement, self.parent)
       values = self.values(self.full_list)
       extra = int(self.number(self.user + 0x28) == 4)
       assert len(values) == 2 + extra and values[1] == self.original
       assert self.number(self.menu + 0xB8) == 8 + extra
-      assert bytes(self.cpu.mem_read(self.base_class, 0x400)) == original_class
+      assert all(bytes(self.cpu.mem_read(cls, len(before))) == before for cls, before in original_classes)
       item = values[0]
       self.qword(item + 0x10, self.menu)
       private = self.pointer(item)
+      assert self.class_name(private) == b"MapBasicMenuItem"
+      assert struct.unpack("<H", self.cpu.mem_read(private + 0x126, 2))[0] == 30
       self.callbacks = {slot: self.pointer(private + 0x138 + slot * 16) for slot in (4, 8, 18, 28)}
       call(replacement, self.parent)
       assert len(self.values(self.full_list)) == 2 + extra, "do not insert a second menu entry"
@@ -384,4 +406,18 @@ class CollectorFixture:
     item = menu()
     assert call(self.callbacks[18], item) == 2048
     assert not self.flags
+
+    # Invalid or missing native map interfaces must not be fabricated, even
+    # after a valid private class has already been cached by previous openings.
+    for invalid in ("missing_map", "short_vtable", "small_instance", "cycle", "null_item"):
+      self.reset()
+      map_class = self.menu_item_classes[1]
+      if invalid == "missing_map": self.qword(map_class + 0x10, self.c_string("NotAMapMenuItem"))
+      elif invalid == "short_vtable": self.write(map_class + 0x126, struct.pack("<H", 29))
+      elif invalid == "small_instance": self.integer(map_class + 0xF8, 0x60)
+      elif invalid == "cycle": self.qword(self.menu_item_classes[-1] + 0x58, self.menu_item_classes[-1])
+      else: self.qword(self.pointer(self.full_list + 0x10) + 0x20, 0)
+      call(replacement, self.parent)
+      assert len(self.values(self.full_list)) == 1, invalid
+      assert not self.item_ctors and not self.flags, invalid
     self.active = False

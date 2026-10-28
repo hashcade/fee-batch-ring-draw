@@ -38,7 +38,7 @@ pub(super) unsafe fn choice(yes: Object, count: u32) -> Option<Object> {
   }
   let slots: u16 = unsafe { field(class, 0x126) };
   let size: u32 = unsafe { field(class, 0xF8) };
-  if !(29..=128).contains(&slots)
+  if !(27..=128).contains(&slots)
     || !(0x78..=0x100).contains(&size)
     || unsafe { field::<usize>(class, VTABLE + 18 * 16) } != base() + profile::YES_ITEM_CALL
   {

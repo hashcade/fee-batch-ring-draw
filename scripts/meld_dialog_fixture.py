@@ -88,7 +88,7 @@ class MeldDialogFixture(CollectorFixture):
     self.metadata(0x06286A70)
     yes_class = self.alloc()
     self.integer(yes_class + 0xF8, 0x78)
-    self.write(yes_class + 0x126, struct.pack("<H", 30))
+    self.write(yes_class + 0x126, struct.pack("<H", 27))
     self.qword(yes_class + 0x138 + 18 * 16, self.game + 0x021FA240)
     self.qword(self.yes, yes_class)
     self.qword(self.yes + 0x70, self.alloc())

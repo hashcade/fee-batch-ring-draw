@@ -4,7 +4,7 @@
 
 - Build the combined Switch NRO with the pinned Skyline dependency.
 - Verify actual relocation-backed imports against Cobalt 1.31.0 / Engage 2.0.0. No unavailable `get_program_id`, NRO-load/unload hook, or plugin-address API is accepted.
-- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **301** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/well/cooking/support/facility/shop instruction signatures.
+- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **302** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/well/cooking/support/facility/shop instruction signatures.
 - Focused meld planning/session/confirmation tests retain cost, capacity, equipped-copy, repeated-dispatch, and fragment-refill protections.
 - Presentation-session tests cover matching owner, one-shot consumption, cancellation/cleanup, stale ownership, and null ownership.
 - Activity tests cover all **32** instruction replacements, whole-set preflight, readback, each possible failed write and restoration, and separation from arena/rewind/resource code.
@@ -46,12 +46,23 @@ one and positive stocks, unrelated/null generic MethodInfo and ordinary same-key
 dictionary reads. The fixture enters through a modeled native far jump, executes
 the compiled bridge and native continuation branch, and checks SP, x19-x29,
 d8-d15, return address, comparison flags and one original lookup. Saved dictionaries
-are not written and the general dictionary function has no hook. All 301 pinned
+are not written and the general dictionary function has no hook. All 302 pinned
 instruction windows match the supplied NSO; startup rejects a changed call site.
 An independent configuration with a nonempty chef PID verifies no allocations
 on deferred or repeated idle support ticks. Dialogue non-Main labels do not
 initialize class metadata; each required class initializes at most once.
 No combat frame-time or FPS improvement has been measured in the actual game.
+
+Menu inheritance regression checks use the native 27-slot BasicMenuItem and
+30-slot MapBasicMenuItem, with concrete HubMenuItem/GodItem and well exchange
+subclasses. They verify constructor/type agreement, collection at the first
+position, all seventeen facility choices, well preview/reroll callbacks, repeated
+openings and unchanged original class tables. Missing map interfaces, short
+tables, undersized instances, cyclic ancestry and null items reject insertion
+without grants. The same pass uses 27-slot ring-cleaning and meld-confirmation
+items so neither rejects a valid native class for lacking unrelated help slots.
+A changed map-item constructor signature installs no hooks. These are compiled
+boundary checks, not evidence that the real game UI has been displayed.
 
 The shop fixture does not execute native purchase settlement. Verify actual
 prices, capacity refusal, sold-out unlocked goods and locked chapters in game.

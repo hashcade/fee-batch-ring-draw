@@ -127,7 +127,6 @@ pub(crate) mod native {
             (4, name as *const () as usize),
             (8, attribute as *const () as usize),
             (18, activate as *const () as usize),
-            (28, name as *const () as usize),
           ],
         ) else {
           return;

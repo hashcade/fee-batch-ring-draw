@@ -59,13 +59,21 @@ pub(crate) unsafe fn create(
   if first.is_null() {
     return None;
   }
+  // Help/flag/map-attribute slots belong to MapBasicMenuItem, not its
+  // 27-slot BasicMenuItem parent. Keep that native type for map entries.
+  let map_item = callbacks.iter().any(|(slot, _)| *slot >= 27);
+  let (expected, ctor_offset, minimum_slots): (&[u8], usize, u16) = if map_item {
+    (b"MapBasicMenuItem", crate::collector::profile::MAP_ITEM_CTOR, 30)
+  } else {
+    (b"BasicMenuItem", crate::collector::profile::ITEM_CTOR, 27)
+  };
   let mut class: Object = unsafe { field(first, 0) };
   let mut found = false;
   for _ in 0..16 {
     if class.is_null() {
       return None;
     }
-    if unsafe { named(field(class, 0x10), b"BasicMenuItem") } {
+    if unsafe { named(field(class, 0x10), expected) } {
       found = true;
       break;
     }
@@ -76,8 +84,8 @@ pub(crate) unsafe fn create(
   }
   let count: u16 = unsafe { field(class, 0x126) };
   let size: u32 = unsafe { field(class, 0xF8) };
-  if !(29..=128).contains(&count)
-    || !(0x60..=0x200).contains(&size)
+  if !(minimum_slots..=128).contains(&count)
+    || !(0x68..=0x200).contains(&size)
     || callbacks.iter().any(|(slot, _)| *slot >= usize::from(count))
   {
     return None;
@@ -85,7 +93,7 @@ pub(crate) unsafe fn create(
   let allocate: unsafe extern "C" fn(Object) -> Object =
     unsafe { core::mem::transmute(base() + crate::profile::ALLOCATE_OBJECT) };
   let ctor: unsafe extern "C" fn(Object, Method) =
-    unsafe { core::mem::transmute(base() + crate::collector::profile::ITEM_CTOR) };
+    unsafe { core::mem::transmute(base() + ctor_offset) };
   let item = unsafe { allocate(class) };
   if item.is_null() {
     return None;
