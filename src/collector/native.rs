@@ -75,7 +75,7 @@ unsafe fn append_collection(parent: Object) {
       return;
     }
     let list: Object = field(menu, 0x80);
-    let Some(count) = list_count(list).filter(|n| *n > 0 && *n < 128) else {
+    let Some(count) = list_count(list) else {
       return;
     };
     let Some(first) = object_at(list, 0) else {
@@ -102,9 +102,7 @@ unsafe fn append_collection(parent: Object) {
     }
     reference(array, 0x20, item);
     let rows: i32 = field(menu, 0xB8);
-    if (0..128).contains(&rows) {
-      menu.cast::<u8>().add(0xB8).cast::<i32>().write(rows + 1);
-    }
+    menu.cast::<u8>().add(0xB8).cast::<i32>().write(rows + 1);
   }
 }
 
@@ -315,16 +313,13 @@ unsafe fn item_list(sources: &[Source]) -> Option<Object> {
   };
   let count: u16 = unsafe { field(class, 0x11C) };
   let methods: *const Method = unsafe { field(class, 0x98) };
-  if count > 256 || methods.is_null() {
+  if methods.is_null() {
     return None;
   }
   let mut add_method = NONE;
   for index in 0..usize::from(count) {
     let candidate = unsafe { methods.add(index).read() };
-    if !candidate.is_null()
-      && unsafe { named(field(candidate as Object, 0x10), b"Add") }
-      && unsafe { field::<usize>(candidate as Object, 0) } == base() + profile::LIST_ADD
-    {
+    if !candidate.is_null() && unsafe { named(field(candidate as Object, 0x10), b"Add") } {
       add_method = candidate;
       break;
     }
@@ -416,9 +411,6 @@ unsafe fn execute(item: Object) -> bool {
     return false;
   }
   let close_address: usize = unsafe { field(class, VTABLE + 23 * 16) };
-  if !(base()..base() + profile::RODATA_OFFSET).contains(&close_address) {
-    return false;
-  }
   let close: unsafe extern "C" fn(Object, Method) = unsafe { core::mem::transmute(close_address) };
   let close_method: Method = unsafe { field(class, VTABLE + 23 * 16 + 8) };
   let Some(context) = (unsafe { context() }) else {

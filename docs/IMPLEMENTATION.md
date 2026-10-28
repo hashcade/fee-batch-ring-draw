@@ -7,7 +7,7 @@ classes are private copies, not shared-vtable mutations. Map entries instantiate
 the native MapBasicMenuItem ancestor (30 slots, including help at 28), not its
 27-slot BasicMenuItem parent. Ordinary well entries need only BasicMenuItem and
 do not register a nonexistent help slot. Each uses its own native constructor.
-The factory validates the actual inheritance, instance size and requested slots
+The factory resolves the actual inheritance and checks only requested slots
 even when a private class was cached by an earlier menu. Native facility
 CreateBind entry points keep their full descriptors and OnDispose. The wrapper
 runs original cleanup before reopening the parent and restoring the footer.
@@ -56,10 +56,10 @@ marked rather than presented as a guaranteed recipient-specific result. No
 Dish constructor, reward API or RNG is invoked for a preview.
 
 The preparation shortcut hooks DoCooking's iterator factory, not ExecuteCooking
-or the outer sequence. Only a fresh iterator with its exact owner, a settled
-dish and the pinned MoveNext is set to its native completed state (-1).
-That MoveNext only starts/waits for cooking motions and a fixed delay. Existing
-or changed iterators fall back. Result/support/lunch/achievement and resource
+or the outer sequence. Only a fresh iterator with its current owner and a settled
+dish is set to its native completed state (-1), without a MoveNext-address check.
+That MoveNext only starts/waits for cooking motions and a fixed delay.
+Already-started iterators fall back. Result/support/lunch/achievement and resource
 cleanup descriptors remain original; the rest of the meal scene is not bypassed.
 
 ## Unlimited shop stock
@@ -109,9 +109,9 @@ mod-settings variable in the save.
 
 One entry point validates the display version, mapped segment layout, loaded Build ID, draw/meld native functions, semantic call sites, and every activity patch's surrounding instructions before changing any game code.
 
-Activities use 32 one-time instruction replacements. All original words must match before the first write. Each write is read back; a failure triggers restoration of startup writes and no hooks are registered. The memory writer imports only Cobalt's `sky_memcpy` ABI, not Skyline's NRO-loader APIs.
+Activities use 32 one-time instruction replacements without runtime original-word matching. Each write is read back; an actual write failure restores the words observed before this operation. It does not disable unrelated hooks or settings. The memory writer imports only Cobalt's `sky_memcpy` ABI, not Skyline's NRO-loader APIs.
 
-Draw, meld, Wyvern Ride, and collection hooks are installed only after this preflight and patch application succeed. The ring modules have separate thread-local sessions and uniquely named exported hook symbols. No repeating timer or background inventory writer is used.
+Draw, meld, Wyvern Ride, collection and settings initialize independently of activity-write success. The ring modules have separate thread-local sessions and uniquely named exported hook symbols. No repeating timer or background inventory writer is used.
 
 ## Ring transactions and presentation
 
@@ -186,9 +186,9 @@ paused, retiring, already-finished, missing-data, or invalid-config runs alone.
 
 The selected level at sequence `+0xB8` selects the live config's Normal, Hard,
 or Expert score-border array at `+0x20`, `+0x28`, or `+0x30`. Its first descending
-boundary is validated by the original `CalcRankNum` (`0x02ACC570`): the boundary
-must produce SSS (1), and one point less must not. No numerical SSS score is
-hardcoded or derived from the user's saved records.
+boundary is used directly. The plugin does not impose another array-length,
+sort-order or `CalcRankNum` validation gate. No numerical SSS score is hardcoded
+or derived from the user's saved records.
 
 For an eligible round, native `DragonRideCamera.FinishRail` (`0x01D02670`)
 signals rail completion. The original Main still executes once and follows
@@ -275,11 +275,11 @@ boundaries, not Unity's actual dialogue, animation, minimap or save/reload flow.
 `ArenaCombatSequence.CreateBind` (`0x01CA3000`) constructs and binds a fresh
 14-entry descriptor array without ticking its first step. For ordinary training
 (type 0, non-Emblem, zero bond EXP) or paid, non-special Emblem training (type 1,
-positive bond EXP), validate the parent/child flags, calculator identities,
-untouched descriptor index, all descriptor types and callback targets. Reorder
-that instance's array to retain the native fades, Grow1, Grow2, Grow3 and End.
-Use managed write barriers; leave the unused tail as End entries. Unknown or
-already modified layouts stay unchanged. FadeWait is a native user descriptor
+positive bond EXP), reorder that instance's array to retain the native fades,
+Grow1, Grow2, Grow3 and End. Only the accessed descriptor indices must exist;
+there is no original-function, descriptor-type or mirrored-object equality gate.
+Use managed write barriers; fill the unused part of the original 14 entries
+with End and leave any additional entries untouched. FadeWait is a native user descriptor
 (type 15), not a WaitWhileTrue descriptor.
 
 This removes child combat setup, fight/result presentation and the matching
@@ -291,17 +291,19 @@ Special challenges and inconsistent mode/EXP combinations are not changed.
 
 [Triabolical's arena implementation](https://github.com/triabolicals/triabolical-code-mods)
 provided a behavior reference. No source was copied. Unlike its global
-coroutine patches, this implementation edits only a validated fresh child array.
+coroutine patches, this implementation edits only the child array returned by
+the original factory.
 The compiled fixture checks the edit and fallbacks, not Unity execution.
 
 ### Relationship conversation messages
 
-Hook only `App.Talk3D.TalkSequence.Tick` (`0x020C79B0`). Follow at most eight
-native parent links and require the exact initialized IL2CPP class for
+Hook only `App.Talk3D.TalkSequence.Tick` (`0x020C79B0`). Follow the native parent
+chain to identify the initialized IL2CPP class for
 MyRoomRelianceCallSequence. Accept a native C/B/A support target (levels 1–3,
 no God target), or a God target with no ordinary target. In an arena child,
-additionally require paid/non-special Emblem training flags and the live
-parent/child identity. This includes manually selected/replayed relationship
+additionally require the native paid/non-special Emblem training mode and EXP.
+Do not recheck mirrored parent/child identity or duplicate mode fields.
+This includes manually selected/replayed relationship
 events outside training; it does not start or complete unselected supports.
 Pact Ring/A+ events, story talks and malformed/missing targets use original
 Tick. No cached session or global skip/input flag is introduced.
@@ -324,10 +326,14 @@ forwarders. All four added imports were checked in the pinned release's
 `subsdk9` (SHA-256 recorded in `tools/cobalt-imports.json`). No new dependency,
 game-setting hook, custom save key or global class/vtable edit is required.
 
-The callback constructs ConfigBasicMenuItem using the native constructor,
-validates its size and bounded vtable, and gives it a process-lifetime private
-class. Only CustomCall, SetCommandText and SetHelpText are replaced, located
-by metadata name. Native `ChangeKeyValue(int,int,int,int)` handles the original
+The callback constructs ConfigBasicMenuItem using the native constructor and
+gives it a process-lifetime private class. Only BuildAttribute (8), ACall (18)
+and CustomCall (26) are replaced; command/help text use the original fields.
+Only the accessed slots must exist, with no arbitrary instance-size or maximum
+vtable-size requirement. Cobalt's Assembly::Load export returns an assembly;
+its image field is passed to class lookup. Distinct static class names identify
+the four settings after Cobalt clones their classes again.
+Native `ChangeKeyValue(int,int,int,int)` handles the original
 left/right repeat. Labels follow the game's current text language. The count
 is changed in memory only after its independent file has been committed.
 
@@ -340,3 +346,24 @@ previous file after interruption. Successful commits remove the recovery file;
 there is no backup history. All handles and mounts are scoped and released.
 Failures keep the active count unchanged and return the native error sound
 with a localized help message. Unchanged input does not write the SD card.
+
+## Remaining checks after runtime restriction cleanup
+
+- Target detection retains the supported game version, module layout and Build ID;
+  offline instruction verification is not a runtime hook-registration gate.
+- Native access retains null pointers, negative lengths, actual array capacities
+  and the specific virtual slots or descriptor indices used by a feature. It
+  imposes no maximum object/list/vtable size or parent-chain depth.
+- Feature scope retains Somniel/exploration context, generated/pending claim
+  state, ordinary NPC gift counters, native animal eligibility, support readiness,
+  non-story/non-Pact dialogue, and the native activity lifecycle. Deduplication
+  prevents the same pending claim or shared ring from being processed twice.
+- Ring transactions retain prices, resources, equipped-copy rules, output capacity,
+  rank/cost compatibility, native pool shape needed by RNG prediction, initial
+  batch budgets and actual settlement deltas. These are the requested transaction
+  rules, not extra collection inventory budgets.
+- Independent settings retain their existing count range (2–1000), valid option
+  values, PID syntax/length (128 bytes), file read limit (4096 bytes) and actual
+  storage-error handling. None of these disable hook/settings registration.
+- Actual failed activity writes restore previously observed words. Storage errors
+  retain the old preference. Neither condition disables unrelated features.

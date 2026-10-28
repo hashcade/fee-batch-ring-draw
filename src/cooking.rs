@@ -85,7 +85,7 @@ pub(crate) mod native {
         return Vec::new();
       }
       let list = native!(UNIT_LIST, unsafe extern "C" fn(Method) -> Object)(NONE);
-      let Some(count) = list_count(list).filter(|n| *n <= 128) else { return Vec::new() };
+      let Some(count) = list_count(list) else { return Vec::new() };
       let mut result = Vec::new();
       for index in 0..count {
         let Some(unit) = object_at(list, index).filter(|v| !v.is_null()) else { continue };
@@ -168,8 +168,8 @@ pub(crate) mod native {
       let capability: Object = field(taste, 0x38);
       if !capability.is_null() {
         let array: Object = field(capability, 0x10);
-        if !array.is_null() && field::<usize>(array, 0x18) == 11 {
-          for index in 0..11 {
+        if !array.is_null() {
+          for index in 0..field::<usize>(array, 0x18).min(11) {
             let value: i8 = field(array, 0x20 + index);
             if value != 0 {
               let name =
@@ -203,19 +203,9 @@ pub(crate) mod native {
         && field::<Object>(iterator, 0x20) == owner
         && !field::<Object>(owner, 0xA0).is_null()
       {
-        let class: Object = field(iterator, 0);
-        let count: u16 = if class.is_null() { 0 } else { field(class, 0x126) };
-        if (4..=16).contains(&count)
-          && (0..usize::from(count)).any(|slot| {
-            field::<usize>(class, crate::menu_item::VTABLE + slot * 16)
-              == base() + ANIMATION_MOVE_NEXT
-          })
-        {
-          // DoCooking only plays the cooking motion and waits for it/timing.
-          // Its native MoveNext treats -1 as complete, without starting a motion.
-          // ExecuteCooking, rewards and outer resource cleanup are separate.
-          iterator.cast::<u8>().add(0x10).cast::<i32>().write(-1);
-        }
+        // This hook is the cooking-animation factory itself. Native state -1
+        // completes its iterator without skipping cooking/reward settlement.
+        iterator.cast::<u8>().add(0x10).cast::<i32>().write(-1);
       }
     }
     iterator
@@ -232,7 +222,7 @@ pub(crate) mod native {
         return None;
       }
       let list = native!(UNIT_LIST, unsafe extern "C" fn(Method) -> Object)(NONE);
-      let count = list_count(list).filter(|n| *n <= 128)?;
+      let count = list_count(list)?;
       for index in 0..count {
         let Some(unit) = object_at(list, index).filter(|v| !v.is_null()) else { continue };
         let pid = native!(UNIT_PID, unsafe extern "C" fn(Object, Method) -> Object)(unit, NONE);

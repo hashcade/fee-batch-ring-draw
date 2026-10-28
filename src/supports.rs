@@ -137,7 +137,7 @@ pub(crate) mod native {
         return;
       }
       let units = native!(crate::cooking::UNIT_LIST, unsafe extern "C" fn(Method) -> Object)(NONE);
-      let Some(count) = list_count(units).filter(|n| *n <= 128) else { return };
+      let Some(count) = list_count(units) else { return };
       let pending = (0..count).any(|i| {
         (i + 1..count).any(|j| {
           let (Some(a), Some(b)) = (object_at(units, i), object_at(units, j)) else { return false };
@@ -247,7 +247,7 @@ pub(crate) mod native {
     }
     unsafe {
       let menu: Object = field(parent, 0x38);
-      if menu.is_null() || field::<Object>(menu, 0x30) != parent {
+      if menu.is_null() {
         return;
       }
       crate::menu_item::override_class(menu, cache, &[(49, dispatch as *const () as usize)]);
@@ -290,7 +290,7 @@ pub(crate) mod native {
         return original(menu, method);
       }
       let list: Object = field(menu, 0x80);
-      let Some(count) = list_count(list).filter(|n| *n <= 256) else { return menu_call(menu, 51) };
+      let Some(count) = list_count(list) else { return menu_call(menu, 51) };
       let pairs = field::<usize>(menu, 0) == PAIR_CLASS.load(Ordering::Relaxed);
       for index in 0..count {
         let Some(item) = object_at(list, index).filter(|item| !item.is_null()) else { continue };
@@ -303,7 +303,7 @@ pub(crate) mod native {
           }
           let candidates =
             native!(PAIR_LIST, unsafe extern "C" fn(Object, Method) -> Object)(unit, NONE);
-          list_count(candidates).filter(|n| *n <= 256).is_some_and(|count| {
+          list_count(candidates).is_some_and(|count| {
             (0..count).any(|i| object_at(candidates, i).is_some_and(|item| ready(item)))
           })
         };

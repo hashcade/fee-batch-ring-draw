@@ -23,8 +23,7 @@ pub(crate) unsafe fn override_class(
       return false;
     }
     let count: u16 = field(class, 0x126);
-    if !(1..=128).contains(&count) || callbacks.iter().any(|(slot, _)| *slot >= usize::from(count))
-    {
+    if callbacks.iter().any(|(slot, _)| *slot >= usize::from(count)) {
       return false;
     }
     let mut private = cache.load(Ordering::Relaxed);
@@ -62,32 +61,23 @@ pub(crate) unsafe fn create(
   // Help/flag/map-attribute slots belong to MapBasicMenuItem, not its
   // 27-slot BasicMenuItem parent. Keep that native type for map entries.
   let map_item = callbacks.iter().any(|(slot, _)| *slot >= 27);
-  let (expected, ctor_offset, minimum_slots): (&[u8], usize, u16) = if map_item {
-    (b"MapBasicMenuItem", crate::collector::profile::MAP_ITEM_CTOR, 30)
+  let (expected, ctor_offset): (&[u8], usize) = if map_item {
+    (b"MapBasicMenuItem", crate::collector::profile::MAP_ITEM_CTOR)
   } else {
-    (b"BasicMenuItem", crate::collector::profile::ITEM_CTOR, 27)
+    (b"BasicMenuItem", crate::collector::profile::ITEM_CTOR)
   };
   let mut class: Object = unsafe { field(first, 0) };
-  let mut found = false;
-  for _ in 0..16 {
+  loop {
     if class.is_null() {
       return None;
     }
     if unsafe { named(field(class, 0x10), expected) } {
-      found = true;
       break;
     }
     class = unsafe { field(class, 0x58) };
   }
-  if !found {
-    return None;
-  }
   let count: u16 = unsafe { field(class, 0x126) };
-  let size: u32 = unsafe { field(class, 0xF8) };
-  if !(minimum_slots..=128).contains(&count)
-    || !(0x68..=0x200).contains(&size)
-    || callbacks.iter().any(|(slot, _)| *slot >= usize::from(count))
-  {
+  if callbacks.iter().any(|(slot, _)| *slot >= usize::from(count)) {
     return None;
   }
   let allocate: unsafe extern "C" fn(Object) -> Object =

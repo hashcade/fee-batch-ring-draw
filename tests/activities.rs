@@ -42,17 +42,17 @@ fn applies_every_instruction_once_without_polling() {
     assert_eq!(memory.read(offset), replacement);
   }
   memory.writes.clear();
-  assert!(!apply(&mut memory));
-  assert!(memory.writes.is_empty());
+  assert!(apply(&mut memory));
+  assert_eq!(memory.writes.len(), PATCHES.len());
 }
 
 #[test]
-fn any_conflicting_cheat_prevents_every_write() {
+fn existing_activity_changes_do_not_block_initialization() {
   for &(offset, _, replacement) in PATCHES {
     let mut memory = Memory::original();
     memory.words.insert(offset, replacement);
-    assert!(!apply(&mut memory));
-    assert!(memory.writes.is_empty());
+    assert!(apply(&mut memory));
+    assert_eq!(memory.writes.len(), PATCHES.len());
   }
 }
 
@@ -65,6 +65,16 @@ fn each_failed_write_restores_the_original_instructions() {
     assert!(!apply(&mut memory));
     assert_eq!(memory.words, expected);
   }
+}
+
+#[test]
+fn write_failure_restores_existing_changes_instead_of_vanilla_words() {
+  let mut memory = Memory::original();
+  memory.words.insert(PATCHES[0].0, 0xD503201F);
+  let expected = memory.words.clone();
+  memory.fail_at = Some(2);
+  assert!(!apply(&mut memory));
+  assert_eq!(memory.words, expected);
 }
 
 #[test]

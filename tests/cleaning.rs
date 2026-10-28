@@ -43,3 +43,10 @@ fn every_game_language_has_a_clean_all_label() {
   assert_eq!(label(10), "全部清洁");
   assert_eq!(label(-1), label(1));
 }
+
+#[test]
+fn native_selection_is_not_truncated_to_an_arbitrary_limit() {
+  let mut session = Session::default();
+  assert!(session.prepare(1, (1..=160).map(|god| Candidate { god, kind: -1, dirty: 1 })));
+  assert_eq!(session.take(1).unwrap().len(), 160);
+}

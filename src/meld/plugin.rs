@@ -88,22 +88,12 @@ fn meld_yes_no_dialog(
     return call_original!(parent, message, yes, no, method);
   };
   let dialog = call_original!(parent, replacement, single, no, method);
-  if unsafe { super::dialog::append_batch(dialog, batch, field_no(dialog)) } {
+  if unsafe { super::dialog::append_batch(dialog, batch, no) } {
     SESSION.with(|s| s.borrow_mut().mark_displayed());
   } else {
     SESSION.with(|s| s.borrow_mut().clear());
   }
   dialog
-}
-
-unsafe fn field_no(dialog: Object) -> Object {
-  if dialog.is_null() {
-    return ptr::null_mut();
-  }
-  unsafe {
-    let list = crate::native::field(dialog, 0x80);
-    crate::native::object_at(list, 1).unwrap_or(ptr::null_mut())
-  }
 }
 
 #[skyline::hook(offset = profile::ON_YES)]

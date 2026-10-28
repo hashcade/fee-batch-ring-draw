@@ -83,15 +83,13 @@ pub trait CodeMemory {
   fn write(&mut self, offset: usize, word: u32) -> bool;
 }
 
-/// Check the complete set before writing; restore startup writes on failure.
+/// Apply the target-version replacements; restore writes on an actual write failure.
 pub fn apply(memory: &mut impl CodeMemory) -> bool {
-  if PATCHES.iter().any(|&(offset, original, _)| memory.read(offset) != original) {
-    return false;
-  }
+  let previous: Vec<_> = PATCHES.iter().map(|&(offset, _, _)| memory.read(offset)).collect();
   for (index, &(offset, _, replacement)) in PATCHES.iter().enumerate() {
     if !memory.write(offset, replacement) || memory.read(offset) != replacement {
-      for &(offset, original, _) in PATCHES[..=index].iter().rev() {
-        memory.write(offset, original);
+      for (position, &(offset, _, _)) in PATCHES[..=index].iter().enumerate().rev() {
+        memory.write(offset, previous[position]);
       }
       return false;
     }

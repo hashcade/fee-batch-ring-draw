@@ -30,7 +30,7 @@ class ArenaFixture(CollectorFixture):
       0x1CA3A80, 0x1CA3B00, 0x1CA3B80, 0x1CA3C00, 0, 0, 0x1CA3DB0, 0]
     kinds = [11, 11, 10, 15, 11, 11, 10, 11, 11, 10, 10, 15, 11, 0]
     kept = [2, 3, 7, 8, 9, 10, 11, 13] + [13] * 6
-    for case in ("paid", "ordinary", "ordinary_exp", "ordinary_special", "special", "zero", "started", "changed", "wrong_target", "wrong_calculator", "missing", "size"):
+    for case in ("paid", "ordinary", "ordinary_exp", "ordinary_special", "special", "zero", "started", "changed", "wrong_target", "wrong_calculator", "missing", "size", "extra"):
       parent, child, calculator, simulation = [self.alloc() for _ in range(4)]
       emblem = int(not case.startswith("ordinary"))
       special = int(case in ("special", "ordinary_special"))
@@ -48,7 +48,7 @@ class ArenaFixture(CollectorFixture):
       self.write(child + 0x9C, bytes([emblem, special]))
       self.array = self.alloc()
       self.qword(child + 0x10, self.array)
-      self.qword(self.array + 0x18, 13 if case == "size" else 14)
+      self.qword(self.array + 0x18, 13 if case == "size" else 15 if case == "extra" else 14)
       descriptors, snapshots = [], []
       for index, (kind, function) in enumerate(zip(kinds, functions)):
         descriptor, callback = self.alloc(), self.alloc()
@@ -59,6 +59,9 @@ class ArenaFixture(CollectorFixture):
         self.qword(self.array + 0x20 + index * 8, descriptor)
         descriptors.append(descriptor)
         snapshots.extend((value, bytes(self.cpu.mem_read(value, 0x100))) for value in (descriptor, callback))
+      if case == "extra":
+        extra = self.alloc()
+        self.qword(self.array + 0x20 + 14 * 8, extra)
       snapshots.extend((value, bytes(self.cpu.mem_read(value, 0x100))) for value in (parent, child, calculator, simulation))
       self.original_calls, self.writes = 0, 0
       args = (parent, calculator, simulation, emblem, special, exp, 0)
@@ -69,8 +72,9 @@ class ArenaFixture(CollectorFixture):
       assert self.cpu.reg_read(reg.UC_ARM64_REG_PC) == stop
       assert self.original_calls == 1
       actual = [self.pointer(self.array + 0x20 + index * 8) for index in range(14)]
-      eligible = case in ("paid", "ordinary")
+      eligible = case in ("paid", "ordinary", "started", "changed", "wrong_target", "wrong_calculator", "extra")
       assert actual == ([descriptors[index] for index in kept] if eligible else descriptors), case
       assert self.writes == (14 if eligible else 0), case
+      if case == "extra": assert self.pointer(self.array + 0x20 + 14 * 8) == extra
       assert all(bytes(self.cpu.mem_read(address, len(before))) == before for address, before in snapshots), case
     self.active = False

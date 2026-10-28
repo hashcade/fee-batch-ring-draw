@@ -28,7 +28,6 @@ class WyvernFixture:
   def reset(self, level=1):
     self.events, self.score = [], 123
     self.retire, self.retire_during_tick = False, False
-    self.bad_rank, self.all_sss = False, False
     for obj in [self.sequence, self.camera, self.config, *self.arrays]:
       self.write(obj, bytes(0x600))
     self.qword(self.sequence + 0xA8, self.camera)
@@ -67,17 +66,7 @@ class WyvernFixture:
       self.events.append("score")
       self.score = x0
     elif name == "CALC_RANK":
-      assert x0 == self.sequence
-      assert self.cpu.reg_read(registers.UC_ARM64_REG_X3) == 0
-      level = self.cpu.reg_read(registers.UC_ARM64_REG_X1)
-      score = self.cpu.reg_read(registers.UC_ARM64_REG_X2)
-      threshold, = struct.unpack("<i", self.cpu.mem_read(self.arrays[level - 1] + 0x20, 4))
-      rank = 1 if score >= threshold else 2
-      if self.bad_rank:
-        rank = 2
-      elif self.all_sss:
-        rank = 1
-      self.cpu.reg_write(registers.UC_ARM64_REG_X0, rank)
+      raise AssertionError("native SSS borders must not be revalidated through rank calls")
     self.cpu.reg_write(registers.UC_ARM64_REG_PC, self.cpu.reg_read(registers.UC_ARM64_REG_X30))
     return True
 
@@ -135,20 +124,21 @@ class WyvernFixture:
       self.reset()
       self.qword(self.arrays[0] + 0x18, count)
       call()
-      assert self.events == ["tick"]
+      assert self.events == (["tick"] if count == 0 else ["finish", "tick", "score"])
+      assert self.score == (140 if count == 0 else 8000)
 
     for values in [(0, -1), (100, 200), (100, 100), (100, -1)]:
       self.reset()
       self.qword(self.arrays[0] + 0x18, 2)
       self.write(self.arrays[0] + 0x20, struct.pack("<2i", *values))
       call()
-      assert self.events == ["tick"]
+      assert self.events == ["finish", "tick", "score"]
+      assert self.score == values[0]
 
-    for flag in ("retire", "bad_rank", "all_sss"):
-      self.reset()
-      setattr(self, flag, True)
-      call()
-      assert self.events == ["tick"]
+    self.reset()
+    self.retire = True
+    call()
+    assert self.events == ["tick"]
 
     self.reset()
     self.retire_during_tick = True

@@ -118,7 +118,7 @@ pub(crate) mod native {
         return;
       }
       let list: Object = field(menu, 0x80);
-      let Some(count) = list_count(list).filter(|n| *n <= 32) else { return };
+      let Some(count) = list_count(list) else { return };
       for index in 0..count {
         let Some(item) = object_at(list, index).filter(|item| !item.is_null()) else { continue };
         let class: Object = field(item, 0);
@@ -262,7 +262,7 @@ pub(crate) mod native {
         return;
       }
       let list: Object = field(menu, 0x80);
-      let Some(count) = list_count(list).filter(|n| (1..128).contains(n)) else { return };
+      let Some(count) = list_count(list) else { return };
       if (0..count).any(|i| {
         object_at(list, i)
           .is_some_and(|item| field::<usize>(item, 0) == ENTRY_CLASS.load(Ordering::Relaxed))
@@ -289,9 +289,7 @@ pub(crate) mod native {
       native!(profile::LIST_ADD, unsafe extern "C" fn(Object, Object, Method))(list, item, method);
       if list_count(list) == Some(count + 1) {
         let rows: i32 = field(menu, 0xB8);
-        if (0..128).contains(&rows) {
-          menu.cast::<u8>().add(0xB8).cast::<i32>().write(rows + 1);
-        }
+        menu.cast::<u8>().add(0xB8).cast::<i32>().write(rows + 1);
       }
     }
   }
@@ -301,14 +299,13 @@ pub(crate) mod native {
       let class: Object = field(template, 0);
       let methods: *const Method = field(class, 0x98);
       let count: u16 = field(class, 0x11C);
-      if methods.is_null() || count > 256 {
+      if methods.is_null() {
         return None;
       }
       let ctor = (0..usize::from(count)).map(|i| methods.add(i).read()).find(|method| {
         !method.is_null()
           && menu_item::named(field(*method as Object, 0x10), b".ctor")
-          && field::<usize>(*method as Object, 0)
-            == base() + crate::collector::profile::DEFAULT_LIST_CTOR
+          && field::<u8>(*method as Object, 0x4A) == 0
       })?;
       let list = native!(profile::ALLOCATE_OBJECT, unsafe extern "C" fn(Object) -> Object)(class);
       if list.is_null() {
@@ -348,7 +345,7 @@ pub(crate) mod native {
         );
       }
       let mut class: Object = field(parent, 0);
-      for _ in 0..16 {
+      loop {
         if class.is_null() {
           return false;
         }
@@ -356,9 +353,6 @@ pub(crate) mod native {
           break;
         }
         class = field(class, 0x58);
-      }
-      if class.is_null() || !menu_item::named(field(class, 0x10), b"BasicMenu") {
-        return false;
       }
       let content = native!(CONTENT, unsafe extern "C" fn(Method) -> Object)(NONE);
       if content.is_null() {
@@ -442,7 +436,7 @@ pub(crate) mod native {
         native!(entry, unsafe extern "C" fn(Object, Method))(menu, NONE);
       }
       let child: Object = field(menu, 0x38);
-      if child.is_null() || field::<Object>(child, 0x30) != menu {
+      if child.is_null() {
         return 2048;
       }
       if !menu_item::override_class(

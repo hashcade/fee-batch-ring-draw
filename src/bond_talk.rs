@@ -68,10 +68,7 @@ pub(crate) mod native {
       let mut ancestor = field::<Object>(talk, 0x30);
       // Talk -> Lua/event children -> MyRoomRelianceCallSequence. Keep the
       // native script running; only skip its message presentation.
-      for _ in 0..8 {
-        if ancestor.is_null() {
-          return false;
-        }
+      while !ancestor.is_null() {
         if is_class(ancestor, dialog_class) {
           if field::<Object>(ancestor, 0x70).is_null() {
             return false;
@@ -93,12 +90,12 @@ pub(crate) mod native {
           }
           let order: Object = field(combat, 0x30);
           return is_class(order, cached_class(&ORDER, ORDER_CLASS))
-            && field::<Object>(order, 0x38) == combat
-            && field::<u8>(order, 0x88) == 1
-            && field::<u8>(order, 0x89) == 0
-            && field::<u8>(combat, 0x9C) == 1
-            && field::<u8>(combat, 0x9D) == 0
-            && crate::arena::selection(true, false, field(order, 0x8C), field(combat, 0x98));
+            && crate::arena::selection(
+              field::<u8>(combat, 0x9C) != 0,
+              field::<u8>(combat, 0x9D) != 0,
+              field(order, 0x8C),
+              field(combat, 0x98),
+            );
         }
         ancestor = field(ancestor, 0x30);
       }

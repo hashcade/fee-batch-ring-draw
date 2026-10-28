@@ -102,11 +102,11 @@ pub(crate) mod native {
     }
     unsafe {
       let menu: Object = field(parent, 0x38);
-      if menu.is_null() || field::<Object>(menu, 0x30) != parent {
+      if menu.is_null() {
         return;
       }
       let list: Object = field(menu, 0x80);
-      let Some(count) = list_count(list).filter(|n| (1..=16).contains(n)) else { return };
+      let Some(count) = list_count(list) else { return };
       // Never append twice to a reused menu.
       for index in 0..count {
         let Some(item) = object_at(list, index) else { return };
@@ -167,7 +167,7 @@ pub(crate) mod native {
       let items = native!(CALCULATE, unsafe extern "C" fn(Object, i32, Object, Method) -> Object)(
         sequence, level, random, NONE,
       );
-      let count = list_count(items).filter(|n| (1..=128).contains(n))?;
+      let count = list_count(items)?;
       let mut grouped: Vec<(Object, usize)> = Vec::new();
       for index in 0..count {
         let item = object_at(items, index)?;
@@ -207,7 +207,7 @@ pub(crate) mod native {
         return 2048;
       }
       let sequence: Object = field(menu, 0x30);
-      if sequence.is_null() || field::<Object>(sequence, 0x38) != menu {
+      if sequence.is_null() {
         return 2048;
       }
       let reroll = field::<usize>(item, 0) == REROLL_CLASS.load(Ordering::Relaxed);

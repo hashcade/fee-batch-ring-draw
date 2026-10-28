@@ -37,11 +37,7 @@ pub(super) unsafe fn choice(yes: Object, count: u32) -> Option<Object> {
     return None;
   }
   let slots: u16 = unsafe { field(class, 0x126) };
-  let size: u32 = unsafe { field(class, 0xF8) };
-  if !(27..=128).contains(&slots)
-    || !(0x78..=0x100).contains(&size)
-    || unsafe { field::<usize>(class, VTABLE + 18 * 16) } != base() + profile::YES_ITEM_CALL
-  {
+  if slots <= 18 {
     return None;
   }
   let allocate: unsafe extern "C" fn(Object) -> Object =
@@ -81,9 +77,12 @@ pub(super) unsafe fn append_batch(dialog: Object, batch: Object, no: Object) -> 
     return false;
   }
   let list: Object = unsafe { field(dialog, 0x80) };
-  if unsafe { list_count(list) } != Some(2) {
+  let Some(count) = (unsafe { list_count(list) }) else { return false };
+  let array: Object = unsafe { field(list, 0x10) };
+  let Some(position) = (0..count).find(|&i| unsafe { field::<Object>(array, 0x20 + i * 8) == no })
+  else {
     return false;
-  }
+  };
   let method = unsafe { metadata(0x06286A70) };
   if method.is_null() {
     return false;
@@ -91,16 +90,18 @@ pub(super) unsafe fn append_batch(dialog: Object, batch: Object, no: Object) -> 
   let add: unsafe extern "C" fn(Object, Object, Method) =
     unsafe { core::mem::transmute(base() + crate::profile::LIST_ADD) };
   unsafe { add(list, batch, method) };
-  if unsafe { list_count(list) } != Some(3) {
+  if unsafe { list_count(list) } != Some(count + 1) {
     return false;
   }
   unsafe {
     let array: Object = field(list, 0x10);
-    reference(array, 0x28, batch);
-    reference(array, 0x30, no);
+    for index in (position..count).rev() {
+      reference(array, 0x20 + (index + 1) * 8, field(array, 0x20 + index * 8));
+    }
+    reference(array, 0x20 + position * 8, batch);
     let rows: unsafe extern "C" fn(Object, i32, Method) =
       core::mem::transmute(base() + crate::profile::SET_MENU_ROWS);
-    rows(dialog, 3, NONE);
+    rows(dialog, (count + 1) as i32, NONE);
   }
   true
 }

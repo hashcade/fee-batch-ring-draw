@@ -7,17 +7,17 @@
 - Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **298** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/well/cooking/support/facility/shop instruction signatures.
 - Focused meld planning/session/confirmation tests retain cost, capacity, equipped-copy, repeated-dispatch, and fragment-refill protections.
 - Presentation-session tests cover matching owner, one-shot consumption, cancellation/cleanup, stale ownership, and null ownership.
-- Activity tests cover all **32** instruction replacements, whole-set preflight, readback, each possible failed write and restoration, and separation from arena/rewind/resource code.
+- Activity tests cover all **32** instruction replacements, reapplication over existing changes, readback, failed-write restoration of the actual previous words, and separation from arena/rewind/resource code. There is no runtime original-instruction preflight.
 - Focused compiled-NRO AArch64 startup checks register **40 hooks** and write precisely the activity replacements. Every startup case models Cobalt's preinstalled ProcInst.CreateBind hook; a separate case also models an existing inventory-getter hook. Neither entry is overwritten. Version, Build ID, layout, activity-write and configuration regression cases remain in CI.
 - Well tests and compiled callbacks cover explicit localized entries, duplicate insertion prevention, unchanged original metadata, pending/ready/invalid state and level gates, grouped quantities, independent RNG, explicit-only reseeding and failed-preview seed recovery. No inventory-grant API is modeled or callable in this path. Actual rendered menus, waiting/collection and preview-to-claimed consistency still require in-game verification.
-- Focused and compiled arena cases cover both ordinary and paid training, rejecting special challenges, inconsistent mode/EXP values and mismatched or modified children. The same native growth/fade steps remain in order for both modes. Real ordinary EXP, support and activity-use settlement still require in-game verification.
-- A compiled failed-write case restores the original instructions, returns normally, and installs no hooks.
+- Focused and compiled arena cases cover both ordinary and paid training, retaining native special-challenge and mode/EXP exclusions. Additional descriptors and changed callback addresses no longer suppress the edit; additional descriptors are untouched. The same native growth/fade steps remain in order for both modes. Real settlement still requires in-game verification.
+- Compiled changed-activity-instruction and failed-write cases still register all 40 hooks and four settings. A failed activity write restores prior words without disabling unrelated features.
 - Configuration cases cover missing/malformed/oversized/invalid UTF-8/short reads, mount failure, and counts 2, 10, 300, 600, and 1000. Startup only reads independent mod files; explicit UI edits use bounded recoverable transactions. Handles/mounts are released.
 - Compiled draw text fixtures cover supported text languages, exact compact prices, unchanged actual native prices, and unchanged single-row behavior.
-- Compiled draw-menu fixtures retain native one/ten entries and their handlers, append the configured native count item once, and avoid a duplicate when configured to ten. Original ten draws cannot arm batch presentation bypass.
-- Compiled meld-dialog fixtures construct single/batch/cancel choices with distinct localized labels. Alternating single/batch/single selections preserves their separate confirmation and presentation paths. Focused tests verify unit versus total costs and the single-copy fallback.
+- Compiled draw-menu fixtures retain native one/ten and additional rows with their handlers, append the configured native count item once, and avoid a duplicate when configured to ten. Original ten draws cannot arm batch presentation bypass.
+- Compiled meld-dialog fixtures construct single/batch/cancel choices with distinct localized labels and preserve additional choices. Alternating single/batch selections preserves their separate confirmation and presentation paths. Focused tests verify unit versus total costs and the single-copy fallback.
 - Cleaning planning tests cover owner scoping, cancellation, valid native GodType values (-1 through 3), clean exclusions and shared-DLC-ring deduplication. The compiled menu/settlement fixture covers native cleaner attribution, current unavailability/state gates, repeated dispatch, cancellation, failed dirty setters, missing cleaners and restoration of the original static ring selection.
-- Focused Wyvern tests cover difficulty-to-config mapping, dynamic SSS boundaries, and malformed arrays. The compiled-hook fixture covers all three difficulties, native tick/finish/score ordering, pending score additions, repeated dispatch, opening/event/test/pause/retirement guards, null pointers, and invalid difficulty/config/native-rank fallbacks.
+- Focused Wyvern tests cover difficulty-to-config mapping and reading the first native SSS border without imposing an array-length, sorting or rank-recalculation gate. The compiled-hook fixture covers all three difficulties, native tick/finish/score ordering, pending score additions, repeated dispatch, opening/event/test/pause/retirement conditions, null pointers, empty arrays and invalid difficulties.
 
 - The compiled collection fixture covers first-position menu insertion, repeated binding without duplicate entries, unchanged original class/vtable, game-language message lookup, donation versus precomputed quantities, full-inventory dispatch to native settlement, duplicate source nodes, claimed and existing-zero flags, NPC result-index/access-count gating including reconstructed TalkItem, story exclusions, barn/donation gates, Somniel animal exclusion, adoption-only batches and repeated dispatch without duplicate grants. Pickup nodes with DisabledTalk remain eligible; disabled NPC gifts do not.
 
@@ -38,8 +38,9 @@ on HubSequence. Activity shortcuts reject exhausted allowances.
 
 Focused compiled cooking checks cover signed preview modifiers, grade/stat text,
 conditional labels and context-scoped outcome selection. The animation factory
-retains its result and only completes a fresh, settled, recognized iterator;
-already-started, changed, off-Somniel or unsettled cases are unchanged.
+retains its result and completes a fresh, settled iterator returned by the native
+factory even when another mod has changed MoveNext. Already-started, off-Somniel
+or unsettled cases are unchanged.
 Compiled shop checks cover each allowlisted store with missing, infinite, zero,
 one and positive stocks, unrelated/null generic MethodInfo and ordinary same-key
 dictionary reads. The fixture enters through a modeled native far jump, executes
@@ -57,9 +58,10 @@ Menu inheritance regression checks use the native 27-slot BasicMenuItem and
 30-slot MapBasicMenuItem, with concrete HubMenuItem/GodItem and well exchange
 subclasses. They verify constructor/type agreement, collection at the first
 position, all seventeen facility choices, well preview/reroll callbacks, repeated
-openings and unchanged original class tables. Missing map interfaces, short
-tables, undersized instances, cyclic ancestry and null items reject insertion
-without grants. The same pass uses 27-slot ring-cleaning and meld-confirmation
+openings and unchanged original class tables. Missing required map interfaces,
+out-of-bounds callback slots and null items reject insertion without grants.
+There are no arbitrary instance-size, maximum-vtable or ancestry-depth limits.
+The same pass uses 27-slot ring-cleaning and meld-confirmation
 items so neither rejects a valid native class for lacking unrelated help slots.
 The startup regression also invokes collection, well, cleaning, meld and settings
 callbacks after modeling Cobalt's preinstalled hook. These are compiled boundary
@@ -95,12 +97,13 @@ rendering still require validation with the rebuilt plugin.
 
 Focused planning tests and the compiled arena fixture cover per-instance descriptor ordering, native
 growth/fade retention, unchanged delegates/calculators, ordinary/paid selections,
-special/inconsistent-EXP exclusions, started or missing children, changed layouts
-and wrong targets. The compiled dialogue fixture covers paid training, nested Lua
+special/inconsistent-EXP exclusions, missing children and additional descriptors.
+The compiled dialogue fixture covers paid training, deeply nested Lua
 parents, manually selected C/B/A support/bond calls, repeated Main-to-Skip dispatch
 and every other lifecycle label. Pact Ring, story, ordinary/special/zero-EXP arena
-calls, stale/wrong-order, malformed/missing-target and cyclic-parent cases retain
-original Tick. Parent sequences,
+calls, wrong-order and missing-target cases retain original Tick. Redundant
+parent/child mirror fields and a fixed eight-parent limit no longer suppress
+eligible dialogue skipping. Parent sequences,
 callbacks and data objects remain unchanged; no global skip flag is set.
 
 ## In-game checks still required

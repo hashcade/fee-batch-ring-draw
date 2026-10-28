@@ -3,18 +3,6 @@
 pub const CREATE_COMBAT: usize = 0x01CA3000;
 pub const DESCRIPTOR_COUNT: usize = 14;
 pub const KEPT_STEPS: [usize; 8] = [2, 3, 7, 8, 9, 10, 11, 13];
-pub const STEP_TYPES: [i32; DESCRIPTOR_COUNT] =
-  [11, 11, 10, 15, 11, 11, 10, 11, 11, 10, 10, 15, 11, 0];
-pub const STEP_FUNCTIONS: [usize; DESCRIPTOR_COUNT] = [
-  0x01CA38C0, 0x01CA3940, 0, 0, 0x01CA39A0, 0x01CA3A20, 0x01CA3A80, 0x01CA3B00, 0x01CA3B80,
-  0x01CA3C00, 0, 0, 0x01CA3DB0, 0,
-];
-
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Step {
-  pub kind: i32,
-  pub function: usize,
-}
 
 pub fn selection(emblem: bool, special: bool, training_type: i32, bond_exp: i32) -> bool {
   emblem && !special && training_type == 1 && bond_exp > 0
@@ -25,13 +13,9 @@ pub fn quick_training(emblem: bool, special: bool, training_type: i32, bond_exp:
     || !emblem && !special && training_type == 0 && bond_exp == 0
 }
 
-pub fn layout(steps: &[Step]) -> Option<[usize; DESCRIPTOR_COUNT]> {
-  if steps.len() != DESCRIPTOR_COUNT
-    || steps.iter().enumerate().any(|(index, step)| {
-      step.kind != STEP_TYPES[index]
-        || STEP_FUNCTIONS[index] != 0 && step.function != STEP_FUNCTIONS[index]
-    })
-  {
+pub fn layout(count: usize) -> Option<[usize; DESCRIPTOR_COUNT]> {
+  // These native presentation indices must exist; additional steps stay intact.
+  if count < DESCRIPTOR_COUNT {
     return None;
   }
   let mut result = [13; DESCRIPTOR_COUNT];
@@ -68,7 +52,7 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
 #[cfg(target_os = "switch")]
 pub(crate) mod native {
   use super::*;
-  use crate::native::{base, field, reference, Method, Object};
+  use crate::native::{field, reference, Method, Object};
 
   pub(crate) fn install() {
     skyline::install_hooks!(arena_create);
@@ -89,49 +73,26 @@ pub(crate) mod native {
       return;
     }
     unsafe {
-      if !quick_training(emblem, special, field(parent, 0x8C), bond_exp)
-        || field::<u8>(parent, 0x88) != u8::from(emblem)
-        || field::<u8>(parent, 0x89) != u8::from(special)
-        || field::<Object>(parent, 0xB0) != calculator
-        || field::<Object>(parent, 0xB8) != simulation
-      {
+      if !quick_training(emblem, special, field(parent, 0x8C), bond_exp) {
         return;
       }
       let child: Object = field(parent, 0x38);
-      if child.is_null()
-        || field::<Object>(child, 0x30) != parent
-        || field::<i32>(child, 0x18) != 0
-        || field::<Object>(child, 0x88) != calculator
-        || field::<Object>(child, 0x90) != simulation
-        || field::<i32>(child, 0x98) != bond_exp
-        || field::<u8>(child, 0x9C) != u8::from(emblem)
-        || field::<u8>(child, 0x9D) != u8::from(special)
-      {
+      if child.is_null() {
         return;
       }
       let descriptors: Object = field(child, 0x10);
-      if descriptors.is_null() || field::<usize>(descriptors, 0x18) != DESCRIPTOR_COUNT {
+      if descriptors.is_null() {
         return;
       }
+      let Some(order) = layout(field(descriptors, 0x18)) else { return };
       let mut objects = [core::ptr::null_mut(); DESCRIPTOR_COUNT];
-      let mut steps = [Step::default(); DESCRIPTOR_COUNT];
       for index in 0..DESCRIPTOR_COUNT {
         let descriptor: Object = field(descriptors, 0x20 + index * 8);
         if descriptor.is_null() {
           return;
         }
         objects[index] = descriptor;
-        steps[index].kind = field(descriptor, 0x10);
-        if STEP_FUNCTIONS[index] != 0 {
-          let function: Object = field(descriptor, 0x18);
-          if function.is_null() || field::<Object>(function, 0x20) != child {
-            return;
-          }
-          let Some(offset) = field::<usize>(function, 0x10).checked_sub(base()) else { return };
-          steps[index].function = offset;
-        }
       }
-      let Some(order) = layout(&steps) else { return };
       // This array is allocated per CreateBind. Keep native fades, Grow1/2/3
       // and End; do not edit a shared method, descriptor or original delegate.
       for (index, original) in order.into_iter().enumerate() {

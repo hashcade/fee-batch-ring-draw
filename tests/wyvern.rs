@@ -19,18 +19,9 @@ fn score_comes_from_the_current_config_not_a_saved_record_or_fixed_constant() {
 }
 
 #[test]
-fn malformed_config_falls_back_to_vanilla() {
-  for borders in [
-    vec![],
-    vec![100],
-    vec![0, 0],
-    vec![-1, -2],
-    vec![2, -1],
-    vec![10, 20],
-    vec![10, 10],
-    vec![10, 5, 6],
-    (0..10).rev().collect(),
-  ] {
-    assert_eq!(sss_score(&borders), None, "{borders:?}");
+fn reads_the_native_first_threshold_without_extra_shape_rules() {
+  assert_eq!(sss_score(&[]), None);
+  for borders in [vec![100], vec![100, 100], vec![100, 5, 6], vec![100; 12]] {
+    assert_eq!(sss_score(&borders), Some(100));
   }
 }

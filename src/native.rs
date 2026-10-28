@@ -73,7 +73,7 @@ unsafe fn string(string: Object) -> Option<Vec<u16>> {
     return None;
   }
   let count: i32 = unsafe { field(string, 0x10) };
-  if !(0..=4096).contains(&count) {
+  if count < 0 {
     return None;
   }
   Some(
@@ -114,13 +114,14 @@ pub unsafe fn append_draw_count(menu: Object, handler: Object) {
     return;
   }
   let list: Object = unsafe { field(menu, 0x80) };
-  let Some(length) = (unsafe { list_count(list) }).filter(|n| *n == 2) else {
+  let Some(length) = (unsafe { list_count(list) }) else {
     return;
   };
-  // Only extend the original one/ten menu, never another menu or a second bind.
-  for (index, expected) in [1, 10].into_iter().enumerate() {
+  // Preserve all native/other-mod rows and only avoid our own duplicate.
+  for index in 0..length {
     let Some(item) = (unsafe { object_at(list, index) }) else { return };
-    if unsafe { field::<i32>(item, 0x64) } != expected {
+    if unsafe { field::<i32>(item, 0x64) == count as i32 && field::<Object>(item, 0x70) == handler }
+    {
       return;
     }
   }
@@ -209,11 +210,11 @@ pub(crate) unsafe fn list_count(list: Object) -> Option<usize> {
   }
   let count: i32 = unsafe { field(list, 0x18) };
   let array: Object = unsafe { field(list, 0x10) };
-  if !(0..=10000).contains(&count) || array.is_null() {
+  if count < 0 || array.is_null() {
     return None;
   }
   let capacity: usize = unsafe { field(array, 0x18) };
-  if count as usize > capacity || capacity > 10000 {
+  if count as usize > capacity {
     return None;
   }
   Some(count as usize)

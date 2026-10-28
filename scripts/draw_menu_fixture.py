@@ -43,23 +43,30 @@ class DrawMenuFixture:
       self.constructed.append(x1)
     elif name == "LIST_ADD":
       assert x0 == self.list and x1 == self.item
-      self.qword(self.array + 0x30, x1)
-      self.write(self.list + 0x18, struct.pack("<i", 3))
+      length, = struct.unpack("<i", self.cpu.mem_read(self.list + 0x18, 4))
+      self.qword(self.array + 0x20 + length * 8, x1)
+      self.write(self.list + 0x18, struct.pack("<i", length + 1))
     elif name == "SET_MENU_ROWS":
-      assert x0 == self.menu and x1 == 3
+      assert x0 == self.menu and x1 == self.expected_rows
       self.rows.append(x1)
     self.cpu.reg_write(reg.UC_ARM64_REG_PC, self.cpu.reg_read(reg.UC_ARM64_REG_X30))
     return True
 
-  def exercise(self, replacement, stop, stack, count):
+  def exercise(self, replacement, stop, stack, count, extra=False):
     self.qword(self.menu + 0x80, self.list)
     self.qword(self.list + 0x10, self.array)
-    self.qword(self.array + 0x18, 4)
-    self.write(self.list + 0x18, struct.pack("<i", 2))
+    self.qword(self.array + 0x18, 8)
+    self.write(self.list + 0x18, struct.pack("<i", 3 if extra else 2))
     originals = (self.root + 0x5000, self.root + 0x6000)
     for index, (item, times) in enumerate(zip(originals, (1, 10))):
       self.qword(self.array + 0x20 + index * 8, item)
       self.write(item + 0x64, struct.pack("<ii", times, times * 100))
+    if extra:
+      added = self.root + 0x7000
+      self.qword(self.array + 0x30, added)
+      self.write(added + 0x64, struct.pack("<ii", 20, 2000))
+      originals += (added,)
+    self.expected_rows = 4 if extra else 3
     before = [bytes(self.cpu.mem_read(item, 0x100)) for item in originals]
     self.constructed, self.rows = [], []
     self.active = True
@@ -73,5 +80,5 @@ class DrawMenuFixture:
       assert self.cpu.reg_read(reg.UC_ARM64_REG_X0) == self.menu
     self.active = False
     assert self.constructed == ([] if count == 10 else [count])
-    assert self.rows == ([] if count == 10 else [3])
+    assert self.rows == ([] if count == 10 else [self.expected_rows])
     assert before == [bytes(self.cpu.mem_read(item, 0x100)) for item in originals]

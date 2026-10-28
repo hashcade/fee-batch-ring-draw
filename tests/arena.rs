@@ -1,10 +1,4 @@
-use fee_better_somniel::arena::{
-  layout, quick_training, selection, Step, DESCRIPTOR_COUNT, KEPT_STEPS, STEP_FUNCTIONS, STEP_TYPES,
-};
-
-fn original() -> [Step; DESCRIPTOR_COUNT] {
-  core::array::from_fn(|i| Step { kind: STEP_TYPES[i], function: STEP_FUNCTIONS[i] })
-}
+use fee_better_somniel::arena::{layout, quick_training, selection, DESCRIPTOR_COUNT, KEPT_STEPS};
 
 #[test]
 fn only_paid_normal_emblem_training_is_eligible() {
@@ -35,7 +29,7 @@ fn ordinary_training_skips_presentation_without_becoming_paid_training() {
 
 #[test]
 fn all_native_growth_dialogue_and_fade_steps_are_preserved_in_order() {
-  let order = layout(&original()).unwrap();
+  let order = layout(DESCRIPTOR_COUNT).unwrap();
   assert_eq!(&order[..8], &KEPT_STEPS);
   assert!(order[8..].iter().all(|i| *i == 13));
   for index in [7, 8, 9] {
@@ -47,19 +41,8 @@ fn all_native_growth_dialogue_and_fade_steps_are_preserved_in_order() {
 }
 
 #[test]
-fn changed_or_already_modified_layout_is_not_touched() {
-  for index in 0..DESCRIPTOR_COUNT {
-    let mut steps = original();
-    steps[index].kind = -1;
-    assert!(layout(&steps).is_none());
-    if STEP_FUNCTIONS[index] != 0 {
-      steps = original();
-      steps[index].function += 4;
-      assert!(layout(&steps).is_none());
-    }
-  }
-  assert!(layout(&original()[..13]).is_none());
-  let source = original();
-  let changed = layout(&source).unwrap().map(|i| source[i]);
-  assert!(layout(&changed).is_none());
+fn only_the_indices_we_access_must_exist() {
+  assert!(layout(13).is_none());
+  assert_eq!(layout(15), layout(14));
+  assert_eq!(layout(100), layout(14));
 }

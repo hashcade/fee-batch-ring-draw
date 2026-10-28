@@ -1,4 +1,4 @@
-use super::{border_offset, sss_score, CALC_RANK, FINISH_RAIL, GET_RETIRE, MAIN, SET_SCORE};
+use super::{border_offset, FINISH_RAIL, GET_RETIRE, MAIN, SET_SCORE};
 use crate::native::{base, field, Method, Object};
 use core::ptr;
 
@@ -38,19 +38,11 @@ unsafe fn plan(sequence: Object) -> Option<(Object, i32)> {
     return None;
   }
   let count: usize = unsafe { field(borders, 0x18) };
-  if !(2..=9).contains(&count) {
+  if count == 0 {
     return None;
   }
-  let scores =
-    unsafe { core::slice::from_raw_parts(borders.cast::<u8>().add(0x20).cast::<i32>(), count) };
-  let score = sss_score(scores)?;
-  let rank: unsafe extern "C" fn(Object, i32, i32, Method) -> i32 =
-    unsafe { core::mem::transmute(base() + CALC_RANK) };
-  // Ask the original rank calculator to confirm both sides of the boundary.
-  if unsafe { rank(sequence, level, score, NONE) } != 1
-    || unsafe { rank(sequence, level, score - 1, NONE) } == 1
-    || unsafe { retiring() }
-  {
+  let score: i32 = unsafe { field(borders, 0x20) };
+  if unsafe { retiring() } {
     return None;
   }
   Some((camera, score))

@@ -415,13 +415,11 @@ class CollectorFixture:
 
     # Invalid or missing native map interfaces must not be fabricated, even
     # after a valid private class has already been cached by previous openings.
-    for invalid in ("missing_map", "short_vtable", "small_instance", "cycle", "null_item"):
+    for invalid in ("missing_map", "short_vtable", "null_item"):
       self.reset()
       map_class = self.menu_item_classes[1]
       if invalid == "missing_map": self.qword(map_class + 0x10, self.c_string("NotAMapMenuItem"))
-      elif invalid == "short_vtable": self.write(map_class + 0x126, struct.pack("<H", 29))
-      elif invalid == "small_instance": self.integer(map_class + 0xF8, 0x60)
-      elif invalid == "cycle": self.qword(self.menu_item_classes[-1] + 0x58, self.menu_item_classes[-1])
+      elif invalid == "short_vtable": self.write(map_class + 0x126, struct.pack("<H", 28))
       else: self.qword(self.pointer(self.full_list + 0x10) + 0x20, 0)
       call(replacement, self.parent)
       assert len(self.values(self.full_list)) == 1, invalid

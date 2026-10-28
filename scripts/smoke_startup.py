@@ -330,7 +330,7 @@ def smoke(data: bytes, case: str) -> int:
   cpu.emu_start(BASE + main, STOP + 4, count=100_000)
   if cpu.reg_read(registers.UC_ARM64_REG_PC) != STOP:
     raise AssertionError(f"{case}: initialization did not return")
-  supported = case in ("supported", "shops", "facilities", "convenience", "dialogue", "menus", "mount_failed", "resource_stock_patch") or case in configs
+  supported = case in ("supported", "shops", "facilities", "convenience", "dialogue", "menus", "mount_failed", "resource_stock_patch", "wrong_activity_instruction", "patch_failed") or case in configs
   expected = expected_hooks if supported else set()
   if set(hooks) != expected or len(hooks) != len(expected):
     raise AssertionError(f"{case}: incorrect hook registration: {hooks}")
@@ -359,7 +359,7 @@ def smoke(data: bytes, case: str) -> int:
       well_game.exercise(replacements[well_menu], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled well entries preview grouped native results with private RNG; explicit reseed only, no grants or global class edits")
       arena_game.exercise(replacements[arena_create], STOP, STACK + 0x20000 - 0x20)
-      print("supported: compiled arena hook keeps native growth/fades for ordinary/paid training and rejects special, stale or changed children")
+      print("supported: compiled arena hook keeps native growth/fades for ordinary/paid training without callback-address or descriptor-shape gates")
       meld_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", meld_profile) if int(value, 16) in replacements}
       meld_dialog.exercise(meld_replacements, STOP, STACK + 0x20000 - 0x20)
@@ -369,10 +369,15 @@ def smoke(data: bytes, case: str) -> int:
       cleaning_game.exercise(cleaning_replacements, STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled clean-all menu preserves cleaner attribution, eligibility, deduplication, cancellation and selection restoration")
       wyvern_game.exercise(replacements[wyvern_main], STOP, STACK + 0x20000 - 0x20)
-      print("supported: compiled Wyvern hook uses per-difficulty SSS boundaries; guarded fallbacks and native tick preserved")
+      print("supported: compiled Wyvern hook uses native per-difficulty SSS borders directly; original tick and eligibility preserved")
       collector_game.exercise(replacements[next(iter(collector_hooks))], STOP, STACK + 0x20000 - 0x20)
-      print("supported: compiled collection menu handles native claim gates, donation quantities, capacity, adoption restrictions and repeated dispatch")
+      print("supported: compiled collection menu handles native claim gates, donation quantities, full-stock dispatch, adoption rules and repeated dispatch")
     if case in ("menus", "resource_stock_patch"):
+      if case == "menus":
+        draw_menu.exercise(replacements[offset("COUNT_MENU")], STOP,
+          STACK + 0x20000 - 0x20, expected_count, extra=True)
+        arena_game.exercise(replacements[arena_create], STOP, STACK + 0x20000 - 0x20)
+        wyvern_game.exercise(replacements[wyvern_main], STOP, STACK + 0x20000 - 0x20)
       well_game.exercise(replacements[well_menu], STOP, STACK + 0x20000 - 0x20)
       collector_game.exercise(replacements[next(iter(collector_hooks))], STOP, STACK + 0x20000 - 0x20)
       meld_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
@@ -402,13 +407,14 @@ def smoke(data: bytes, case: str) -> int:
     assert struct.unpack("<I", cpu.mem_read(GAME + 0x0280A6B0, 4))[0] == 0x15186392
     if case == "resource_stock_patch":
       assert struct.unpack("<I", cpu.mem_read(GAME + 0x027B1920, 4))[0] == 0x145E5678
-    assert patch_calls == [(address, replacement) for address, _, replacement in patches]
-    for address, _, replacement in patches:
-      assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == replacement
-  elif case == "patch_failed":
-    assert patch_failed and patch_calls
-    for address, original, _ in patches:
-      assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == original
+    if case == "patch_failed":
+      assert patch_failed and patch_calls
+      for address, original, _ in patches:
+        assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == original
+    else:
+      assert patch_calls == [(address, replacement) for address, _, replacement in patches]
+      for address, _, replacement in patches:
+        assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == replacement
   else:
     assert not patch_calls, "unsupported executables must not be modified"
   return len(hooks)

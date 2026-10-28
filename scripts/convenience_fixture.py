@@ -146,7 +146,7 @@ class ConvenienceFixture(SettingsFixture):
     self.animation_calls = 0
     for state, sequence, has_dish, changed, skipped in (
       (0, 4, True, False, True), (1, 4, True, False, False),
-      (0, 5, True, False, False), (0, 4, False, False, False), (0, 4, True, True, False)):
+      (0, 5, True, False, False), (0, 4, False, False, False), (0, 4, True, True, True)):
       iterator, owner, cls = self.alloc(), self.alloc(), self.alloc()
       self.iterator = iterator
       self.qword(iterator, cls)

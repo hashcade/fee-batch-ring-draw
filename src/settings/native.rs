@@ -42,7 +42,7 @@ unsafe fn private_class(class: Object, kind: usize) -> Option<usize> {
     return Some(current);
   }
   let count: u16 = unsafe { field(class, 0x126) };
-  if !(27..=128).contains(&count) || unsafe { field::<u32>(class, 0xF8) } != 0x88 {
+  if count <= 26 {
     return None;
   }
   let words = (VTABLE + usize::from(count) * 16) / 8;

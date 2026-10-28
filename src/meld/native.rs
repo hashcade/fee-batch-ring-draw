@@ -26,7 +26,7 @@ pub unsafe fn text(string: Object) -> Option<String> {
     return None;
   }
   let len: i32 = unsafe { field(string, 0x10) };
-  if !(0..=4096).contains(&len) {
+  if len < 0 {
     return None;
   }
   let units = unsafe {
@@ -37,12 +37,10 @@ pub unsafe fn text(string: Object) -> Option<String> {
 
 pub fn new_text(value: &str) -> Object {
   let units: Vec<u16> = value.encode_utf16().collect();
-  if units.len() > 4096 {
-    return ptr::null_mut();
-  }
+  let Ok(length) = i32::try_from(units.len()) else { return ptr::null_mut() };
   let allocate: unsafe extern "C" fn(i32, Method) -> Object =
     unsafe { core::mem::transmute(base() + profile::STRING_NEW_SIZE) };
-  let string = unsafe { allocate(units.len() as i32, NONE) };
+  let string = unsafe { allocate(length, NONE) };
   if !string.is_null() {
     // The native allocator initializes the IL2CPP header, length, terminator,
     // and GC tracking. Only the newly allocated UTF-16 payload is filled here.

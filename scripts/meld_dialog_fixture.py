@@ -59,7 +59,7 @@ class MeldDialogFixture(CollectorFixture):
       self.qword(x0 + 0x70, x1)
     elif name == "YES_NO_DIALOG":
       self.prompt = self.read_string(x1)
-      self.full = self.list(args[2:4])
+      self.full = self.list([args[2], self.extra, args[3]] if self.extra else args[2:4])
       self.qword(self.dialog + 0x80, self.full)
       result = self.dialog
     elif name == "LIST_ADD": self.append(x0, x1)
@@ -105,14 +105,16 @@ class MeldDialogFixture(CollectorFixture):
       self.cpu.emu_start(address, stop + 4, count=500_000)
       assert self.cpu.reg_read(reg.UC_ARM64_REG_PC) == stop
 
-    for batch in (False, True, False):
+    for batch, extended in ((False, False), (True, False), (True, True), (False, False)):
+      self.extra = self.alloc() if extended else 0
       call(replacements["ON_DECIDE"], (self.owner, self.source, 2, 100, 0, 0, 0))
       items = self.values(self.full)
-      assert len(items) == 3 and items[2] == self.no
+      assert len(items) == (4 if extended else 3) and items[-1] == self.no
+      if extended: assert items[1] == self.extra
       assert self.read_string(self.pointer(items[0] + 0x68)) == "合成 1 枚"
-      assert self.read_string(self.pointer(items[1] + 0x68)) == "合成 3 枚"
+      assert self.read_string(self.pointer(items[-2] + 0x68)) == "合成 3 枚"
       assert self.prompt.count("Ring") == 1 and "×600" not in self.prompt
-      selected = items[int(batch)]
+      selected = items[-2] if batch else items[0]
       callback = self.pointer(self.pointer(selected) + 0x138 + 18 * 16)
       call(callback, (selected, 0))
       call(replacements["EXECUTE_MERGE"], (self.owner, 0))

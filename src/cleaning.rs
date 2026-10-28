@@ -25,7 +25,6 @@ impl Session {
       .filter(|ring| {
         ring.god != 0 && (-1..=3).contains(&ring.kind) && ring.dirty > 0 && seen.insert(ring.god)
       })
-      .take(128)
       .collect();
     if self.rings.is_empty() {
       return false;
@@ -137,23 +136,12 @@ pub(crate) mod native {
       return Vec::new();
     }
     let list: Object = unsafe { field(menu, 0x80) };
-    let Some(count) = (unsafe { list_count(list) }).filter(|n| *n <= 128) else {
+    let Some(count) = (unsafe { list_count(list) }) else {
       return Vec::new();
     };
     (0..count)
       .filter_map(|index| unsafe {
         let item = object_at(list, index)?;
-        let class: Object = field(item, 0);
-        if class.is_null()
-          || !(0x88..=0x100).contains(&field::<u32>(class, 0xF8))
-          || !(27..=128).contains(&field::<u16>(class, 0x126))
-        {
-          return None;
-        }
-        let decide: usize = field(class, VTABLE + 18 * 16);
-        if decide != base() + ITEM_DECIDE {
-          return None;
-        }
         let god: Object = field(item, 0x68);
         let kind: i32 = field(item, 0x84);
         if god.is_null() || !(-1..=3).contains(&kind) {
@@ -196,11 +184,7 @@ pub(crate) mod native {
       return None;
     }
     let slots: u16 = unsafe { field(class, 0x126) };
-    let size: u32 = unsafe { field(class, 0xF8) };
-    if !(27..=128).contains(&slots)
-      || !(0x88..=0x100).contains(&size)
-      || unsafe { field::<usize>(class, VTABLE + 18 * 16) } != base() + ITEM_DECIDE
-    {
+    if slots <= 18 {
       return None;
     }
     let allocate =
@@ -258,7 +242,7 @@ pub(crate) mod native {
       let menu: Object = field(owner, 0x38);
       let Some(representative) = candidates(menu).into_iter().find(|r| r.dirty > 0) else { return };
       let list: Object = field(menu, 0x80);
-      let Some(count) = list_count(list).filter(|n| *n > 0 && *n < 128) else { return };
+      let Some(count) = list_count(list) else { return };
       let Some(first) = object_at(list, 0) else { return };
       if field::<usize>(first, 0) == ITEM_CLASS.load(Ordering::Relaxed) {
         return;
@@ -278,9 +262,7 @@ pub(crate) mod native {
       }
       reference(array, 0x20, item);
       let rows: i32 = field(menu, 0xB8);
-      if (0..128).contains(&rows) {
-        menu.cast::<u8>().add(0xB8).cast::<i32>().write(rows + 1);
-      }
+      menu.cast::<u8>().add(0xB8).cast::<i32>().write(rows + 1);
     }
   }
 

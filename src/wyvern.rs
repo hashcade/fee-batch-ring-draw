@@ -21,14 +21,7 @@ pub fn border_offset(level: i32) -> Option<usize> {
 
 /// The first descending boundary is SSS, not a theoretical perfect score.
 pub fn sss_score(borders: &[i32]) -> Option<i32> {
-  if !(2..=9).contains(&borders.len())
-    || borders[0] <= 0
-    || borders.iter().any(|&score| score < 0)
-    || borders.windows(2).any(|pair| pair[0] <= pair[1])
-  {
-    return None;
-  }
-  Some(borders[0])
+  borders.first().copied()
 }
 
 /// Entry points, field layouts, rank selection, and the native completion branch.
