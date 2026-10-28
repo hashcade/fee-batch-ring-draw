@@ -4,7 +4,7 @@
 
 - Build the combined Switch NRO with the pinned Skyline dependency.
 - Verify actual relocation-backed imports against Cobalt 1.31.0 / Engage 2.0.0. No unavailable `get_program_id`, NRO-load/unload hook, or plugin-address API is accepted.
-- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **298** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/well/cooking/support/facility/shop instruction signatures.
+- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **303** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/well/cooking/support/facility/shop instruction signatures.
 - Focused meld planning/session/confirmation tests retain cost, capacity, equipped-copy, repeated-dispatch, and fragment-refill protections.
 - Presentation-session tests cover matching owner, one-shot consumption, cancellation/cleanup, stale ownership, and null ownership.
 - Activity tests cover all **32** instruction replacements, reapplication over existing changes, readback, failed-write restoration of the actual previous words, and separation from arena/rewind/resource code. There is no runtime original-instruction preflight.
@@ -46,7 +46,7 @@ one and positive stocks, unrelated/null generic MethodInfo and ordinary same-key
 dictionary reads. The fixture enters through a modeled native far jump, executes
 the compiled bridge and native continuation branch, and checks SP, x19-x29,
 d8-d15, return address, comparison flags and one original lookup. Saved dictionaries
-are not written and the general dictionary function has no hook. All 298 pinned
+are not written and the general dictionary function has no hook. All 303 pinned
 instruction windows match the supplied NSO during offline verification; runtime
 startup does not compare those windows against entries already hooked by Cobalt.
 An independent configuration with a nonempty chef PID verifies no allocations

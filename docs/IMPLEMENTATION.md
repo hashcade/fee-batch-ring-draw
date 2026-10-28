@@ -254,11 +254,16 @@ There are no plugin-side item/species, convoy, money or fragment capacity budget
 and no extra per-dispatch quantity cap. Native reward settlement owns its limits.
 DisabledTalk at HubDisposData+0xB5 only gates NPC gifts, not ground pickups.
 
-`CommonRewardSequence.CalcRewardItemList` (`0x025343B0`) synchronously grants
-the selected ItemData list using native inventory/transport/resource calls.
-After settlement, `CommonRewardDialog.CreateBind` (`0x0252FF50`) displays its
-returned dictionary once. It does not grant again. Adoption-only batches use
-the original decide sound and menu close, without an empty result dialog.
+`CommonRewardSequence.CreateBindForWell` (`0x02533950`) receives the selected
+ItemData list and the original TitleMID key once. The complete native sequence
+loads/waits for resources, grants items, displays results, handles overflow and
+unloads. Collection does not call CalcRewardItemList or CommonRewardDialog
+directly. A fresh exploration visit need not have the message-content prefab
+already loaded. The minimap/system menu is closed through its native methods
+before binding the reward sequence, matching the reference flow.
+Adoption-only batches use the original decide sound and menu close, without
+an empty result dialog. Menu names/help retain the reference's original keys;
+no rename or new localization table is introduced.
 Only settled pickup/animal nodes have their loaded markers/effects disabled;
 unrelated NPCs and unselected sources are left alone.
 

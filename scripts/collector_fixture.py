@@ -12,6 +12,8 @@ class CollectorFixture:
     self.functions = {game + int(value, 16): name for name, value in re.findall(
       r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", profile + common)}
     self.functions[game + 0x025C9240] = "MESSAGE"
+    self.functions[game + 0x025343B0] = "CALC_REWARDS"
+    self.functions[game + 0x0252FF50] = "REWARD_DIALOG"
     self.close = game + 0x02459A70
     self.write(self.close, struct.pack("<I", 0xD65F03C0))
     self.functions[self.close] = "CLOSE"
@@ -88,6 +90,8 @@ class CollectorFixture:
     return [self.pointer(array + 0x20 + index * 8) for index in range(self.number(result + 0x18))]
 
   def reset(self, sequence=5, map_items=True):
+    self.pending_rewards = None
+    self.resources_loaded = False
     self.flags, self.inventory, self.items, self.animals = {}, {}, {}, {}
     self.counts, self.effects, self.events, self.adoptions = {}, [], [], []
     self.user, self.hub, self.manager, self.group = [self.alloc() for _ in range(4)]
@@ -243,15 +247,23 @@ class CollectorFixture:
       self.integer(result + 0x10, x0)
     elif name == "MESSAGE":
       result = self.string(self.read_string(x0))
-    elif name == "CALC_REWARDS":
-      self.events.append("grant")
-      self.reward_items = self.values(x0)
-      for item in self.reward_items:
-        self.inventory[item][0] = min(self.inventory[item][0] + 1, self.inventory[item][1])
-      self.cpu.mem_write(x1, struct.pack("<i", 0))
-      self.cpu.mem_write(x2, b"\0")
-      self.reward_dictionary = self.alloc()
-      result = self.reward_dictionary
+    elif name in ("CALC_REWARDS", "REWARD_DIALOG"):
+      raise AssertionError("collection bypassed the native reward resource-loading sequence")
+    elif name == "MINIMAP":
+      assert x0 == self.hub
+      result = self.hub
+    elif name == "MINIMAP_IS_SHOW": result = 1
+    elif name == "MINIMAP_MODE":
+      assert x0 == self.hub and x1 == 0
+    elif name == "HIDE_SYSTEM_MENU":
+      assert x0 == self.hub
+      self.events.append("hide map menu")
+    elif name == "REWARD_SEQUENCE":
+      assert x0 == self.menu
+      assert self.read_string(x2) in ("MID_MENU_TITLE_HUB", "MID_MENU_TITLE_KIZUNA")
+      assert self.pending_rewards is None
+      self.pending_rewards = self.values(x1)
+      self.events.append("reward sequence")
     elif name == "DONE_ACCESS":
       data = self.pointer(x0 + 0x60)
       assert self.flags[self.read_string(self.pointer(data + 0x40))] == 1
@@ -262,9 +274,6 @@ class CollectorFixture:
     elif name == "CLOSE":
       assert x0 == self.menu
       self.events.append("close")
-    elif name == "REWARD_DIALOG":
-      assert x0 == self.menu and x2 == self.reward_dictionary
-      self.events.append("dialog")
     elif name == "malloc":
       result = self.alloc(x0)
     elif name in ("memcpy", "memmove"):
@@ -293,6 +302,18 @@ class CollectorFixture:
       self.cpu.reg_write(registers.UC_ARM64_REG_X30, stop)
       self.cpu.emu_start(function, stop + 4, count=2_000_000)
       assert self.cpu.reg_read(registers.UC_ARM64_REG_PC) == stop
+      if self.pending_rewards is not None:
+        # Binding queues the native sequence; it does not synchronously grant
+        # or instantiate a dialog before its resources have finished loading.
+        items, self.pending_rewards = self.pending_rewards, None
+        assert self.events[-2:] == ["close", "reward sequence"]
+        self.events.extend(["load resources", "wait resources"])
+        self.resources_loaded = True
+        self.events.append("grant")
+        for item in items:
+          self.inventory[item][0] = min(self.inventory[item][0] + 1, self.inventory[item][1])
+        assert self.resources_loaded
+        self.events.extend(["dialog", "unload resources"])
       return self.cpu.reg_read(registers.UC_ARM64_REG_X0)
 
     def menu():
@@ -348,7 +369,8 @@ class CollectorFixture:
       assert self.flags["b"] == 1 and skipped_effect in self.effects
       assert self.animals["cat"][1] == (99 if sequence == 5 else 98)
       assert ("cat2" in self.flags) == (sequence == 5)
-      assert self.events.count("grant") == 1 and self.events[-2:] == ["close", "dialog"]
+      assert self.events.count("grant") == 1
+      assert self.events[-5:] == ["load resources", "wait resources", "grant", "dialog", "unload resources"]
       assert call(self.callbacks[18], item) == 2048
       assert self.events.count("grant") == 1, "repeat dispatch must not duplicate rewards"
       assert call(self.callbacks[8], item) == 2

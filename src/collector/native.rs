@@ -423,40 +423,34 @@ unsafe fn execute(item: Object) -> bool {
   let Some(list) = (unsafe { item_list(&sources) }) else {
     return false;
   };
-  let title = unsafe {
-    message(if context.sequence == 4 { "MID_MENU_TITLE_HUB" } else { "MID_MENU_TITLE_KIZUNA" })
-  };
+  // CreateBindForWell stores TitleMID and translates it later, not display text.
+  let title =
+    new_text(if context.sequence == 4 { "MID_MENU_TITLE_HUB" } else { "MID_MENU_TITLE_KIZUNA" });
   if title.is_null() {
     return false;
   }
-  let mut money = 0;
-  let mut overflow = false;
-  // CalcRewardItemList IS the native granting transaction. CreateBind below
-  // displays its dictionary only; never run a second reward-granting sequence.
   let Some(copies) = (unsafe { list_count(list) }) else {
     return false;
   };
-  let rewards = if copies > 0 {
-    let result = unsafe {
-      native!(
-        offsets::CALC_REWARDS,
-        unsafe extern "C" fn(Object, *mut i32, *mut bool, Method) -> Object
-      )(list, &mut money, &mut overflow, NONE)
-    };
-    if result.is_null() {
-      return false;
-    }
-    Some(result)
-  } else {
-    // Adoption-only batches use the normal decide sound, not an empty dialog.
-    None
-  };
   unsafe { settle(&context, &sources) };
   unsafe {
+    let minimap =
+      native!(offsets::MINIMAP, unsafe extern "C" fn(Object, Method) -> Object)(context.hub, NONE);
+    if !minimap.is_null() {
+      if native!(offsets::MINIMAP_IS_SHOW, unsafe extern "C" fn(Object, Method) -> bool)(
+        minimap, NONE,
+      ) {
+        native!(offsets::MINIMAP_MODE, unsafe extern "C" fn(Object, i32, Method))(minimap, 0, NONE);
+      }
+      native!(offsets::HIDE_SYSTEM_MENU, unsafe extern "C" fn(Object, Method))(minimap, NONE);
+    }
     close(menu, close_method);
-    if let Some(rewards) = rewards {
-      native!(offsets::REWARD_DIALOG, unsafe extern "C" fn(Object, Object, Object, i32, Method))(
-        menu, title, rewards, money, NONE,
+    if copies > 0 {
+      // Use the complete native sequence: load/wait for prefabs, grant once,
+      // display results, handle overflow and unload. A bare reward dialog
+      // has no content prefab on a fresh exploration visit.
+      native!(offsets::REWARD_SEQUENCE, unsafe extern "C" fn(Object, Object, Object, Method))(
+        menu, list, title, NONE,
       );
     }
   }
