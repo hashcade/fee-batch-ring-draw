@@ -6,6 +6,8 @@ from collector_fixture import CollectorFixture
 
 
 class SettingsFixture(CollectorFixture):
+  VTABLE_BYTES = 0x138 + 28 * 16
+
   def __init__(self, cpu, game, write, profile, common):
     super().__init__(cpu, game, write, profile, common)
     self.heap = game + 0x8100000
@@ -110,17 +112,18 @@ class SettingsFixture(CollectorFixture):
 
   def exercise(self, callback, stop, stack):
     self.active = True
-    self.image, self.item_class = self.alloc(), self.alloc(0x138 + 27 * 16)
+    self.image, self.item_class = self.alloc(), self.alloc(self.VTABLE_BYTES)
     self.assembly = self.alloc()
     self.qword(self.assembly, self.image)
     self.integer(self.item_class + 0xF8, 0x88)
-    self.write(self.item_class + 0x126, struct.pack("<H", 27))
-    for slot, name in ((8, "BuildAttribute"), (18, "ACall"), (26, "CustomCall")):
+    self.write(self.item_class + 0x126, struct.pack("<H", 28))
+    # ConfigBasicMenuItem adds InitContent to BasicMenuItem's 27 slots.
+    for slot, name in ((8, "BuildAttribute"), (18, "ACall"), (26, "CustomCall"), (27, "InitContent")):
       method = self.alloc()
       self.qword(method + 0x10, self.c_string(name))
       self.qword(self.item_class + 0x138 + slot * 16, self.game + 0x3E00000 + slot * 16)
       self.qword(self.item_class + 0x138 + slot * 16 + 8, method)
-    original = bytes(self.cpu.mem_read(self.item_class, 0x138 + 27 * 16))
+    original = bytes(self.cpu.mem_read(self.item_class, self.VTABLE_BYTES))
     self.paths = tuple(b"feesomniel:/fee-better-somniel.cfg" + tail for tail in (b"", b".tmp", b".previous"))
     self.files = {self.paths[0]: b"draw_count=300\n"}
     self.handles, self.next_handle = {}, 100
@@ -143,6 +146,7 @@ class SettingsFixture(CollectorFixture):
     cobalt_class = self.alloc(len(original))
     self.write(cobalt_class, bytes(self.cpu.mem_read(private, len(original))))
     self.qword(item, cobalt_class)
+    assert bytes(self.cpu.mem_read(cobalt_class + 0x138 + 27 * 16, 16)) == original[-16:], "native InitContent must survive both class clones"
     assert call(self.pointer(cobalt_class + 0x138 + 8 * 16), item, 0) == 1
     assert call(self.pointer(cobalt_class + 0x138 + 18 * 16), item, 0) == 0
     change = self.pointer(cobalt_class + 0x138 + 26 * 16)

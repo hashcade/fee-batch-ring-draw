@@ -1,5 +1,30 @@
 # Validation
 
+## Menu audit after the v0.3.4 report
+
+The supplied Cobalt startup log records all four settings registrations and plugin
+startup completion. The reported missing entries must not be attributed to cheats
+or a rejected startup without new evidence. The Eden trace reaches
+GameMessageContent.Build at main+0x0227E2F4 with a null content object; this is
+consistent with missing message resources, but does not identify every reported
+menu failure by itself.
+
+| Area | Source/binary and compiled-boundary checks | Remaining engine checks |
+| --- | --- | --- |
+| Collection | Replaced the bare reward dialog/manual grant with the full native reward sequence, including its resource load/wait/unload. The corrected fixture rejects the old compiled implementation. Original message keys remain unchanged. | Cold first use in Somniel and post-battle exploration; actual rewards, visuals and return flow. |
+| Plugin Settings | Checked Cobalt 1.31's registration, assembly/image ABI, native constructor, field layout and second class clone. Corrected the fixture from 27 to 28 slots and asserted that all four rows preserve native InitContent. Product code already copies the runtime slot count; this fixture correction is not itself a settings crash fix. | Open/render all four rows, change/reopen each value and restart on the actual device. |
+| Facility shortcuts | Cross-checked signatures and arguments for all 17 native entry points. Compiled callbacks cover activation, child disposal, original cleanup, parent reopening and footer restoration. The accessory entry uses the full accessory-room sequence. | First-use scene/resource dependencies of each facility, cancellation and repeated returns. |
+| Rings | Compiled draw/meld/cleaning checks cover original and batch selections, settlement boundaries and cancellation. Read-only disassembly confirms AddBondExp uses static ring/unit selection rather than dereferencing the passed controller. | Actual ring-room presentation, native rewards/notifications, consecutive operations. |
+| Well | Checked instance receiver, level and private RNG arguments against the native calculation interface; preview/reroll and grouped result callbacks execute in the fixture. | Real message rendering, pending-to-ready transition and preview versus collected results. |
+| Cooking/support/activities | The combined compiled boundary case covers cooking preferences, support dispatch, ordinary/paid arena, Wyvern difficulty thresholds and activity hooks. | Unity/Lua execution, models, animation transitions, native settlement and saved viewed records. |
+
+The combined `supported` compiled-NRO case passed with 40 registered hooks.
+Offline verification matched all 303 pinned instruction windows. These checks
+do not execute Unity or establish that every game menu works. In particular,
+the supplied trace does not establish a separate root cause for the Plugin
+Settings report. No menu renaming, user-save edit or installation was performed
+during this audit.
+
 ## Completed locally
 
 - Build the combined Switch NRO with the pinned Skyline dependency.
@@ -88,8 +113,8 @@ and an unchanged original ConfigBasicMenuItem class. No game-variable API is
 available to this settings path.
 
 Settings fixtures distinguish Il2CppAssembly from its image, matching Cobalt
-1.31's scanned Assembly::Load entry at 0x42918C. They use the native 27-slot
-ConfigBasicMenuItem inheritance, not invented SetCommandText/SetHelpText slots,
+1.31's scanned Assembly::Load entry at 0x42918C. They use ConfigBasicMenuItem's
+28-slot table (27 BasicMenuItem slots plus InitContent), not invented command/help slots,
 and model PluginSubmenu's second class clone before editing each preference.
 The old assembly/image handling and DisabledTalk pickup filter were each
 reproduced as failures before fixing the plugin. Actual in-game opening and

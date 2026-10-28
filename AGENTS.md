@@ -6,7 +6,7 @@
 - Keep commits atomic. Do not release or install unless explicitly requested.
 - Retain the existing ring transaction safety checks and Cobalt 1.31 ABI conventions.
 - Scope local verification to the change; CI owns full regression checks.
-- Model native menu inheritance accurately: BasicMenuItem has 27 virtual slots; MapBasicMenuItem adds flag/help/map-attribute slots 27-29. Never fabricate extra base-class slots in fixtures. Select the actual native item type and constructor, and check only the interfaces that the feature uses.
+- Model native menu inheritance accurately: BasicMenuItem has 27 virtual slots; MapBasicMenuItem adds flag/help/map-attribute slots 27-29; ConfigBasicMenuItem adds InitContent at slot 27. Preserve inherited initialization through both the plugin's clone and Cobalt's subsequent clone. Never fabricate extra base-class slots in fixtures. Select the actual native item type and constructor, and check only the interfaces that the feature uses.
 - Never modify user saves or installations. Supplied executable analysis is read-only.
 - Check game version and Build ID at startup. Verify native instruction signatures offline with scripts/verify_game.py, not against runtime entries that Cobalt or other mods may already hook. Model Cobalt's preinstalled hooks in startup tests. Activity writes must not depend on original runtime instruction equality or suppress unrelated hooks/settings when a write fails.
 - Do not add arbitrary instance-size, vtable-size, list-length, ancestry-depth, or selection-count limits, nor original callback-address equality gates. Keep actual null/index bounds, feature context, native eligibility and the requested normal transaction rules. Do not add collector inventory/capacity budgets.

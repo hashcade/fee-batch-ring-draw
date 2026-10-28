@@ -102,9 +102,11 @@ class ConvenienceFixture(SettingsFixture):
     chef, outcome, support = (call(callback) for callback in callbacks[1:])
     # Cobalt's PluginSubmenu wraps every callback result in another class clone.
     for item in (chef, outcome, support):
-      copied = self.alloc(0x138 + 27 * 16)
-      self.write(copied, bytes(self.cpu.mem_read(self.pointer(item), 0x138 + 27 * 16)))
+      original_init = bytes(self.cpu.mem_read(self.item_class + 0x138 + 27 * 16, 16))
+      copied = self.alloc(self.VTABLE_BYTES)
+      self.write(copied, bytes(self.cpu.mem_read(self.pointer(item), self.VTABLE_BYTES)))
       self.qword(item, copied)
+      assert bytes(self.cpu.mem_read(copied + 0x138 + 27 * 16, 16)) == original_init
     def change(item, value):
       self.next_count = value
       return call(self.pointer(self.pointer(item) + 0x138 + 26 * 16), item)
