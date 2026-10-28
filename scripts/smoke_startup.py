@@ -139,30 +139,12 @@ def smoke(data: bytes, case: str) -> int:
   for address, words in signatures:
     write_game(GAME + address, words)
   write_game(GAME + offset("BUILD_ID_OFFSET"), build_id if case != "wrong_build_id" else bytes(16))
-  if case == "wrong_instruction":
-    write_game(GAME + signatures[0][0], bytes(4))
+  # Cobalt 1.31 hooks ProcInst.CreateBind before calling any plugin main.
+  write_game(GAME + 0x0280A6B0, struct.pack("<I", 0x15186392))
   if case == "wrong_activity_instruction":
     write_game(GAME + patches[0][0], bytes(4))
-  if case == "wrong_wyvern_instruction":
-    write_game(GAME + wyvern_main, bytes(4))
-  if case == "wrong_collector_instruction":
-    write_game(GAME + min(collector_hooks), bytes(4))
-  if case == "wrong_cleaning_instruction":
-    write_game(GAME + min(cleaning_hooks), bytes(4))
-  if case == "wrong_arena_instruction":
-    write_game(GAME + arena_create, bytes(4))
-  if case == "wrong_bond_talk_instruction":
-    write_game(GAME + talk_tick, bytes(4))
-  if case == "wrong_shop_callsite":
-    write_game(GAME + 0x031FD608, bytes(4))
-  if case == "wrong_map_item_constructor":
-    write_game(GAME + 0x01F039F0, bytes(4))
-  if case == "wrong_settings_instruction":
-    write_game(GAME + 0x025379A0, bytes(4))
-  if case == "wrong_well_instruction":
-    write_game(GAME + well_menu, bytes(4))
-  for name, address in (("cooking", 0x025447B0), ("support", 0x02393B40), ("facility", ring_menu), ("shop", 0x031FC8E0)):
-    if case == f"wrong_{name}_instruction": write_game(GAME + address, bytes(4))
+  if case == "resource_stock_patch":
+    write_game(GAME + 0x027B1920, struct.pack("<I", 0x145E5678))
   stubs = {name: STUB + index * 16 for index, name in enumerate(sorted(required_imports(data)))}
   names = {address: name for name, address in stubs.items()}
   for target, info, addend in relocations:
@@ -348,7 +330,7 @@ def smoke(data: bytes, case: str) -> int:
   cpu.emu_start(BASE + main, STOP + 4, count=100_000)
   if cpu.reg_read(registers.UC_ARM64_REG_PC) != STOP:
     raise AssertionError(f"{case}: initialization did not return")
-  supported = case in ("supported", "shops", "facilities", "convenience", "dialogue", "menus", "mount_failed") or case in configs
+  supported = case in ("supported", "shops", "facilities", "convenience", "dialogue", "menus", "mount_failed", "resource_stock_patch") or case in configs
   expected = expected_hooks if supported else set()
   if set(hooks) != expected or len(hooks) != len(expected):
     raise AssertionError(f"{case}: incorrect hook registration: {hooks}")
@@ -390,7 +372,7 @@ def smoke(data: bytes, case: str) -> int:
       print("supported: compiled Wyvern hook uses per-difficulty SSS boundaries; guarded fallbacks and native tick preserved")
       collector_game.exercise(replacements[next(iter(collector_hooks))], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled collection menu handles native claim gates, donation quantities, capacity, adoption restrictions and repeated dispatch")
-    if case == "menus":
+    if case in ("menus", "resource_stock_patch"):
       well_game.exercise(replacements[well_menu], STOP, STACK + 0x20000 - 0x20)
       collector_game.exercise(replacements[next(iter(collector_hooks))], STOP, STACK + 0x20000 - 0x20)
       meld_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
@@ -400,7 +382,7 @@ def smoke(data: bytes, case: str) -> int:
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cleaning) if int(value, 16) in replacements}
       cleaning_game.exercise(cleaning_replacements, STOP, STACK + 0x20000 - 0x20)
       print("menus: compiled well/collection entries use real 27-slot basic and 30-slot map inheritance; repeated openings and callbacks passed")
-    if case in ("supported", "convenience"):
+    if case in ("supported", "convenience", "menus", "resource_stock_patch"):
       settings_game.exercise(settings_callbacks[0], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled Plugin Settings adjusts counts, persists independent files, retains old values on failure and leaves original classes unchanged")
       new_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
@@ -417,6 +399,9 @@ def smoke(data: bytes, case: str) -> int:
     assert not fs_calls, "unsupported executables must not read configuration"
     assert not settings_callbacks, "unsupported executables must not register settings"
   if supported:
+    assert struct.unpack("<I", cpu.mem_read(GAME + 0x0280A6B0, 4))[0] == 0x15186392
+    if case == "resource_stock_patch":
+      assert struct.unpack("<I", cpu.mem_read(GAME + 0x027B1920, 4))[0] == 0x145E5678
     assert patch_calls == [(address, replacement) for address, _, replacement in patches]
     for address, _, replacement in patches:
       assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == replacement
@@ -434,9 +419,8 @@ def main() -> None:
   parser.add_argument("nro", type=Path)
   args = parser.parse_args()
   verify_nro(args.nro)
-  for case in ("supported", "wrong_version", "wrong_build_id", "wrong_instruction", "wrong_segment_layout",
-    "wrong_activity_instruction", "wrong_wyvern_instruction", "wrong_collector_instruction", "wrong_cleaning_instruction", "wrong_arena_instruction", "wrong_bond_talk_instruction", "wrong_settings_instruction", "wrong_well_instruction", "patch_failed",
-    "wrong_cooking_instruction", "wrong_support_instruction", "wrong_facility_instruction", "wrong_shop_instruction", "wrong_shop_callsite", "wrong_map_item_constructor",
+  for case in ("supported", "wrong_version", "wrong_build_id", "wrong_segment_layout",
+    "wrong_activity_instruction", "patch_failed", "menus", "resource_stock_patch",
     "mount_failed", "performance", "config_ten", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
     "config_large", "config_short", "config_empty"):
     count = smoke(args.nro.read_bytes(), case)

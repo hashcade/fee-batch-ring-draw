@@ -8,7 +8,7 @@
 - Scope local verification to the change; CI owns full regression checks.
 - Model native menu inheritance accurately: BasicMenuItem has 27 virtual slots; MapBasicMenuItem adds flag/help/map-attribute slots 27-29. Never fabricate extra base-class slots in fixtures. Select the actual native item type and constructor, and check only the interfaces that the feature uses.
 - Never modify user saves or installations. Supplied executable analysis is read-only.
-- Check game version, Build ID, and every native entry/signature before hooking.
+- Check game version and Build ID at startup. Verify native instruction signatures offline with scripts/verify_game.py, not against runtime entries that Cobalt or other mods may already hook. Model Cobalt's preinstalled hooks in startup tests. Keep checks for the exact instructions that activity patches overwrite.
 - Run transactions synchronously on the original game menu thread.
 - Preserve native prices, probabilities, acquisition records, achievements, and equipped rings. Unlimited shop stock applies to the armory, item shop and flea market, including sold-out unlocked goods; retain chapter/unlock checks, prices, inventory limits and one-time ownership rules for outfits/accessories. Override stock reads/decrements, not saved inventory or unrelated variables.
 - Keep the game's original level display. Do not add internal or cumulative level information to the UI.

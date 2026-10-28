@@ -79,7 +79,7 @@ Other shop types, clothing ownership, keys and saved values stay native.
 The bridge uses Cobalt's existing A64HookFunction export. It replays the four
 post-call instructions, preserving AAPCS64 callee-saved registers and the native
 comparison flags, then resumes at `0x031FD61C`. Both the call and continuation
-windows are preflighted. No general dictionary, list-entry or stock-key hooks,
+windows are verified offline against the target NSO. No general dictionary, list-entry or stock-key hooks,
 thread-local stock context, new loader imports, code caves or polling remain.
 Battle dictionary reads no longer dispatch into this plugin. This removes that
 specific overhead; it is not an in-game frame-time measurement.

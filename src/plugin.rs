@@ -57,32 +57,8 @@ fn supported_game() -> bool {
   if id != profile::BUILD_ID {
     return false;
   }
-  // Validate every module before any hook changes the original instructions.
-  for &(offset, words) in profile::TEXT_SIGNATURES
-    .iter()
-    .chain(crate::meld::profile::TEXT_SIGNATURES)
-    .chain(crate::activities::TEXT_SIGNATURES)
-    .chain(crate::wyvern::TEXT_SIGNATURES)
-    .chain(crate::collector::profile::TEXT_SIGNATURES)
-    .chain(crate::cleaning::TEXT_SIGNATURES)
-    .chain(crate::arena::TEXT_SIGNATURES)
-    .chain(crate::bond_talk::TEXT_SIGNATURES)
-    .chain(crate::settings::TEXT_SIGNATURES)
-    .chain(crate::well::TEXT_SIGNATURES)
-    .chain(crate::cooking::TEXT_SIGNATURES)
-    .chain(crate::supports::TEXT_SIGNATURES)
-    .chain(crate::facilities::TEXT_SIGNATURES)
-    .chain(crate::shops::TEXT_SIGNATURES)
-  {
-    if offset + 16 > profile::RODATA_OFFSET {
-      return false;
-    }
-    for (index, expected) in words.iter().enumerate() {
-      if unsafe { ((base + offset + index * 4) as *const u32).read_volatile() } != *expected {
-        return false;
-      }
-    }
-  }
+  // Cobalt installs its own hooks before loading plugins. Instruction windows
+  // belong to offline verification, not runtime compatibility detection.
   true
 }
 

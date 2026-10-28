@@ -8,7 +8,7 @@
 - Focused meld planning/session/confirmation tests retain cost, capacity, equipped-copy, repeated-dispatch, and fragment-refill protections.
 - Presentation-session tests cover matching owner, one-shot consumption, cancellation/cleanup, stale ownership, and null ownership.
 - Activity tests cover all **32** instruction replacements, whole-set preflight, readback, each possible failed write and restoration, and separation from arena/rewind/resource code.
-- Focused compiled-NRO AArch64 startup checks register **40 hooks** and write precisely the activity replacements. Shop/facility/cooking/dialogue fixtures pass their modeled boundaries. Changed shop-entry and call-site signatures register no hooks and write nothing. CI retains the full version/layout/conflict/configuration regression matrix.
+- Focused compiled-NRO AArch64 startup checks register **40 hooks** and write precisely the activity replacements. Every startup case models Cobalt's preinstalled ProcInst.CreateBind hook; a separate case also models an existing inventory-getter hook. Neither entry is overwritten. Version, Build ID, layout, activity-write and configuration regression cases remain in CI.
 - Well tests and compiled callbacks cover explicit localized entries, duplicate insertion prevention, unchanged original metadata, pending/ready/invalid state and level gates, grouped quantities, independent RNG, explicit-only reseeding and failed-preview seed recovery. No inventory-grant API is modeled or callable in this path. Actual rendered menus, waiting/collection and preview-to-claimed consistency still require in-game verification.
 - Focused and compiled arena cases cover both ordinary and paid training, rejecting special challenges, inconsistent mode/EXP values and mismatched or modified children. The same native growth/fade steps remain in order for both modes. Real ordinary EXP, support and activity-use settlement still require in-game verification.
 - A compiled failed-write case restores the original instructions, returns normally, and installs no hooks.
@@ -47,7 +47,8 @@ dictionary reads. The fixture enters through a modeled native far jump, executes
 the compiled bridge and native continuation branch, and checks SP, x19-x29,
 d8-d15, return address, comparison flags and one original lookup. Saved dictionaries
 are not written and the general dictionary function has no hook. All 302 pinned
-instruction windows match the supplied NSO; startup rejects a changed call site.
+instruction windows match the supplied NSO during offline verification; runtime
+startup does not compare those windows against entries already hooked by Cobalt.
 An independent configuration with a nonempty chef PID verifies no allocations
 on deferred or repeated idle support ticks. Dialogue non-Main labels do not
 initialize class metadata; each required class initializes at most once.
@@ -61,8 +62,9 @@ openings and unchanged original class tables. Missing map interfaces, short
 tables, undersized instances, cyclic ancestry and null items reject insertion
 without grants. The same pass uses 27-slot ring-cleaning and meld-confirmation
 items so neither rejects a valid native class for lacking unrelated help slots.
-A changed map-item constructor signature installs no hooks. These are compiled
-boundary checks, not evidence that the real game UI has been displayed.
+The startup regression also invokes collection, well, cleaning, meld and settings
+callbacks after modeling Cobalt's preinstalled hook. These are compiled boundary
+checks, not evidence that the real game UI has been displayed.
 
 The shop fixture does not execute native purchase settlement. Verify actual
 prices, capacity refusal, sold-out unlocked goods and locked chapters in game.
