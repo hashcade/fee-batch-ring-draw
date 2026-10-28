@@ -100,9 +100,14 @@ class ConvenienceFixture(SettingsFixture):
       return self.cpu.reg_read(reg.UC_ARM64_REG_X0)
 
     chef, outcome, support = (call(callback) for callback in callbacks[1:])
+    # Cobalt's PluginSubmenu wraps every callback result in another class clone.
+    for item in (chef, outcome, support):
+      copied = self.alloc(0x138 + 27 * 16)
+      self.write(copied, bytes(self.cpu.mem_read(self.pointer(item), 0x138 + 27 * 16)))
+      self.qword(item, copied)
     def change(item, value):
       self.next_count = value
-      return call(self.pointer(self.pointer(item) + 0x138 + 30 * 16), item)
+      return call(self.pointer(self.pointer(item) + 0x138 + 26 * 16), item)
 
     assert change(chef, 2) == 4096
     assert self.read_string(self.pointer(chef + 0x70)) == "B"

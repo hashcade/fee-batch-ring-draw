@@ -68,9 +68,9 @@ class FacilityFixture(CollectorFixture):
     elif name == "SHOW_FOOTER":
       assert a == self.title
       self.events.append(("footer", a))
-    elif name == "il2cpp_assembly_get_image": result = self.image
+    elif name == "il2cpp_assembly_get_image": result = self.assembly
     elif name == "il2cpp_class_from_name":
-      assert self.c_read(b) == b"App" and self.c_read(args[2]) == b"TitleBar"
+      assert a == self.image and self.c_read(b) == b"App" and self.c_read(args[2]) == b"TitleBar"
       result = self.title_class
     elif name == "il2cpp_class_init": assert a == self.title_class
     else: return super().handle(pc, import_name)
@@ -90,6 +90,8 @@ class FacilityFixture(CollectorFixture):
     self.activity_used, self.is_main = 0, True
     self.qword(self.user + 0x50, self.alloc())
     self.image, self.title, self.title_class, fields = (self.alloc() for _ in range(4))
+    self.assembly = self.alloc()
+    self.qword(self.assembly, self.image)
     self.qword(self.title_class + 0xB8, fields)
     self.qword(fields, self.title)
 

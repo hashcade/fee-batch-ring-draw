@@ -26,7 +26,9 @@ class SettingsFixture(CollectorFixture):
     result = None
     if name == "il2cpp_assembly_get_image":
       assert self.path(x0) in (b"Assembly-CSharp.dll", b"Assembly-CSharp")
-      result = self.image
+      # Cobalt 1.31's scanned 0x42918C entry returns Il2CppAssembly*,
+      # despite its export name. The image is the assembly's first field.
+      result = self.assembly
     elif name == "il2cpp_class_from_name":
       assert x0 == self.image and self.path(x1) == b"" and self.path(args[2]) == b"ConfigBasicMenuItem"
       result = self.item_class
@@ -108,15 +110,17 @@ class SettingsFixture(CollectorFixture):
 
   def exercise(self, callback, stop, stack):
     self.active = True
-    self.image, self.item_class = self.alloc(), self.alloc(0x138 + 40 * 16)
+    self.image, self.item_class = self.alloc(), self.alloc(0x138 + 27 * 16)
+    self.assembly = self.alloc()
+    self.qword(self.assembly, self.image)
     self.integer(self.item_class + 0xF8, 0x88)
-    self.write(self.item_class + 0x126, struct.pack("<H", 40))
-    for slot, name in enumerate(("CustomCall", "SetCommandText", "SetHelpText"), 30):
+    self.write(self.item_class + 0x126, struct.pack("<H", 27))
+    for slot, name in ((8, "BuildAttribute"), (18, "ACall"), (26, "CustomCall")):
       method = self.alloc()
       self.qword(method + 0x10, self.c_string(name))
       self.qword(self.item_class + 0x138 + slot * 16, self.game + 0x3E00000 + slot * 16)
       self.qword(self.item_class + 0x138 + slot * 16 + 8, method)
-    original = bytes(self.cpu.mem_read(self.item_class, 0x138 + 40 * 16))
+    original = bytes(self.cpu.mem_read(self.item_class, 0x138 + 27 * 16))
     self.paths = tuple(b"feesomniel:/fee-better-somniel.cfg" + tail for tail in (b"", b".tmp", b".previous"))
     self.files = {self.paths[0]: b"draw_count=300\n"}
     self.handles, self.next_handle = {}, 100
@@ -134,7 +138,14 @@ class SettingsFixture(CollectorFixture):
     assert self.read_string(self.pointer(item + 0x68)) == "索拉涅尔：批量精炼次数"
     assert self.read_string(self.pointer(item + 0x70)) == "300"
     assert self.pointer(item) != self.item_class
-    change = self.pointer(self.pointer(item) + 0x138 + 30 * 16)
+    # PluginSubmenu clones the returned class once more before menu binding.
+    private = self.pointer(item)
+    cobalt_class = self.alloc(len(original))
+    self.write(cobalt_class, bytes(self.cpu.mem_read(private, len(original))))
+    self.qword(item, cobalt_class)
+    assert call(self.pointer(cobalt_class + 0x138 + 8 * 16), item, 0) == 1
+    assert call(self.pointer(cobalt_class + 0x138 + 18 * 16), item, 0) == 0
+    change = self.pointer(cobalt_class + 0x138 + 26 * 16)
     for count in (527, 10, 2, 1000):
       self.next_count = count
       assert call(change, item, 0) == 4096
