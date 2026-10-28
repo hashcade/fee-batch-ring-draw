@@ -1,6 +1,6 @@
 //! Original hub menu entry; no polling, generated drops, or custom save variables.
 
-use super::{profile as offsets, Candidate, Capacity, Reservations};
+use super::profile as offsets;
 use crate::{
   meld::native::{new_text, text},
   menu_item::{named, VTABLE},
@@ -14,9 +14,6 @@ use core::{
 use std::collections::BTreeSet;
 
 const NONE: Method = ptr::null();
-const CONVOY: usize = 1;
-const MONEY: usize = 2;
-const FRAGMENTS: usize = 3;
 static ITEM_CLASS: AtomicUsize = AtomicUsize::new(0);
 static ACTIVE: AtomicBool = AtomicBool::new(false);
 
@@ -176,7 +173,7 @@ struct Source {
   data: Object,
   reward: Reward,
   claim: Claim,
-  reservation: Candidate,
+  identity: String,
 }
 
 unsafe fn resolve_item(key: Object) -> Option<Object> {
@@ -194,11 +191,15 @@ unsafe fn resolve_item(key: Object) -> Option<Object> {
 
 unsafe fn source(context: &Context, data: Object) -> Option<Source> {
   let dispos: Object = unsafe { field(data, 0x18) };
-  if dispos.is_null() || unsafe { field::<u8>(dispos, 0xB5) } != 0 {
+  if dispos.is_null() {
     return None;
   }
   let kind: i32 = unsafe { field(dispos, 0x68) };
   let gift = (2..=5).contains(&kind) && unsafe { ordinary_gift(data) };
+  // 0xB5 is DisabledTalk, not a disabled pickup flag. It only gates NPC gifts.
+  if gift && unsafe { field::<u8>(dispos, 0xB5) } != 0 {
+    return None;
+  }
   let (identity, claim) = if gift {
     // Match ExecEventAfter's result-index/access-count gate. TalkItem alone
     // may still contain a reward belonging to an already-consumed conversation.
@@ -234,10 +235,7 @@ unsafe fn source(context: &Context, data: Object) -> Option<Source> {
         )
       }
     };
-    Reward::Item(
-      item,
-      u32::try_from(count).ok().filter(|n| *n > 0 && *n <= super::MAX_REWARD_COPIES)?,
-    )
+    Reward::Item(item, u32::try_from(count).ok().filter(|n| *n > 0)?)
   } else if context.sequence == 5 && kind == 7 && unsafe { field::<u8>(data, 0x24) } != 0 {
     let barn = unsafe { metadata(0x062A6028) };
     if barn.is_null()
@@ -269,110 +267,20 @@ unsafe fn source(context: &Context, data: Object) -> Option<Source> {
   } else {
     return None;
   };
-  Some(Source {
-    data,
-    reward,
-    claim,
-    reservation: Candidate { identity, requirements: vec![], copies: 0 },
-  })
-}
-
-unsafe fn convoy_capacity() -> Option<Capacity> {
-  let class = unsafe { metadata(0x0628C0E8) };
-  if class.is_null() {
-    return None;
-  }
-  let fields: Object = unsafe { field(class, 0xB8) };
-  if fields.is_null() {
-    return None;
-  }
-  let array: Object = unsafe { field(fields, 0) };
-  if array.is_null() {
-    return None;
-  }
-  let count: usize = unsafe { field(array, 0x18) };
-  if count != 999 {
-    return None;
-  }
-  let mut occupied = 0;
-  for index in 0..count {
-    let entry: Object = unsafe { field(array, 0x20 + index * 8) };
-    if entry.is_null() {
-      return None;
-    }
-    let item: Object = unsafe { field(entry, 0x10) };
-    if item.is_null() {
-      return None;
-    }
-    occupied += u32::from(unsafe { field::<u32>(item, 0x10) } != 0);
-  }
-  Some(Capacity { owned: occupied, maximum: count as u32 })
-}
-
-unsafe fn budget(source: &mut Source, plan: &mut Reservations) -> bool {
-  let (key, capacity, amount) = match source.reward {
-    Reward::Animal(animal) => {
-      let count = unsafe {
-        native!(offsets::CAPTURE_COUNT, unsafe extern "C" fn(Object, Method) -> i32)(animal, NONE)
-      };
-      let Ok(owned) = u32::try_from(count) else {
-        return false;
-      };
-      (animal as usize, Capacity { owned, maximum: 99 }, 1)
-    }
-    Reward::Item(item, count) => {
-      source.reservation.copies = count;
-      let kind: i32 = unsafe { field(item, 0x48) };
-      if matches!(kind, 17 | 18) {
-        let user = unsafe { user_data() };
-        if user.is_null() {
-          return false;
-        }
-        let value: i32 = unsafe { field(item, 0x70) };
-        let current: i32 = unsafe { field(user, if kind == 17 { 0x6C } else { 0x58 }) };
-        let (Ok(value), Ok(owned)) = (u32::try_from(value), u32::try_from(current)) else {
-          return false;
-        };
-        let Some(amount) = count.checked_mul(value).filter(|n| *n > 0) else {
-          return false;
-        };
-        (if kind == 17 { FRAGMENTS } else { MONEY }, Capacity { owned, maximum: 9_999_999 }, amount)
-      } else if unsafe {
-        native!(offsets::IS_INVENTORY, unsafe extern "C" fn(Object, Method) -> bool)(item, NONE)
-      } {
-        let owned = unsafe {
-          native!(offsets::GET_INVENTORY, unsafe extern "C" fn(Object, Method) -> i32)(item, NONE)
-        };
-        let maximum = unsafe {
-          native!(offsets::MAX_INVENTORY, unsafe extern "C" fn(Object, Method) -> i32)(item, NONE)
-        };
-        let (Ok(owned), Ok(maximum)) = (u32::try_from(owned), u32::try_from(maximum)) else {
-          return false;
-        };
-        (item as usize, Capacity { owned, maximum }, count)
-      } else {
-        let Some(capacity) = (unsafe { convoy_capacity() }) else {
-          return false;
-        };
-        (CONVOY, capacity, count)
-      }
-    }
-  };
-  source.reservation.requirements.push((key, amount));
-  plan.capacity(key, capacity) && plan.reserve(&source.reservation)
+  Some(Source { data, reward, claim, identity })
 }
 
 unsafe fn sources(context: &Context) -> Vec<Source> {
-  let mut plan = Reservations::default();
+  let mut seen = BTreeSet::new();
   let mut selected = Vec::new();
   for index in 0..unsafe { list_count(context.accesses) }.unwrap_or(0) {
     let Some(data) = (unsafe { object_at(context.accesses, index) }) else {
       continue;
     };
-    let Some(mut source) = (unsafe { source(context, data) }) else {
+    let Some(source) = (unsafe { source(context, data) }) else {
       continue;
     };
-    if unsafe { budget(&mut source, &mut plan) } {
+    if seen.insert(source.identity.clone()) {
       selected.push(source);
     }
   }
@@ -385,6 +293,7 @@ unsafe extern "C" fn attribute(_: Object, _: Method) -> i32 {
   }
   match unsafe { context() } {
     Some(context) if !unsafe { sources(&context) }.is_empty() => 1,
+    Some(_) => 2,
     _ => 4,
   }
 }
@@ -438,18 +347,9 @@ unsafe fn settle(context: &Context, sources: &[Source]) {
   let mut collected = BTreeSet::new();
   for source in sources {
     if let Reward::Animal(animal) = source.reward {
-      let count =
-        unsafe { native!(offsets::CAPTURE_COUNT, unsafe extern "C" fn(Object, Method) -> i32) };
-      let before = unsafe { count(animal, NONE) };
-      if !(0..99).contains(&before) {
-        continue;
-      }
       unsafe {
         native!(offsets::INC_CAPTURE, unsafe extern "C" fn(Object, i32, Method))(animal, 1, NONE)
       };
-      if unsafe { count(animal, NONE) } != before + 1 {
-        continue;
-      }
     }
     let (flag, value) = match source.claim {
       Claim::Pickup => (unsafe { field(source.data, 0x40) }, 1),
@@ -477,7 +377,7 @@ unsafe fn settle(context: &Context, sources: &[Source]) {
     collected.insert(source.data as usize);
   }
   // Only update loaded visuals belonging to settled sources. Do not disable
-  // other NPCs, conversations, adoption markers, or uncollected/full drops.
+  // other NPCs, conversations, adoption markers, or unrelated drops.
   let group: Object = unsafe { field(context.hub, 0xC8) };
   if group.is_null() {
     return;

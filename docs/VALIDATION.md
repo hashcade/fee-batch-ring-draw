@@ -4,7 +4,7 @@
 
 - Build the combined Switch NRO with the pinned Skyline dependency.
 - Verify actual relocation-backed imports against Cobalt 1.31.0 / Engage 2.0.0. No unavailable `get_program_id`, NRO-load/unload hook, or plugin-address API is accepted.
-- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **302** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/well/cooking/support/facility/shop instruction signatures.
+- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **298** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/well/cooking/support/facility/shop instruction signatures.
 - Focused meld planning/session/confirmation tests retain cost, capacity, equipped-copy, repeated-dispatch, and fragment-refill protections.
 - Presentation-session tests cover matching owner, one-shot consumption, cancellation/cleanup, stale ownership, and null ownership.
 - Activity tests cover all **32** instruction replacements, whole-set preflight, readback, each possible failed write and restoration, and separation from arena/rewind/resource code.
@@ -19,8 +19,7 @@
 - Cleaning planning tests cover owner scoping, cancellation, valid native GodType values (-1 through 3), clean exclusions and shared-DLC-ring deduplication. The compiled menu/settlement fixture covers native cleaner attribution, current unavailability/state gates, repeated dispatch, cancellation, failed dirty setters, missing cleaners and restoration of the original static ring selection.
 - Focused Wyvern tests cover difficulty-to-config mapping, dynamic SSS boundaries, and malformed arrays. The compiled-hook fixture covers all three difficulties, native tick/finish/score ordering, pending score additions, repeated dispatch, opening/event/test/pause/retirement guards, null pointers, and invalid difficulty/config/native-rank fallbacks.
 
-- Collection reservation tests cover duplicate claim identities, shared inventory/species/convoy budgets, atomic source reservations, arithmetic overflow, invalid capacities and the bounded reward list.
-- The compiled collection fixture covers first-position menu insertion, repeated binding without duplicate entries, unchanged original class/vtable, game-language message lookup, donation versus precomputed quantities, full inventory, duplicate source nodes, claimed and existing-zero flags, NPC result-index/access-count gating including reconstructed TalkItem, story exclusions, barn/donation/capture-cap gates, Somniel animal exclusion, adoption-only batches and repeated dispatch without duplicate grants.
+- The compiled collection fixture covers first-position menu insertion, repeated binding without duplicate entries, unchanged original class/vtable, game-language message lookup, donation versus precomputed quantities, full-inventory dispatch to native settlement, duplicate source nodes, claimed and existing-zero flags, NPC result-index/access-count gating including reconstructed TalkItem, story exclusions, barn/donation gates, Somniel animal exclusion, adoption-only batches and repeated dispatch without duplicate grants. Pickup nodes with DisabledTalk remain eligible; disabled NPC gifts do not.
 
 These tests model loader/native boundaries. They do not run Unity, render the game UI, or prove in-game state-machine completion.
 
@@ -46,7 +45,7 @@ one and positive stocks, unrelated/null generic MethodInfo and ordinary same-key
 dictionary reads. The fixture enters through a modeled native far jump, executes
 the compiled bridge and native continuation branch, and checks SP, x19-x29,
 d8-d15, return address, comparison flags and one original lookup. Saved dictionaries
-are not written and the general dictionary function has no hook. All 302 pinned
+are not written and the general dictionary function has no hook. All 298 pinned
 instruction windows match the supplied NSO during offline verification; runtime
 startup does not compare those windows against entries already hooked by Cobalt.
 An independent configuration with a nonempty chef PID verifies no allocations
@@ -86,6 +85,14 @@ mount/write/rename failure feedback, no-write unchanged input, resource release
 and an unchanged original ConfigBasicMenuItem class. No game-variable API is
 available to this settings path.
 
+Settings fixtures distinguish Il2CppAssembly from its image, matching Cobalt
+1.31's scanned Assembly::Load entry at 0x42918C. They use the native 27-slot
+ConfigBasicMenuItem inheritance, not invented SetCommandText/SetHelpText slots,
+and model PluginSubmenu's second class clone before editing each preference.
+The old assembly/image handling and DisabledTalk pickup filter were each
+reproduced as failures before fixing the plugin. Actual in-game opening and
+rendering still require validation with the rebuilt plugin.
+
 Focused planning tests and the compiled arena fixture cover per-instance descriptor ordering, native
 growth/fade retention, unchanged delegates/calculators, ordinary/paid selections,
 special/inconsistent-EXP exclusions, started or missing children, changed layouts
@@ -117,5 +124,5 @@ Use a temporary test save or the user's explicitly chosen test environment. Do n
 - Open the food list at zero and positive stock; inspect Sommie feeding, native inventory handling, and the normal return flow.
 - Gift an ordinary item with zero, one, and multiple owned copies; confirm visibility/selectability, no count change, normal recipient response/support, and no global inventory effect.
 - Confirm special relationship/plot restrictions and non-gift item use are unchanged.
-- In both the Somniel and post-battle exploration, use the collection entry and confirm the original reward dialog, menu/minimap restoration, markers and effects. Check ground drops with multiple donation levels, all five generated farm products, eligible and locked animals, and a protected villager's ordinary gift. Verify exact inventory and native claim/counter changes in a temporary save, reload, talk to the NPC and re-enter the map; none should duplicate. Check almost-full quantity stacks, money/fragments and a nearly full convoy; sources that do not fit must remain. Verify that plot, recruitment, support and special gifts remain untouched. The fixture does not establish these Unity or real-save results, or compatibility with other mods that alter the same inventory/settlement routines.
+- In both the Somniel and post-battle exploration, use the collection entry and confirm the original reward dialog, menu/minimap restoration, markers and effects. Check ground drops with multiple donation levels, all five generated farm products, eligible and locked animals, and a protected villager's ordinary gift. Verify exact inventory and native claim/counter changes in a temporary save, reload, talk to the NPC and re-enter the map; none should duplicate. At full quantity stacks, money/fragments and convoy capacity, verify the original reward settlement behavior without plugin-side filtering. Verify that plot, recruitment, support and special gifts remain untouched. The fixture does not establish these Unity or real-save results, or compatibility with other mods that alter the same inventory/settlement routines.
 - Save and reload; remove the plugin and reload a test save to verify no custom IDs or schema dependency was introduced.

@@ -157,6 +157,9 @@ class CollectorFixture:
     self.qword(data + 0x40, self.string(flag))
     self.integer(data + 0x38, count)
     self.integer(dispos + 0x68, kind)
+    if kind in (6, 8, 9):
+      # DisabledTalk is normal for pickup objects: they are not NPC dialogue.
+      self.write(dispos + 0xB5, b"\x01")
     if kind == 7:
       self.write(data + 0x24, b"\x01")
     if 2 <= kind <= 5:
@@ -210,10 +213,6 @@ class CollectorFixture:
     elif name == "ITEM_BONUS":
       self.events.append("bonus")
       result = x1 * 3
-    elif name == "IS_INVENTORY":
-      result = 1
-    elif name in ("GET_INVENTORY", "MAX_INVENTORY"):
-      result = self.inventory[x0][name == "MAX_INVENTORY"]
     elif name == "IS_COMPLETE":
       result = int(self.barn)
     elif name == "TRY_PID":
@@ -222,12 +221,10 @@ class CollectorFixture:
       result = self.animals.get(self.read_string(x0), (0, 0))[0]
     elif name == "CAN_CAPTURE":
       result = int(self.can_capture)
-    elif name == "CAPTURE_COUNT":
-      result = next(value[1] for value in self.animals.values() if value[0] == x0)
     elif name == "INC_CAPTURE":
       for value in self.animals.values():
         if value[0] == x0:
-          value[1] += x1
+          value[1] = min(value[1] + x1, 99)
       self.adoptions.append(x0)
     elif name == "ACCESS_COUNT":
       key, initial = self.counts[x0]
@@ -250,8 +247,7 @@ class CollectorFixture:
       self.events.append("grant")
       self.reward_items = self.values(x0)
       for item in self.reward_items:
-        assert self.inventory[item][0] < self.inventory[item][1]
-        self.inventory[item][0] += 1
+        self.inventory[item][0] = min(self.inventory[item][0] + 1, self.inventory[item][1])
       self.cpu.mem_write(x1, struct.pack("<i", 0))
       self.cpu.mem_write(x2, b"\0")
       self.reward_dictionary = self.alloc()
@@ -319,7 +315,7 @@ class CollectorFixture:
 
     self.reset()
     item = menu()
-    assert call(self.callbacks[8], item) == 4
+    assert call(self.callbacks[8], item) == 2
     assert call(self.callbacks[18], item) == 2048
     assert "grant" not in self.events
     assert self.read_string(call(self.callbacks[4], item)) == "MID_Hub_Area_ItemReturn"
@@ -344,18 +340,18 @@ class CollectorFixture:
       item = menu()
       assert call(self.callbacks[8], item) == 1
       call(self.callbacks[18], item)
-      assert self.inventory[herb][0] == 98
+      assert self.inventory[herb][0] == 99
       assert self.inventory[ore][0] == 5, "type 8 must not receive donation bonus twice"
       assert self.inventory[gift][0] == 1
       assert self.flags["talk-gift"] == 1
       assert "plot" not in self.flags and "talk-plot" not in self.flags
-      assert "b" not in self.flags and skipped_effect not in self.effects
+      assert self.flags["b"] == 1 and skipped_effect in self.effects
       assert self.animals["cat"][1] == (99 if sequence == 5 else 98)
-      assert "cat2" not in self.flags
+      assert ("cat2" in self.flags) == (sequence == 5)
       assert self.events.count("grant") == 1 and self.events[-2:] == ["close", "dialog"]
       assert call(self.callbacks[18], item) == 2048
       assert self.events.count("grant") == 1, "repeat dispatch must not duplicate rewards"
-      assert call(self.callbacks[8], item) == 4
+      assert call(self.callbacks[8], item) == 2
 
     for blocked in ("barn", "can_capture"):
       self.reset()
@@ -394,11 +390,21 @@ class CollectorFixture:
     assert self.pointer(data + 0x30) != 0, "do not mutate unselected conversations"
 
     self.reset()
-    self.add_item("herb", owned=99)
+    herb = self.add_item("herb", owned=99)
     self.add_source("full", "herb")
     item = menu()
+    assert call(self.callbacks[8], item) == 1
+    assert call(self.callbacks[18], item) == 129
+    assert self.flags["full"] == 1 and self.inventory[herb][0] == 99
+    assert self.events.count("grant") == 1
+
+    self.reset()
+    self.add_item("seal")
+    data, _ = self.add_source("disabled-talk", "seal", kind=2)
+    self.write(self.pointer(data + 0x18) + 0xB5, b"\x01")
+    item = menu()
     assert call(self.callbacks[18], item) == 2048
-    assert "full" not in self.flags
+    assert "talk-disabled-talk" not in self.flags
 
     self.reset(sequence=3)
     self.add_item("herb")

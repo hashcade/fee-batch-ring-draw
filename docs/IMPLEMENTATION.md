@@ -220,13 +220,13 @@ One hook appends an independently implemented item to `HubMenu.CreateBind`
 (`0x028B6EF0`) and moves it to the first position with managed write barriers.
 Its four callbacks live in one process-lifetime private copy of MapBasicMenuItem's
 vtable; original classes and MethodInfo structures are not modified. Labels
-come from the game's existing message table. The entry is hidden when nothing
-eligible fits, and dispatch rechecks the live source list. There is no automatic
+come from the game's existing message table. The entry is disabled when nothing
+is pending, and dispatch rechecks the live source list. There is no automatic
 entry trigger, polling, configuration, or hotkey.
 
 The current scene's native HubAccessManager is selected through HubSequence.
 Only sequence 4 (Somniel) or 5 (post-battle exploration) can collect. Existing
-generated sources are the sole input; ungenerated IDs, disabled nodes, claimed
+generated sources are the sole input; ungenerated IDs, claimed
 flags, missing data and unrelated interaction types are ignored. Types 6 and 9
 use `HubUtil.GetItemCountWithBonus` (`0x02A629C0`); type 8 already contains its
 native quantity and does not receive a second donation multiplier. Farm drops
@@ -235,9 +235,8 @@ another copy from pasture variables.
 
 Post-battle animals require the original barn-complete flag and
 `HubUtil.IsCaptureAnimal` (`0x02A622C0`). Capture uses the native increment
-(`0x02A62640`) and verifies a one-copy increase before claiming the source.
-The native setter clamps each species at 99; shared reservations exclude
-animals that would exceed this bound. Existing Somniel pasture animals are
+(`0x02A62640`) without adding a plugin-side species budget. Native capture
+settlement owns the count limit. Existing Somniel pasture animals are
 never adopted again.
 
 Ordinary villager gifts must contain a current TalkItem and pass the same
@@ -250,11 +249,10 @@ flags are not bulk-completed. Rebuilding the access data cannot make the old
 talk index eligible again. Pickup done flags are not used as a substitute for
 the NPC conversation counter.
 
-The host-tested reservation planner deduplicates claim identities and shares
-budgets for each quantity item/species, convoy slots, money and fragments.
-Each source fits in full or remains pending. Native quantity limits and the
-999-slot transporter layout are read before granting. The managed ItemData
-list is bounded to 8,192 copies per dispatch; excess sources remain pending.
+Claim identities are deduplicated so one generated source is not granted twice.
+There are no plugin-side item/species, convoy, money or fragment capacity budgets
+and no extra per-dispatch quantity cap. Native reward settlement owns its limits.
+DisabledTalk at HubDisposData+0xB5 only gates NPC gifts, not ground pickups.
 
 `CommonRewardSequence.CalcRewardItemList` (`0x025343B0`) synchronously grants
 the selected ItemData list using native inventory/transport/resource calls.
@@ -262,7 +260,7 @@ After settlement, `CommonRewardDialog.CreateBind` (`0x0252FF50`) displays its
 returned dictionary once. It does not grant again. Adoption-only batches use
 the original decide sound and menu close, without an empty result dialog.
 Only settled pickup/animal nodes have their loaded markers/effects disabled;
-unrelated NPCs and sources that did not fit are left alone.
+unrelated NPCs and unselected sources are left alone.
 
 The reference behavior was researched in
 [Triabolical's collection menu](https://github.com/triabolicals/triabolical-code-mods).
