@@ -1,5 +1,23 @@
 # Validation
 
+## v0.3.6 facility and draw-row regressions
+
+- Reproduced the old facility failure by rejecting AIDs passed to the chapter
+  predicate. The corrected compiled boundary resolves HubFacilityData.Get with
+  its generic MethodInfo and invokes the instance IsComplete. Tests distinguish
+  a locked/missing facility from an unrelated open facility and from M004.
+  Adoption uses the same barn facility check rather than the chapter predicate.
+- Reproduced the old draw failure by enforcing the native two-child prefab
+  capacity. The plugin now clones the complete last row under its existing
+  parent before calling SetShowRowNum, extrapolating its local position from
+  the existing row spacing. Tests assert actual modeled node count, coordinates,
+  unchanged original choices, no second clone on repeat binding, and no extra
+  row when configured to ten. An existing third-party row is retained.
+- Focused compiled facility, menu, configured-count and ten-count cases pass.
+  These are regression models, not Unity screenshots or real-game validation;
+  actual three-row rendering, cursor placement and viewport clipping still
+  require checking on the rebuilt game installation.
+
 ## Menu audit after the v0.3.4 report
 
 The supplied Cobalt startup log records all four settings registrations and plugin
@@ -29,7 +47,7 @@ during this audit.
 
 - Build the combined Switch NRO with the pinned Skyline dependency.
 - Verify actual relocation-backed imports against Cobalt 1.31.0 / Engage 2.0.0. No unavailable `get_program_id`, NRO-load/unload hook, or plugin-address API is accepted.
-- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **303** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/well/cooking/support/facility/shop instruction signatures.
+- Read-only verification of the supplied NSO: Build ID, mapped segment layout, segment checksums, and **311** draw/meld/activity/Wyvern/collection/cleaning/arena/dialogue/settings/well/cooking/support/facility/shop instruction signatures.
 - Focused meld planning/session/confirmation tests retain cost, capacity, equipped-copy, repeated-dispatch, and fragment-refill protections.
 - Presentation-session tests cover matching owner, one-shot consumption, cancellation/cleanup, stale ownership, and null ownership.
 - Activity tests cover all **32** instruction replacements, reapplication over existing changes, readback, failed-write restoration of the actual previous words, and separation from arena/rewind/resource code. There is no runtime original-instruction preflight.
@@ -71,7 +89,7 @@ one and positive stocks, unrelated/null generic MethodInfo and ordinary same-key
 dictionary reads. The fixture enters through a modeled native far jump, executes
 the compiled bridge and native continuation branch, and checks SP, x19-x29,
 d8-d15, return address, comparison flags and one original lookup. Saved dictionaries
-are not written and the general dictionary function has no hook. All 303 pinned
+are not written and the general dictionary function has no hook. All 311 pinned
 instruction windows match the supplied NSO during offline verification; runtime
 startup does not compare those windows against entries already hooked by Cobalt.
 An independent configuration with a nonempty chef PID verifies no allocations

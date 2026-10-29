@@ -108,6 +108,66 @@ pub unsafe fn set_menu_text(content: Object) {
   }
 }
 
+unsafe fn extend_draw_content(menu: Object, rows: i32) -> bool {
+  unsafe {
+    let content: Object = field(menu, 0x70);
+    if content.is_null() {
+      return false;
+    }
+    let object: Object = field(content, 0x68);
+    if object.is_null() {
+      return false;
+    }
+    let transform: unsafe extern "C" fn(Object, Method) -> Object =
+      core::mem::transmute(base() + profile::GAME_OBJECT_TRANSFORM);
+    let child_count: unsafe extern "C" fn(Object, Method) -> i32 =
+      core::mem::transmute(base() + profile::TRANSFORM_CHILD_COUNT);
+    let child: unsafe extern "C" fn(Object, i32, Method) -> Object =
+      core::mem::transmute(base() + profile::TRANSFORM_CHILD);
+    let clone: unsafe extern "C" fn(Object, Object, bool, Method) -> Object =
+      core::mem::transmute(base() + profile::CLONE_WITH_PARENT);
+    let position: unsafe extern "C" fn(Object, *mut [f32; 3], Method) =
+      core::mem::transmute(base() + profile::LOCAL_POSITION_GET);
+    let set_position: unsafe extern "C" fn(Object, *const [f32; 3], Method) =
+      core::mem::transmute(base() + profile::LOCAL_POSITION_SET);
+    let parent = transform(object, NONE);
+    if parent.is_null() {
+      return false;
+    }
+    // GetShowRowMax counts these real children. SetShowRowNum alone cannot
+    // expand the original two-row prefab. Clone its complete row/component
+    // hierarchy before the native menu builds, retaining all serialized refs.
+    let existing = child_count(parent, NONE);
+    if existing >= rows {
+      return true;
+    }
+    if existing < 2 {
+      return false;
+    }
+    let previous = child(parent, existing - 2, NONE);
+    let mut last = child(parent, existing - 1, NONE);
+    if previous.is_null() || last.is_null() {
+      return false;
+    }
+    let (mut before, mut next) = ([0.0; 3], [0.0; 3]);
+    position(previous, &mut before, NONE);
+    position(last, &mut next, NONE);
+    let spacing: [f32; 3] = core::array::from_fn(|i| next[i] - before[i]);
+    for _ in existing..rows {
+      let added = clone(last, parent, false, NONE);
+      if added.is_null() {
+        return false;
+      }
+      for i in 0..3 {
+        next[i] += spacing[i];
+      }
+      set_position(added, &next, NONE);
+      last = added;
+    }
+    true
+  }
+}
+
 pub unsafe fn append_draw_count(menu: Object, handler: Object) {
   let count = config::draw_count();
   if menu.is_null() || count == 10 {
@@ -128,6 +188,9 @@ pub unsafe fn append_draw_count(menu: Object, handler: Object) {
   let class = unsafe { metadata(0x062C2B88) };
   let add_method = unsafe { metadata(0x06286A70) };
   if class.is_null() || add_method.is_null() {
+    return;
+  }
+  if !unsafe { extend_draw_content(menu, (length + 1) as i32) } {
     return;
   }
   let allocate: unsafe extern "C" fn(Object) -> Object =

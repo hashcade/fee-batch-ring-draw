@@ -351,7 +351,7 @@ def smoke(data: bytes, case: str) -> int:
     if case in ("supported", "config_low", "config_custom", "config_high"):
       text.exercise(replacements[offset("BUILD_TEXT")], STOP, STACK + 0x20000 - 0x20,
         expected_count)
-      print(f"{case}: compiled row text uses exact k prices; native geometry and single row unchanged")
+      print(f"{case}: compiled row text uses exact k prices; original row geometry and single row unchanged")
     if case in ("supported", "dialogue"):
       bond_dialogue.exercise(replacements[talk_tick], STOP, STACK + 0x20000 - 0x20)
       print(f"{case}: compiled dialogue hook retains native skip scoping; non-Main labels avoid metadata and classes initialize once")
