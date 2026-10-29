@@ -40,10 +40,14 @@ The menu uses the game's Simplified Chinese nouns 龙之时水晶, 一般锻炼,
 
 ## Facility, support and cooking extensions
 
-The outdoor HubMenu receives a separate facility entry. Its BasicMenu and item
-classes are private copies, not shared-vtable mutations. Map entries instantiate
-the native MapBasicMenuItem ancestor (30 slots, including help at 28), not its
-27-slot BasicMenuItem parent. Ordinary well entries need only BasicMenuItem and
+The outdoor HubMenu receives one facility entry, alongside the existing collection
+entry. It opens three categories: Facilities (five destinations), Activities
+(seven), and Shops (five). Categories are not additional outdoor entries; no list
+needs custom scrolling, a spare-row calculation or expanded prefab nodes.
+Its BasicMenu and item classes are private copies, not shared-vtable mutations.
+Hub entries instantiate native HubMenuItem, retaining its selection/help
+visibility callbacks and 30-slot map interface, rather than stripping it to
+MapBasicMenuItem or its 27-slot BasicMenuItem parent. Ordinary well entries need only BasicMenuItem and
 do not register a nonexistent help slot. Each uses its own native constructor.
 The factory resolves the actual inheritance and checks only requested slots
 even when a private class was cached by an earlier menu. Native facility

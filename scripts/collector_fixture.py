@@ -133,6 +133,9 @@ class CollectorFixture:
       self.qword(cls + 0x58, parent_class)
       self.integer(cls + 0xF8, 0x68 if map_items else 0x70)
       self.write(cls + 0x126, struct.pack("<H", 30 if map_items else 27))
+      if name == "HubMenuItem":
+        for slot, offset in ((12, 0x02ADF650), (13, 0x02ADF760)):
+          self.qword(cls + 0x138 + slot * 16, self.game + offset)
       self.menu_item_classes.append(cls)
       parent_class = cls
     self.map_items = map_items
@@ -189,8 +192,8 @@ class CollectorFixture:
     args = [self.cpu.reg_read(registers.UC_ARM64_REG_X0 + index) for index in range(6)]
     x0, x1, x2, x3, _, _ = args
     result = None
-    if name in ("ITEM_CTOR", "MAP_ITEM_CTOR"):
-      expected = b"MapBasicMenuItem" if name == "MAP_ITEM_CTOR" else b"BasicMenuItem"
+    if name in ("ITEM_CTOR", "MAP_ITEM_CTOR", "HUB_ITEM_CTOR"):
+      expected = {"ITEM_CTOR": b"BasicMenuItem", "MAP_ITEM_CTOR": b"MapBasicMenuItem", "HUB_ITEM_CTOR": b"HubMenuItem"}[name]
       assert self.class_name(self.pointer(x0)) == expected, "constructor must match the allocated native menu type"
       self.item_ctors.append(name)
     elif name in ("INITIALIZE_METADATA", "WRITE_BARRIER", "free"):
@@ -337,7 +340,7 @@ class CollectorFixture:
       item = values[0]
       self.qword(item + 0x10, self.menu)
       private = self.pointer(item)
-      assert self.class_name(private) == b"MapBasicMenuItem"
+      assert self.class_name(private) == b"HubMenuItem"
       assert struct.unpack("<H", self.cpu.mem_read(private + 0x126, 2))[0] == 30
       self.callbacks = {slot: self.pointer(private + 0x138 + slot * 16) for slot in (4, 8, 18, 28)}
       call(replacement, self.parent)
@@ -445,13 +448,13 @@ class CollectorFixture:
     assert call(self.callbacks[18], item) == 2048
     assert not self.flags
 
-    # Invalid or missing native map interfaces must not be fabricated, even
+    # Invalid or missing native hub interfaces must not be fabricated, even
     # after a valid private class has already been cached by previous openings.
-    for invalid in ("missing_map", "short_vtable", "null_item"):
+    for invalid in ("missing_hub", "short_vtable", "null_item"):
       self.reset()
-      map_class = self.menu_item_classes[1]
-      if invalid == "missing_map": self.qword(map_class + 0x10, self.c_string("NotAMapMenuItem"))
-      elif invalid == "short_vtable": self.write(map_class + 0x126, struct.pack("<H", 28))
+      hub_class = self.menu_item_classes[2]
+      if invalid == "missing_hub": self.qword(hub_class + 0x10, self.c_string("NotAHubMenuItem"))
+      elif invalid == "short_vtable": self.write(hub_class + 0x126, struct.pack("<H", 28))
       else: self.qword(self.pointer(self.full_list + 0x10) + 0x20, 0)
       call(replacement, self.parent)
       assert len(self.values(self.full_list)) == 1, invalid

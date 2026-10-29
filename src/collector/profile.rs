@@ -3,6 +3,7 @@
 pub const CREATE_MENU: usize = 0x028B6EF0;
 pub const ITEM_CTOR: usize = 0x02455FC0;
 pub const MAP_ITEM_CTOR: usize = 0x01F039F0;
+pub const HUB_ITEM_CTOR: usize = 0x02ADECF0;
 pub const HUB_GET: usize = 0x001EDB40;
 pub const CURRENT_ACCESS: usize = 0x023EB840;
 pub const VARIABLE_BOOL: usize = 0x0251EA50;

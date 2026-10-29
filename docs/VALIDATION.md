@@ -1,5 +1,30 @@
 # Validation
 
+## v0.3.8 menu hierarchy and lifecycle corrections
+
+- ConfigBasicMenuItem selection callbacks own arrow visibility. Removed the
+  per-row forced-on flag. The old NRO fails the new first-open regression;
+  the rebuilt NRO starts with all unselected arrows off. Pinned native
+  OnSelect/OnDeselect instructions then keep exactly one selected row's arrows
+  on through forward/reverse traversal, wrapping and reopening, without
+  changing preferences. Both class-cloning stages preserve these callbacks.
+- Facility and collection entries now instantiate HubMenuItem rather than
+  discarding its native selection/help visibility callbacks by falling back
+  to MapBasicMenuItem. This matches the reference mod's inherited hub-item
+  behavior. A single outdoor hub entry now opens Facilities / Activities /
+  Shops, with five / seven / five destinations. All seventeen destinations
+  remain available, but none of these lists needs scrolling. Removed the
+  previous long-list buffer calculation and the temporary two-entry split.
+  Submenu cancellation closes only the child and restores its parent.
+- The compiled facility fixture checks the inherited hub selection addresses,
+  constructor type, exactly one outdoor entry, localized category names,
+  full destination coverage, repeated openings, nested return paths, native
+  unlocks/allowances and facility cleanup. These are
+  modeled boundaries, not proof of correct Unity text colours or animations.
+- The NRO builds and read-only verification matches 340 instruction windows.
+  Device/emulator rendering remains unverified. No installation or user-save
+  modification was made.
+
 ## Integrated battle preferences and outfits
 
 - Focused configuration/storage/limit tests cover old files, all new defaults,
@@ -18,27 +43,6 @@
 - These are static and modeled execution checks, not actual game rendering.
   Finite rewind display/use/reset, real battle save/load, live training rewards
   and model refresh after toggling still require device/emulator acceptance.
-
-## Unreleased facility-scroll buffer correction
-
-- Native CycleMenuItemContent at 0x02464AEC reads the row at index
-  showRowNum during forward scrolling. Filling a ten-node prefab with ten
-  visible rows leaves this eleventh-node access out of range. The reverse
-  branch at 0x02464D5C also retains its native spare-row handling.
-- The menu now queries its actual content capacity and leaves a spare row
-  whenever scrolling is needed. Ten nodes give nine visible rows; eleven
-  nodes allow the existing ten-row layout. All seventeen facilities remain
-  under the same entry; names, activation, native scrolling and cleanup are
-  unchanged. Short menus do not unnecessarily lose a row.
-- The old compiled implementation reproduced a missing-buffer-row assertion
-  while executing the actual native GetChild instruction window. The rebuilt
-  NRO passes the same forward/reverse probes, traversal of every visible
-  window, and first/last selection transitions. Two focused Rust layout tests
-  also pass. These probes exercise native index accesses and modeled callbacks,
-  not the entire Unity animation/rendering pipeline; real text colours and
-  scrolling visuals remain to be confirmed in game.
-- Offline verification matches 315 native instruction windows. This correction
-  has not been versioned, released or installed.
 
 ## v0.3.6 facility and draw-row regressions
 

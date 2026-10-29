@@ -44,7 +44,7 @@ unsafe extern "C" fn help(_: Object, _: Method) -> Object {
 
 unsafe fn make_item(first: Object) -> Option<Object> {
   unsafe {
-    crate::menu_item::create(
+    crate::menu_item::create_hub(
       first,
       &ITEM_CLASS,
       &[

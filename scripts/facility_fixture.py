@@ -24,19 +24,12 @@ class FacilityFixture(CollectorFixture):
       self.qword(result, a)
     elif name == "DEFAULT_LIST_CTOR": self.init_list(a)
     elif name == "MENU_CTOR": self.qword(a + 0x80, b)
-    elif name == "SET_MENU_ROWS": self.integer(a + 0xB8, b)
+    elif name == "SET_MENU_ROWS":
+      assert 0 < b <= len(self.row_nodes), "submenu rows must fit the original prefab"
+      self.integer(a + 0xB8, b)
+    elif name == "GET_LANGUAGE": result = 10
     elif name == "CONTENT":
       result = self.content
-    elif name == "CONTENT_CAPACITY":
-      assert a == self.content
-      result = len(self.row_nodes)
-    elif name == "GAME_OBJECT_TRANSFORM":
-      assert a == self.content_object
-      result = self.content_transform
-    elif name == "TRANSFORM_CHILD":
-      assert a == self.content_transform
-      assert b < len(self.row_nodes), "native scroll accessed a missing buffer row"
-      result = self.row_nodes[b]
     elif name == "CREATE_DESC": result = self.alloc()
     elif name == "BIND":
       self.qword(a + 0x30, b)
@@ -137,12 +130,9 @@ class FacilityFixture(CollectorFixture):
       self.qword(cls + 0x138 + slot * 16, self.pointer(method))
       self.qword(cls + 0x138 + slot * 16 + 8, method)
 
-    self.content, content_class, self.content_object, self.content_transform = (
-      self.alloc() for _ in range(4))
+    self.content, content_class = (self.alloc() for _ in range(2))
     self.qword(self.content, content_class)
-    self.qword(self.content + 0x68, self.content_object)
     self.write(content_class + 0x126, struct.pack("<H", 31))
-    vtable(content_class, 4, "CONTENT_CAPACITY")
     self.row_nodes = [self.alloc() for _ in range(10)]
     self.qword(self.menu_class + 0x10, self.c_string("BasicMenu"))
     self.write(self.menu_class + 0x126, struct.pack("<H", 64))
@@ -176,83 +166,70 @@ class FacilityFixture(CollectorFixture):
     def method(object, slot): return self.pointer(self.pointer(object) + 0x138 + slot * 16)
     call(hook, self.parent)
     entry = self.values(self.full_list)[-1]
+    assert self.read_string(call(method(entry, 4), entry)) == "MID_MENU_TITLE_HUB"
+    count = len(self.values(self.full_list))
+    assert self.number(self.menu + 0xB8) == 9, "only collection and one hub entry extend the outdoor menu"
+    call(hook, self.parent)
+    assert len(self.values(self.full_list)) == count, "reopening must not duplicate the hub entry"
     self.qword(entry + 0x10, self.menu)
     assert call(method(entry, 18), entry) == 128
-    quick = self.pointer(self.menu + 0x38)
-    assert quick and self.pointer(quick + 0x30) == self.menu
-    choices = self.values(self.pointer(quick + 0x80))
-    assert len(choices) == len(binds)
-    # Execute the actual native CycleMenuItemContent GetChild(showRowNum)
-    # instruction window, not a replacement that silently accepts any index.
-    forward_probe = self.game + 0x02464AEC
-    self.write(forward_probe, struct.pack("<7I", 0xF9403680, 0xAA1F03E1, 0x941FA763,
-      0xF9400BE8, 0xAA1F03E2, 0xB9409D01, 0x944CB88F))
-    backward_probe = self.game + 0x02464D5C
-    self.write(backward_probe, struct.pack("<6I", 0xF9403680, 0xAA1F03E1,
-      0x941FA6C7, 0x52800021, 0xAA1F03E2, 0x944CB7F4))
-    shown = self.number(quick + 0xB8)
-    self.integer(quick + 0x9C, shown)
-
-    def scroll_probe(forward):
-      probe, size, row = (forward_probe, 28, shown) if forward else (backward_probe, 24, 1)
-      old_x20 = self.cpu.reg_read(reg.UC_ARM64_REG_X20)
-      self.cpu.reg_write(reg.UC_ARM64_REG_X20, self.content)
-      self.cpu.reg_write(reg.UC_ARM64_REG_SP, stack)
-      self.cpu.mem_write(stack + 0x10, struct.pack("<Q", quick))
-      self.cpu.emu_start(probe, probe + size, count=1000)
-      assert self.cpu.reg_read(reg.UC_ARM64_REG_PC) == probe + size
-      assert self.cpu.reg_read(reg.UC_ARM64_REG_X0) == self.row_nodes[row]
-      self.cpu.reg_write(reg.UC_ARM64_REG_X20, old_x20)
-
-    scroll_probe(True)
-    scroll_probe(False)
-    assert shown == len(self.row_nodes) - 1
+    categories = self.pointer(self.menu + 0x38)
+    entries = self.values(self.pointer(categories + 0x80))
+    assert len(entries) == self.number(categories + 0xB8) == 3
+    assert [self.read_string(call(method(item, 4), item)) for item in entries] == ["设施", "活动", "商店"]
+    for item in entries:
+      self.qword(item + 0x10, categories)
+      assert call(method(item, 19), item) == 33
     names = re.findall(r'Facility\s*\{\s*name: "([^"]+)"', profile)
-    assert len(names) == len(choices)
-    origin = 0
-    # Traverse every page in both directions, then wrap first/last selection.
-    # The engine probes are real instructions; the visible-window mapping is
-    # modeled here and does not claim that Unity text/colours were rendered.
-    for selected in [*range(len(choices)), *reversed(range(len(choices))), len(choices) - 1, 0]:
-      new_origin = max(0, min(len(choices) - shown, min(max(origin, selected - shown + 1), selected)))
-      for _ in range(abs(new_origin - origin)):
-        scroll_probe(new_origin > origin)
-      origin = new_origin
-      self.integer(quick + 0xA0, selected)
-      self.integer(quick + 0xA8, origin)
-      assert origin <= selected < origin + shown
-      for logical_index in range(origin, origin + shown):
-        item = choices[logical_index]
-        assert self.read_string(call(method(item, 4), item)) == names[logical_index]
-        assert call(method(item, 8), item) == 1
-    assert self.item_ctors and set(self.item_ctors) == {"MAP_ITEM_CTOR"}
-    for item in [entry] + choices:
-      assert self.class_name(self.pointer(item)) == b"MapBasicMenuItem"
+    groups = [[int(value) for value in values.split(",")] for values in re.findall(
+      r'MenuGroup\s*\{\s*facilities: &\[([^\]]+)\]', profile)]
+    assert groups == [[0, 1, 2, 3, 9], [10, 11, 12, 13, 14, 15, 16], [4, 5, 6, 7, 8]]
+    choices = [None] * len(binds)
     original = bytes(self.cpu.mem_read(self.sequence_class, 0x138 + 32 * 16))
-    for index, item in enumerate(choices):
-      self.qword(item + 0x10, quick)
-      assert call(method(item, 8), item) == 1
-      assert call(method(item, 18), item) == 128
-      child = self.pointer(quick + 0x38)
-      assert self.events[-2:] == [("bind", self.game + binds[index]), ("close", quick)]
-      if index == 1:
-        cleaner, ordinary = self.alloc(), self.alloc()
-        cleaner_class = self.alloc(0x138 + 30 * 16)
-        self.qword(cleaner_class + 0x10, self.c_string("RingCleaningItem"))
-        self.write(cleaner_class + 0x126, struct.pack("<H", 30))
-        vtable(cleaner_class, 8, "ENABLED")
-        self.qword(cleaner, cleaner_class)
-        self.qword(ordinary, cleaner_class)
-        top = self.alloc()
-        self.qword(top + 0x80, self.list([cleaner]))
-        self.qword(child + 0x38, top)
-        call(ring_hook, child, 0, 0)
-        assert call(method(cleaner, 8), cleaner) == 4
-        assert call(method(ordinary, 8), ordinary) == 1, "original ring cleaning must remain available"
-      method_info = self.pointer(self.pointer(child) + 0x138 + 10 * 16 + 8)
-      call(method(child, 10), child, method_info)
-      assert self.events[-3:] == [("dispose", child), ("open", quick), ("footer", self.title)]
-      assert self.pointer(quick + 0x38) == 0
+    for category, indices in zip(entries, groups):
+      assert call(method(category, 18), category) == 128
+      quick = self.pointer(categories + 0x38)
+      assert quick and self.pointer(quick + 0x30) == categories
+      items = self.values(self.pointer(quick + 0x80))
+      assert len(items) == len(indices) == self.number(quick + 0xB8)
+      assert len(items) <= len(self.row_nodes), "every item must fit without cycling prefab rows"
+      assert [self.read_string(call(method(item, 4), item)) for item in items] == [names[i] for i in indices]
+      for item in [entry, category] + items:
+        assert self.class_name(self.pointer(item)) == b"HubMenuItem"
+        for slot, offset in ((12, 0x02ADF650), (13, 0x02ADF760)):
+          assert method(item, slot) == self.game + offset, "native hub selection/help lifecycle must survive cloning"
+      for index, item in zip(indices, items):
+        choices[index] = item
+        self.qword(item + 0x10, quick)
+        assert call(method(item, 19), item) == 33
+        assert call(method(item, 8), item) == 1
+        assert call(method(item, 18), item) == 128
+        child = self.pointer(quick + 0x38)
+        assert self.events[-2:] == [("bind", self.game + binds[index]), ("close", quick)]
+        if index == 1:
+          cleaner, ordinary = self.alloc(), self.alloc()
+          cleaner_class = self.alloc(0x138 + 30 * 16)
+          self.qword(cleaner_class + 0x10, self.c_string("RingCleaningItem"))
+          self.write(cleaner_class + 0x126, struct.pack("<H", 30))
+          vtable(cleaner_class, 8, "ENABLED")
+          self.qword(cleaner, cleaner_class)
+          self.qword(ordinary, cleaner_class)
+          top = self.alloc()
+          self.qword(top + 0x80, self.list([cleaner]))
+          self.qword(child + 0x38, top)
+          call(ring_hook, child, 0, 0)
+          assert call(method(cleaner, 8), cleaner) == 4
+          assert call(method(ordinary, 8), ordinary) == 1, "original ring cleaning must remain available"
+        method_info = self.pointer(self.pointer(child) + 0x138 + 10 * 16 + 8)
+        call(method(child, 10), child, method_info)
+        assert self.events[-3:] == [("dispose", child), ("open", quick), ("footer", self.title)]
+        assert self.pointer(quick + 0x38) == 0
+      method_info = self.pointer(self.pointer(quick) + 0x138 + 10 * 16 + 8)
+      call(method(quick, 10), quick, method_info)
+      assert self.pointer(categories + 0x38) == 0
+      assert self.pointer(self.menu + 0x38) == categories
+      assert self.events[-3:] == [("dispose", quick), ("open", categories), ("footer", self.title)]
+    assert all(choices) and set(self.item_ctors) == {"HUB_ITEM_CTOR"}
     assert bytes(self.cpu.mem_read(self.sequence_class, len(original))) == original
     self.activity_used = 1
     for index in (13, 14, 15):
@@ -277,9 +254,18 @@ class FacilityFixture(CollectorFixture):
     self.integer(self.user + 0x28, 5)
     assert call(method(entry, 18), entry) == 2048
     self.integer(self.user + 0x28, 4)
-    method_info = self.pointer(self.pointer(quick) + 0x138 + 10 * 16 + 8)
-    call(method(quick, 10), quick, method_info)
-    assert self.events[-3:] == [("dispose", quick), ("open", self.menu), ("footer", self.title)]
+    method_info = self.pointer(self.pointer(categories) + 0x138 + 10 * 16 + 8)
+    call(method(categories, 10), categories, method_info)
+    assert self.pointer(self.menu + 0x38) == 0
+    assert self.events[-3:] == [("dispose", categories), ("open", self.menu), ("footer", self.title)]
+    # Reopening after visiting every group must recreate only the three
+    # categories, with no direct destination or shopping entry outdoors.
+    assert call(method(entry, 18), entry) == 128
+    reopened = self.pointer(self.menu + 0x38)
+    assert len(self.values(self.pointer(reopened + 0x80))) == 3
+    method_info = self.pointer(self.pointer(reopened) + 0x138 + 10 * 16 + 8)
+    call(method(reopened, 10), reopened, method_info)
+    assert self.pointer(self.menu + 0x38) == 0
     self.ready_units = self.list([self.alloc(), self.alloc()])
     self.relation = self.alloc()
     self.integer(self.relation + 0x18, 1)

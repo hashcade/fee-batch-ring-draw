@@ -55,9 +55,6 @@ pub(crate) unsafe fn create(
   cache: &AtomicUsize,
   callbacks: &[(usize, usize)],
 ) -> Option<Object> {
-  if first.is_null() {
-    return None;
-  }
   // Help/flag/map-attribute slots belong to MapBasicMenuItem, not its
   // 27-slot BasicMenuItem parent. Keep that native type for map entries.
   let map_item = callbacks.iter().any(|(slot, _)| *slot >= 27);
@@ -66,6 +63,31 @@ pub(crate) unsafe fn create(
   } else {
     (b"BasicMenuItem", crate::collector::profile::ITEM_CTOR)
   };
+  unsafe { create_native(first, cache, callbacks, expected, ctor_offset) }
+}
+
+pub(crate) unsafe fn create_hub(
+  first: Object,
+  cache: &AtomicUsize,
+  callbacks: &[(usize, usize)],
+) -> Option<Object> {
+  // HubMenuItem retains the map row's native help visibility on selection
+  // and deselection, including when the scrolling menu reuses a row.
+  unsafe {
+    create_native(first, cache, callbacks, b"HubMenuItem", crate::collector::profile::HUB_ITEM_CTOR)
+  }
+}
+
+unsafe fn create_native(
+  first: Object,
+  cache: &AtomicUsize,
+  callbacks: &[(usize, usize)],
+  expected: &[u8],
+  ctor_offset: usize,
+) -> Option<Object> {
+  if first.is_null() {
+    return None;
+  }
   let mut class: Object = unsafe { field(first, 0) };
   loop {
     if class.is_null() {

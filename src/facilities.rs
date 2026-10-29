@@ -12,11 +12,7 @@ pub const FISHING_USES: usize = 0x0260B190;
 pub const FACILITY_GET: usize = 0x00203E90;
 pub const FACILITY_COMPLETE: usize = 0x028A80D0;
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
-  // Native scrolling accesses the off-screen buffer at GetChild(showRowNum).
-  (0x02464AEC, [0xF9403680, 0xAA1F03E1, 0x941FA763, 0xF9400BE8]),
-  (0x02464AFC, [0xAA1F03E2, 0xB9409D01, 0x944CB88F, 0xF94002F9]),
-  (0x02464D5C, [0xF9403680, 0xAA1F03E1, 0x941FA6C7, 0x52800021]),
-  (0x02464D6C, [0xAA1F03E2, 0x944CB7F4, 0xAA0003FB, 0xF94002A0]),
+  (0x02ADECF0, [0xAA1F03E1, 0x17D0933F, 0xD503201F, 0xD503201F]),
   (0x00203E90, [0xD10103FF, 0xA9017BFD, 0x910043FD, 0xA90257F6]),
   (0x028A80D0, [0xD10143FF, 0xA9017BFD, 0x910043FD, 0xA9025FF8]),
   (0x024533F0, [0xD10203FF, 0xA9027BFD, 0x910083FD, 0xA9036FFC]),
@@ -47,37 +43,6 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x0251E9D0, [0xD10103FF, 0xA9017BFD, 0x910043FD, 0xA90257F6]),
 ];
 
-pub fn visible_rows(items: usize, capacity: usize) -> usize {
-  let visible = items.min(capacity).min(10);
-  if items > visible && visible == capacity {
-    visible.saturating_sub(1)
-  } else {
-    visible
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::visible_rows;
-
-  #[test]
-  fn native_scroll_keeps_one_offscreen_row() {
-    assert_eq!(visible_rows(17, 10), 9);
-    assert_eq!(visible_rows(17, 11), 10);
-    assert_eq!(visible_rows(17, 20), 10);
-    assert_eq!(visible_rows(11, 10), 9);
-  }
-
-  #[test]
-  fn short_menus_do_not_need_a_scroll_buffer() {
-    assert_eq!(visible_rows(10, 10), 10);
-    assert_eq!(visible_rows(7, 10), 7);
-    assert_eq!(visible_rows(0, 10), 0);
-    assert_eq!(visible_rows(17, 1), 0);
-    assert_eq!(visible_rows(17, 0), 0);
-  }
-}
-
 pub struct Facility {
   pub name: &'static str,
   pub aid: &'static str,
@@ -106,11 +71,64 @@ pub const FACILITIES: &[Facility] = &[
   Facility { name: "MID_Hub_Poolside", aid: "AID_水遊び", bind: 0x022BC190 },
 ];
 
+pub struct MenuGroup {
+  pub facilities: &'static [usize],
+}
+
+// One outdoor entry opens these categories; all destination lists fit the
+// original prefab without custom scrolling or additional outdoor entries.
+pub const GROUPS: &[MenuGroup] = &[
+  MenuGroup { facilities: &[0, 1, 2, 3, 9] },
+  MenuGroup { facilities: &[10, 11, 12, 13, 14, 15, 16] },
+  MenuGroup { facilities: &[4, 5, 6, 7, 8] },
+];
+
+pub fn group_title(language: i32, group: usize) -> &'static str {
+  let labels = match language {
+    0 => ["施設", "アクティビティ", "ショップ"],
+    2 | 5 => ["Installations", "Activités", "Boutiques"],
+    3 | 6 => ["Instalaciones", "Actividades", "Tiendas"],
+    7 => ["Einrichtungen", "Aktivitäten", "Läden"],
+    8 => ["Strutture", "Attività", "Negozi"],
+    9 => ["設施", "活動", "商店"],
+    10 => ["设施", "活动", "商店"],
+    11 => ["시설", "활동", "상점"],
+    _ => ["Facilities", "Activities", "Shops"],
+  };
+  labels[group]
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{group_title, FACILITIES, GROUPS};
+
+  #[test]
+  fn short_categories_keep_every_destination_once() {
+    assert_eq!(GROUPS.iter().map(|group| group.facilities.len()).collect::<Vec<_>>(), [5, 7, 5]);
+    let mut actual: Vec<_> =
+      GROUPS.iter().flat_map(|group| group.facilities.iter().copied()).collect();
+    actual.sort_unstable();
+    assert_eq!(actual, (0..FACILITIES.len()).collect::<Vec<_>>());
+  }
+
+  #[test]
+  fn category_labels_cover_game_languages() {
+    for language in 0..12 {
+      for group in 0..GROUPS.len() {
+        assert!(!group_title(language, group).is_empty());
+      }
+    }
+    assert_eq!(group_title(10, 0), "设施");
+    assert_eq!(group_title(10, 1), "活动");
+    assert_eq!(group_title(10, 2), "商店");
+  }
+}
+
 #[cfg(target_os = "switch")]
 pub(crate) mod native {
   use super::*;
   use crate::{
-    meld::native::{new_text, text},
+    meld::native::{new_text, text, text_language},
     menu_item::{self, VTABLE},
     native::{base, field, list_count, metadata, object_at, user_data, Method, Object},
     profile,
@@ -121,6 +139,7 @@ pub(crate) mod native {
   };
   const NONE: Method = ptr::null();
   static ENTRY_CLASS: AtomicUsize = AtomicUsize::new(0);
+  static GROUP_CLASSES: [AtomicUsize; GROUPS.len()] = [const { AtomicUsize::new(0) }; GROUPS.len()];
   static MENU_CLASS: AtomicUsize = AtomicUsize::new(0);
   static CLEANING_CLASS: AtomicUsize = AtomicUsize::new(0);
   static ITEM_CLASSES: [AtomicUsize; FACILITIES.len()] =
@@ -140,6 +159,10 @@ pub(crate) mod native {
 
   unsafe extern "C" fn hidden(_: Object, _: Method) -> i32 {
     4
+  }
+
+  unsafe extern "C" fn cancel(_: Object, _: Method) -> i32 {
+    33
   }
 
   #[skyline::hook(offset = RING_MENU)]
@@ -197,8 +220,19 @@ pub(crate) mod native {
 
   unsafe extern "C" fn name(item: Object, _: Method) -> Object {
     unsafe {
-      message(index(item).map(|index| FACILITIES[index].name).unwrap_or("MID_MENU_TITLE_HUB"))
+      if let Some(index) = index(item) {
+        message(FACILITIES[index].name)
+      } else if let Some(group) = group(item) {
+        new_text(group_title(text_language(), group))
+      } else {
+        message("MID_MENU_TITLE_HUB")
+      }
     }
+  }
+
+  unsafe fn group(item: Object) -> Option<usize> {
+    let class = unsafe { field::<usize>(item, 0) };
+    GROUP_CLASSES.iter().position(|cache| cache.load(Ordering::Relaxed) == class)
   }
 
   unsafe extern "C" fn attribute(item: Object, _: Method) -> i32 {
@@ -319,6 +353,11 @@ pub(crate) mod native {
         return;
       }
       let list: Object = field(menu, 0x80);
+      let Some(first) = object_at(list, 0) else { return };
+      let method = metadata(0x06286A70);
+      if method.is_null() {
+        return;
+      }
       let Some(count) = list_count(list) else { return };
       if (0..count).any(|i| {
         object_at(list, i)
@@ -326,8 +365,7 @@ pub(crate) mod native {
       }) {
         return;
       }
-      let Some(first) = object_at(list, 0) else { return };
-      let Some(item) = menu_item::create(
+      let Some(item) = menu_item::create_hub(
         first,
         &ENTRY_CLASS,
         &[
@@ -339,10 +377,6 @@ pub(crate) mod native {
       ) else {
         return;
       };
-      let method = metadata(0x06286A70);
-      if method.is_null() {
-        return;
-      }
       native!(profile::LIST_ADD, unsafe extern "C" fn(Object, Object, Method))(list, item, method);
       if list_count(list) == Some(count + 1) {
         let rows: i32 = field(menu, 0xB8);
@@ -375,7 +409,33 @@ pub(crate) mod native {
     }
   }
 
-  unsafe fn bind_menu(parent: Object) -> bool {
+  unsafe fn add_choice(
+    items: Object,
+    first: Object,
+    cache: &AtomicUsize,
+    action: usize,
+    method: Method,
+  ) -> bool {
+    unsafe {
+      let Some(item) = menu_item::create_hub(
+        first,
+        cache,
+        &[
+          (4, name as *const () as usize),
+          (8, attribute as *const () as usize),
+          (18, action),
+          (19, cancel as *const () as usize),
+          (28, name as *const () as usize),
+        ],
+      ) else {
+        return false;
+      };
+      native!(profile::LIST_ADD, unsafe extern "C" fn(Object, Object, Method))(items, item, method);
+      true
+    }
+  }
+
+  unsafe fn bind_menu(parent: Object, group: Option<usize>) -> bool {
     unsafe {
       let list: Object = field(parent, 0x80);
       let Some(first) = object_at(list, 0) else { return false };
@@ -384,23 +444,27 @@ pub(crate) mod native {
       if add_method.is_null() {
         return false;
       }
-      for cache in &ITEM_CLASSES {
-        let Some(item) = menu_item::create(
-          first,
-          cache,
-          &[
-            (4, name as *const () as usize),
-            (8, attribute as *const () as usize),
-            (18, activate as *const () as usize),
-            (28, name as *const () as usize),
-          ],
-        ) else {
-          return false;
-        };
-        native!(profile::LIST_ADD, unsafe extern "C" fn(Object, Object, Method))(
-          items, item, add_method,
-        );
-      }
+      let rows = if let Some(group) = group {
+        for &index in GROUPS[group].facilities {
+          if !add_choice(
+            items,
+            first,
+            &ITEM_CLASSES[index],
+            activate as *const () as usize,
+            add_method,
+          ) {
+            return false;
+          }
+        }
+        GROUPS[group].facilities.len()
+      } else {
+        for cache in &GROUP_CLASSES {
+          if !add_choice(items, first, cache, open_group as *const () as usize, add_method) {
+            return false;
+          }
+        }
+        GROUPS.len()
+      };
       let mut class: Object = field(parent, 0);
       loop {
         if class.is_null() {
@@ -413,14 +477,6 @@ pub(crate) mod native {
       }
       let content = native!(CONTENT, unsafe extern "C" fn(Method) -> Object)(NONE);
       if content.is_null() {
-        return false;
-      }
-      let content_class: Object = field(content, 0);
-      let capacity: unsafe extern "C" fn(Object, Method) -> i32 =
-        core::mem::transmute(field::<usize>(content_class, VTABLE + 4 * 16));
-      let capacity = capacity(content, field(content_class, VTABLE + 4 * 16 + 8));
-      let rows = visible_rows(FACILITIES.len(), capacity.max(0) as usize);
-      if rows == 0 {
         return false;
       }
       let menu = native!(profile::ALLOCATE_OBJECT, unsafe extern "C" fn(Object) -> Object)(class);
@@ -458,6 +514,15 @@ pub(crate) mod native {
   }
 
   unsafe extern "C" fn open(item: Object, _: Method) -> i32 {
+    unsafe { open_submenu(item, None) }
+  }
+
+  unsafe extern "C" fn open_group(item: Object, _: Method) -> i32 {
+    let Some(group) = (unsafe { group(item) }) else { return 2048 };
+    unsafe { open_submenu(item, Some(group)) }
+  }
+
+  unsafe fn open_submenu(item: Object, group: Option<usize>) -> i32 {
     unsafe {
       if attribute(item, NONE) != 1 {
         return 2048;
@@ -466,7 +531,7 @@ pub(crate) mod native {
       if menu.is_null() || !field::<Object>(menu, 0x38).is_null() {
         return 2048;
       }
-      if !bind_menu(menu) {
+      if !bind_menu(menu, group) {
         return 2048;
       }
       virtual_void(menu, 23);

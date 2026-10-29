@@ -399,7 +399,7 @@ def smoke(data: bytes, case: str) -> int:
       cleaning_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cleaning) if int(value, 16) in replacements}
       cleaning_game.exercise(cleaning_replacements, STOP, STACK + 0x20000 - 0x20)
-      print("menus: compiled well/collection entries use real 27-slot basic and 30-slot map inheritance; repeated openings and callbacks passed")
+      print("menus: compiled well/collection entries use real 27-slot basic and 30-slot hub/map inheritance; repeated openings and callbacks passed")
     if case in ("supported", "convenience", "menus", "resource_stock_patch"):
       settings_game.exercise(settings_callbacks[4], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled Plugin Settings adjusts counts, persists independent files, retains old values on failure and leaves original classes unchanged")
@@ -413,7 +413,7 @@ def smoke(data: bytes, case: str) -> int:
       support_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", support_profile) if int(value, 16) in replacements}
       facility_game.exercise(replacements[next(iter(collector_hooks))], replacements[ring_menu], STOP, STACK + 0x20000 - 0x20, facility_profile, support_hooks)
-      print(f"{case}: seventeen native facility entries, allowances, cleanup and scene-ready support dispatch passed modeled boundaries")
+      print(f"{case}: one outdoor hub entry, three 5/7/5 destination groups, allowances, cleanup and scene-ready support dispatch passed modeled boundaries")
   else:
     assert not fs_calls, "unsupported executables must not read configuration"
     assert not settings_callbacks, "unsupported executables must not register settings"
