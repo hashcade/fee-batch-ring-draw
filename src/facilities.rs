@@ -9,7 +9,11 @@ pub const SCENE_NAME: usize = 0x02A71860;
 pub const RING_MENU: usize = 0x023397D0;
 pub const VARIABLE_NUMBER: usize = 0x0251E9D0;
 pub const FISHING_USES: usize = 0x0260B190;
+pub const FACILITY_GET: usize = 0x00203E90;
+pub const FACILITY_COMPLETE: usize = 0x028A80D0;
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
+  (0x00203E90, [0xD10103FF, 0xA9017BFD, 0x910043FD, 0xA90257F6]),
+  (0x028A80D0, [0xD10143FF, 0xA9017BFD, 0x910043FD, 0xA9025FF8]),
   (0x024533F0, [0xD10203FF, 0xA9027BFD, 0x910083FD, 0xA9036FFC]),
   (0x02454310, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0x9001F634]),
   (0x0280A6B0, [0x52800024, 0x14004F87, 0xD503201F, 0xD503201F]),
@@ -167,17 +171,34 @@ pub(crate) mod native {
     }
     let Some(index) = (unsafe { index(item) }) else { return 1 };
     let facility = &FACILITIES[index];
-    if facility.aid.is_empty()
-      || unsafe {
-        native!(
-          crate::collector::profile::IS_COMPLETE,
-          unsafe extern "C" fn(Object, Method) -> bool
-        )(new_text(facility.aid), NONE)
-      }
-    {
+    if unsafe { unlocked(facility.aid) } {
       unsafe { available(facility.bind) }
     } else {
       4
+    }
+  }
+
+  pub(crate) unsafe fn unlocked(aid: &str) -> bool {
+    if aid.is_empty() {
+      return true;
+    }
+    unsafe {
+      if aid == "M004" {
+        return native!(
+          crate::collector::profile::IS_COMPLETE,
+          unsafe extern "C" fn(Object, Method) -> bool
+        )(new_text(aid), NONE);
+      }
+      let method = metadata(0x06290F98);
+      if method.is_null() {
+        return false;
+      }
+      let data = native!(FACILITY_GET, unsafe extern "C" fn(Object, Method) -> Object)(
+        new_text(aid),
+        method,
+      );
+      !data.is_null()
+        && native!(FACILITY_COMPLETE, unsafe extern "C" fn(Object, Method) -> bool)(data, NONE)
     }
   }
 

@@ -19,6 +19,8 @@ class CollectorFixture:
     self.functions[self.close] = "CLOSE"
     self.functions[game + 0x02393F60] = "EMPTY_UNIT_LIST"
     self.functions[game + 0x02A71860] = "SCENE_NAME"
+    self.functions[game + 0x00203E90] = "FACILITY_GET"
+    self.functions[game + 0x028A80D0] = "FACILITY_COMPLETE"
     self.heap = game + 0x7000000
     self.active = False
 
@@ -107,7 +109,8 @@ class CollectorFixture:
     self.metadata(0x062840F0)
     self.metadata(0x0628A970)
     self.metadata(0x06287888)
-    self.metadata(0x062A6028, self.string("barn"))
+    self.facility_get_method = self.metadata(0x06290F98)
+    self.barn_data = self.alloc()
     self.metadata(0x06286A70)
     self.item_list_class = self.metadata(0x062923C0)
     self.metadata(0x062923B8)
@@ -218,6 +221,13 @@ class CollectorFixture:
       self.events.append("bonus")
       result = x1 * 3
     elif name == "IS_COMPLETE":
+      assert not self.read_string(x0).startswith("AID_"), "chapter predicate received a facility ID"
+      result = int(self.barn)
+    elif name == "FACILITY_GET":
+      assert self.read_string(x0) == "AID_動物小屋" and x1 == self.facility_get_method
+      result = self.barn_data
+    elif name == "FACILITY_COMPLETE":
+      assert x0 == self.barn_data
       result = int(self.barn)
     elif name == "TRY_PID":
       result = self.pointer(x0 + 0x10)

@@ -235,12 +235,7 @@ unsafe fn source(context: &Context, data: Object) -> Option<Source> {
     };
     Reward::Item(item, u32::try_from(count).ok().filter(|n| *n > 0)?)
   } else if context.sequence == 5 && kind == 7 && unsafe { field::<u8>(data, 0x24) } != 0 {
-    let barn = unsafe { metadata(0x062A6028) };
-    if barn.is_null()
-      || !unsafe {
-        native!(offsets::IS_COMPLETE, unsafe extern "C" fn(Object, Method) -> bool)(barn, NONE)
-      }
-    {
+    if !unsafe { crate::facilities::native::unlocked("AID_動物小屋") } {
       return None;
     }
     let pid = unsafe {

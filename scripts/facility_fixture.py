@@ -50,7 +50,16 @@ class FacilityFixture(CollectorFixture):
       self.events.append(("supports", a))
     elif name == "RING_MENU": pass
     elif name == "ENABLED": result = 1
-    elif name == "IS_COMPLETE": result = int(self.unlocked)
+    elif name == "IS_COMPLETE":
+      assert not self.read_string(a).startswith("AID_"), "chapter completion must never receive a facility ID"
+      result = int(self.chapter_cleared)
+    elif name == "FACILITY_GET":
+      aid = self.read_string(a)
+      assert aid.startswith("AID_") and b == self.facility_get_method
+      result = self.facility_data.get(aid, 0)
+    elif name == "FACILITY_COMPLETE":
+      assert a in self.facility_data.values(), "facility completion requires the facility object, not its ID"
+      result = int(self.unlocked and a not in self.locked_facilities)
     elif name == "FACILITY_BIND":
       self.events.append(("bind", pc))
       if pc in (self.game + 0x028A8700, self.game + 0x02174D70, self.game + 0x02AD6C40): assert b == 0
@@ -87,6 +96,16 @@ class FacilityFixture(CollectorFixture):
     self.reset(4)
     self.ready_units = 0
     self.unlocked = True
+    self.chapter_cleared = True
+    self.locked_facilities = set()
+    aids = re.findall(r'aid: "(AID_[^"]+)"', profile)
+    self.facility_data = {aid: self.alloc() for aid in aids}
+    self.facility_get_method = self.alloc()
+    cell = self.alloc()
+    self.qword(cell, self.facility_get_method)
+    self.qword(self.game + 0x06290F98, cell)
+    self.functions[self.game + 0x00203E90] = "FACILITY_GET"
+    self.functions[self.game + 0x028A80D0] = "FACILITY_COMPLETE"
     self.activity_used, self.is_main = 0, True
     self.qword(self.user + 0x50, self.alloc())
     self.image, self.title, self.title_class, fields = (self.alloc() for _ in range(4))
@@ -182,6 +201,18 @@ class FacilityFixture(CollectorFixture):
     self.unlocked = False
     assert call(method(choices[1], 8), choices[1]) == 4
     assert call(method(choices[1], 18), choices[1]) == 2048
+    self.unlocked = True
+    self.locked_facilities.add(self.facility_data["AID_紋章士の間"])
+    assert call(method(choices[1], 8), choices[1]) == 4
+    assert call(method(choices[4], 8), choices[4]) == 1
+    self.locked_facilities.clear()
+    well_data = self.facility_data.pop("AID_不思議な井戸")
+    assert call(method(choices[2], 8), choices[2]) == 4
+    self.facility_data["AID_不思議な井戸"] = well_data
+    self.chapter_cleared = False
+    assert call(method(choices[12], 8), choices[12]) == 4
+    assert call(method(choices[1], 8), choices[1]) == 1
+    self.chapter_cleared = True
     self.integer(self.user + 0x28, 5)
     assert call(method(entry, 18), entry) == 2048
     self.integer(self.user + 0x28, 4)
