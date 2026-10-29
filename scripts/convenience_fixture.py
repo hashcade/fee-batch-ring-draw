@@ -13,6 +13,10 @@ class ConvenienceFixture(SettingsFixture):
     a, b = args[:2]
     result = None
     if name == "SINGLETON_GET": result = self.user
+    elif name == "PARAMETER": result = 3
+    elif pc == self.game + 0x0251E9D0:
+      assert self.read_string(b) == "G_拠点_闘技場済み"
+      result = self.arena_spent
     elif name == "INITIALIZE_METADATA": pass
     elif name == "UNIT_LIST": result = self.units
     elif name == "UNIT_PID": result = self.pids[a]
@@ -56,6 +60,68 @@ class ConvenienceFixture(SettingsFixture):
     if result is not None: self.cpu.reg_write(reg.UC_ARM64_REG_X0, result)
     self.cpu.reg_write(reg.UC_ARM64_REG_PC, self.cpu.reg_read(reg.UC_ARM64_REG_X30))
     return True
+
+  def exercise_preferences(self, callbacks, hooks, stop, stack):
+    self.active = True
+    def call(address, *args):
+      for i in range(8): self.cpu.reg_write(getattr(reg, f"UC_ARM64_REG_X{i}"), args[i] if i < len(args) else 0)
+      self.cpu.reg_write(reg.UC_ARM64_REG_SP, stack)
+      self.cpu.reg_write(reg.UC_ARM64_REG_X30, stop)
+      self.cpu.emu_start(address, stop + 4, count=1_000_000)
+      assert self.cpu.reg_read(reg.UC_ARM64_REG_PC) == stop
+      return self.cpu.reg_read(reg.UC_ARM64_REG_X0)
+    items = [call(callback) for callback in callbacks]
+    for item in items:
+      copied = self.alloc(self.VTABLE_BYTES)
+      original = bytes(self.cpu.mem_read(self.pointer(item), self.VTABLE_BYTES))
+      self.write(copied, original)
+      self.qword(item, copied)
+      assert bytes(self.cpu.mem_read(copied + 0x138 + 27 * 16, 16)) == bytes(self.cpu.mem_read(self.item_class + 0x138 + 27 * 16, 16))
+    expected = ["龙之时水晶次数", "战斗存档", "专属服装", "一般锻炼次数", "牵绊戒指精炼次数", "自动完成支援对话", "料理厨师", "料理结果"]
+    assert [self.read_string(self.pointer(item + 0x68)) for item in items] == expected
+    assert [self.read_string(self.pointer(item + 0x70)) for item in items[:4]] == ["不减", "开启", "开启", "10"]
+    def change(index, value):
+      self.next_count = value
+      item = items[index]
+      return call(self.pointer(self.pointer(item) + 0x138 + 26 * 16), item)
+    self.arena_spent = 3
+    arena_key = self.metadata(0x06295CA8, self.string("ArenaLimit"))
+    used_key = self.metadata(0x06291A58, self.string("G_拠点_闘技場済み"))
+    self.metadata(0x062840F0)
+    self.qword(self.user + 0x50, self.alloc())
+    for count in (1, 37, 1000, 0):
+      assert change(0, count) == 4096
+      actual = call(hooks[0x02707DD0], self.user)
+      assert actual == (0xFFFFFFFF if count == 0 else count)
+      word = self.number(self.game + 0x0270DB44) & 0xFFFFFFFF
+      assert word == (0x11000108 if count == 0 else 0x11000508)
+    assert call(hooks[0x02280C20], arena_key) == 10
+    assert change(3, 0) == 4096
+    for used in (0, 3, 27):
+      self.arena_spent = used
+      assert call(hooks[0x02280C20], arena_key) == used + 3
+    assert call(hooks[0x02280C20], used_key) == 3, "unrelated parameters must remain native"
+    assert change(3, 10) == 4096
+    for enabled in (0, 1):
+      assert change(1, enabled) == 4096
+      for address in (0x02677284, 0x01E40CF8, 0x01E40E88):
+        assert self.number(self.game + address) & 0xFFFFFFFF == (0x52800028 if enabled else 0xB9402808)
+    # Failure must restore runtime instructions as well as the previous label.
+    self.failure = "mount"
+    assert change(0, 20) == 2048
+    assert call(hooks[0x02707DD0], self.user) == 0xFFFFFFFF
+    assert self.number(self.game + 0x0270DB44) & 0xFFFFFFFF == 0x11000108
+    self.failure = ""
+    assert change(2, 0) == 4096
+    assert self.read_string(self.pointer(items[2] + 0x70)) == "关闭"
+    assert b"personal_outfits=0\n" in self.files[self.paths[0]]
+    self.active = False
+    self.appearance.exercise_disabled()
+    self.active = True
+    assert change(2, 1) == 4096
+    self.active = False
+    self.appearance.exercise()
+    print("compiled eight-row settings: order, finite/nondecreasing counts, reversible saves, disabled outfits and mount-failure rollback passed")
 
   def exercise_new(self, callbacks, hooks, stop, stack):
     self.active = True

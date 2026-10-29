@@ -11,15 +11,15 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
 
 pub fn title(language: i32) -> &'static str {
   match language {
-    0 => "ソラネル：まとめて精製する回数",
-    2 | 5 => "Somniel : nombre de créations",
-    3 | 6 => "Somniel: cantidad de creaciones",
-    7 => "Somniel: Ringanzahl pro Stapel",
-    8 => "Somniel: quantità creazione anelli",
-    9 => "索拉涅爾：批量精煉次數",
-    10 => "索拉涅尔：批量精炼次数",
-    11 => "솔라넬: 일괄 정제 횟수",
-    _ => "Somniel: Batch Ring Count",
+    0 => "まとめて精製する回数",
+    2 | 5 => "nombre de créations",
+    3 | 6 => "cantidad de creaciones",
+    7 => "Ringanzahl pro Stapel",
+    8 => "quantità creazione anelli",
+    9 => "牽絆戒指精煉次數",
+    10 => "牵绊戒指精炼次数",
+    11 => "일괄 정제 횟수",
+    _ => "Batch Ring Count",
   }
 }
 
@@ -57,16 +57,19 @@ pub fn option_title(language: i32, kind: usize) -> &'static str {
   if kind == 0 {
     return title(language);
   }
+  if kind >= 4 {
+    return preference_title(language, kind);
+  }
   let labels = match language {
-    0 => ["ソラネル：料理当番", "ソラネル：料理の出来", "ソラネル：支援会話を自動再生"],
-    2 | 5 => ["Somniel : chef", "Somniel : résultat du repas", "Somniel : soutiens automatiques"],
-    3 | 6 => ["Somniel: cocinero", "Somniel: resultado de cocina", "Somniel: apoyos automáticos"],
-    7 => ["Somniel: Koch", "Somniel: Kochergebnis", "Somniel: automatische Unterstützungen"],
-    8 => ["Somniel: cuoco", "Somniel: risultato cucina", "Somniel: sostegni automatici"],
-    9 => ["索拉涅爾：廚師", "索拉涅爾：料理結果", "索拉涅爾：自動完成支援對話"],
-    10 => ["索拉涅尔：厨师", "索拉涅尔：料理结果", "索拉涅尔：自动完成支援对话"],
-    11 => ["솔라넬: 요리사", "솔라넬: 요리 결과", "솔라넬: 자동 지원 회화"],
-    _ => ["Somniel: Chef", "Somniel: Cooking Outcome", "Somniel: Automatic Supports"],
+    0 => ["料理当番", "料理の出来", "支援会話を自動再生"],
+    2 | 5 => ["chef", "résultat du repas", "soutiens automatiques"],
+    3 | 6 => ["cocinero", "resultado de cocina", "apoyos automáticos"],
+    7 => ["Koch", "Kochergebnis", "automatische Unterstützungen"],
+    8 => ["cuoco", "risultato cucina", "sostegni automatici"],
+    9 => ["料理廚師", "料理結果", "自動完成支援對話"],
+    10 => ["料理厨师", "料理结果", "自动完成支援对话"],
+    11 => ["요리사", "요리 결과", "자동 지원 회화"],
+    _ => ["Chef", "Cooking Outcome", "Automatic Supports"],
   };
   labels[kind.saturating_sub(1).min(2)]
 }
@@ -132,6 +135,9 @@ pub fn option_help(language: i32, kind: usize) -> &'static str {
   if kind == 0 {
     return help(language, false);
   }
+  if kind >= 4 {
+    return preference_help(language, kind);
+  }
   (match language {
     0 => [
       "加入済みの料理当番を選択。通常で元に戻します。",
@@ -179,4 +185,87 @@ pub fn option_help(language: i32, kind: usize) -> &'static str {
       "Process only already eligible C/B/A support conversations in order.",
     ],
   })[kind.saturating_sub(1).min(2)]
+}
+
+pub const MENU_ORDER: [usize; 8] = [4, 5, 6, 7, 0, 3, 1, 2];
+
+fn preference_title(language: i32, kind: usize) -> &'static str {
+  let labels = match language {
+    0 => ["竜の時水晶の回数", "戦闘中のセーブ", "専用衣装", "通常鍛錬の回数"],
+    2 | 5 => [
+      "Nombre de Cristaux temporels",
+      "Sauvegarde en combat",
+      "Tenues personnelles",
+      "Nombre d'entraînements standard",
+    ],
+    3 | 6 => [
+      "Usos del cristal temporal",
+      "Guardado en combate",
+      "Atuendos personales",
+      "Entrenamientos estándar",
+    ],
+    7 => {
+      ["Zeitkristall-Nutzungen", "Speichern im Kampf", "Persönliche Kleidung", "Standardtrainings"]
+    }
+    8 => [
+      "Usi del cristallo temporale",
+      "Salvataggio in battaglia",
+      "Abiti personali",
+      "Allenamenti standard",
+    ],
+    9 => ["龍之時水晶次數", "戰鬥存檔", "專屬服裝", "一般鍛鍊次數"],
+    10 => ["龙之时水晶次数", "战斗存档", "专属服装", "一般锻炼次数"],
+    11 => ["용의 시수정 횟수", "전투 중 저장", "전용 의상", "일반 단련 횟수"],
+    _ => {
+      ["Draconic Time Crystal Uses", "Battle Save", "Personal Outfits", "Standard Training Uses"]
+    }
+  };
+  labels[kind - 4]
+}
+
+pub fn count_label(language: i32, count: u32) -> String {
+  if count != 0 {
+    return count.to_string();
+  }
+  match language {
+    0 => "減らない",
+    2 | 5 => "Sans diminution",
+    3 | 6 => "Sin gastar",
+    7 => "Ohne Verbrauch",
+    8 => "Senza consumo",
+    9 => "不減",
+    10 => "不减",
+    11 => "감소 없음",
+    _ => "Nondecreasing",
+  }
+  .to_owned()
+}
+
+fn preference_help(language: i32, kind: usize) -> &'static str {
+  match language {
+    9 => match kind {
+      4 => "選擇使用次數或不減。保留原版解鎖條件及可回溯紀錄。",
+      5 => "允許在戰鬥中儲存。",
+      6 => "戰鬥及整備時使用角色初始職業服裝。重新建立模型時生效。",
+      _ => "每輪一般鍛鍊的總次數，或不減。不改變特別指名鍛鍊。",
+    },
+    10 => match kind {
+      4 => "选择使用次数或不减。保留原版解锁条件及可回溯记录。",
+      5 => "允许在战斗中保存。",
+      6 => "战斗及整备时使用角色初始职业服装。重新建立模型时生效。",
+      _ => "每轮一般锻炼的总次数，或不减。不改变特别指名锻炼。",
+    },
+    0 => match kind {
+      4 => "使用回数または減らない設定。解禁条件と巻き戻せる記録はそのまま。",
+      5 => "戦闘中のセーブを許可します。",
+      6 => "戦闘・準備画面で初期兵種の衣装を使用。モデル再生成時に反映。",
+      _ => "通常鍛錬の合計回数、または減らない設定。特別指名鍛錬は変更しません。",
+    },
+    _ => match kind {
+      4 => "Choose a use limit or Nondecreasing. Keep native unlocks and recorded history.",
+      5 => "Allow saving during battle.",
+      6 => "Use original character battle clothing in battle and preparation. Applies on model rebuild.",
+      _ => "Total standard training uses per native reset, or Nondecreasing. Emblem training is unchanged.",
+    },
+  }
 }

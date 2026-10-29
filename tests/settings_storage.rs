@@ -73,12 +73,17 @@ fn all_preferences_survive_each_transaction_failure() {
     chef: "PID_パネトネ".into(),
     cooking_outcome: 3,
     auto_support: false,
+    rewind_count: 7,
+    battle_save: false,
+    personal_outfits: false,
+    arena_count: 0,
   };
   let new = Settings {
     draw_count: 612,
     chef: "PID_エーティエ".into(),
     cooking_outcome: 2,
     auto_support: true,
+    ..Settings::default()
   };
   let mut initial = Memory::default();
   save_settings(&mut initial, &old).unwrap();

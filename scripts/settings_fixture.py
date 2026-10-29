@@ -138,7 +138,7 @@ class SettingsFixture(CollectorFixture):
       return self.cpu.reg_read(reg.UC_ARM64_REG_X0)
 
     item = call(callback)
-    assert self.read_string(self.pointer(item + 0x68)) == "索拉涅尔：批量精炼次数"
+    assert self.read_string(self.pointer(item + 0x68)) == "牵绊戒指精炼次数"
     assert self.read_string(self.pointer(item + 0x70)) == "300"
     assert self.pointer(item) != self.item_class
     # PluginSubmenu clones the returned class once more before menu binding.

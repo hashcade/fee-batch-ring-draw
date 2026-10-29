@@ -8,6 +8,7 @@ use core::sync::atomic::{AtomicU32, Ordering};
 
 pub const DEFAULT_DRAW_COUNT: u32 = 300;
 pub const MAX_DRAW_COUNT: u32 = 1000;
+pub const MAX_USE_COUNT: u32 = 1000;
 pub const MAX_CONFIG_BYTES: usize = 4096;
 static DRAW_COUNT: AtomicU32 = AtomicU32::new(DEFAULT_DRAW_COUNT);
 
@@ -17,6 +18,11 @@ pub struct Settings {
   pub chef: String,
   pub cooking_outcome: u8,
   pub auto_support: bool,
+  /// Zero means nondecreasing, not zero available uses.
+  pub rewind_count: u32,
+  pub battle_save: bool,
+  pub personal_outfits: bool,
+  pub arena_count: u32,
 }
 
 impl Default for Settings {
@@ -26,6 +32,10 @@ impl Default for Settings {
       chef: String::new(),
       cooking_outcome: 0,
       auto_support: true,
+      rewind_count: 0,
+      battle_save: true,
+      personal_outfits: true,
+      arena_count: 10,
     }
   }
 }
@@ -33,6 +43,8 @@ impl Default for Settings {
 impl Settings {
   pub fn valid(&self) -> bool {
     valid_count(self.draw_count)
+      && self.rewind_count <= MAX_USE_COUNT
+      && self.arena_count <= MAX_USE_COUNT
       && self.cooking_outcome <= 5
       && (self.chef.is_empty()
         || self.chef.starts_with("PID_")
@@ -51,6 +63,16 @@ impl Settings {
     if !self.auto_support {
       result.push_str("auto_support=0\n");
     }
+    for (key, value, default) in [
+      ("rewind_count", self.rewind_count, 0),
+      ("battle_save", u32::from(self.battle_save), 1),
+      ("personal_outfits", u32::from(self.personal_outfits), 1),
+      ("arena_count", self.arena_count, 10),
+    ] {
+      if value != default {
+        result.push_str(&format!("{key}={value}\n"));
+      }
+    }
     result
   }
 }
@@ -68,6 +90,21 @@ pub fn current() -> Settings {
 #[cfg(target_os = "switch")]
 pub fn auto_support() -> bool {
   SETTINGS.with(|value| value.borrow().auto_support)
+}
+
+#[cfg(target_os = "switch")]
+pub fn personal_outfits() -> bool {
+  SETTINGS.with(|value| value.borrow().personal_outfits)
+}
+
+#[cfg(target_os = "switch")]
+pub fn arena_count() -> u32 {
+  SETTINGS.with(|value| value.borrow().arena_count)
+}
+
+#[cfg(target_os = "switch")]
+pub fn rewind_count() -> u32 {
+  SETTINGS.with(|value| value.borrow().rewind_count)
 }
 
 pub fn valid_count(count: u32) -> bool {
@@ -103,6 +140,24 @@ pub fn parse_settings(contents: &str) -> Result<Settings, &'static str> {
         settings.draw_count = value.trim().parse().map_err(|_| "invalid draw_count")?
       }
       "chef" => settings.chef = value.trim().to_owned(),
+      "rewind_count" => {
+        settings.rewind_count = value.trim().parse().map_err(|_| "invalid rewind_count")?
+      }
+      "arena_count" => {
+        settings.arena_count = value.trim().parse().map_err(|_| "invalid arena_count")?
+      }
+      "battle_save" | "personal_outfits" => {
+        let enabled = match value.trim() {
+          "0" => false,
+          "1" => true,
+          _ => return Err("invalid switch value"),
+        };
+        if key == "battle_save" {
+          settings.battle_save = enabled;
+        } else {
+          settings.personal_outfits = enabled;
+        }
+      }
       "cooking_outcome" => {
         settings.cooking_outcome = value.trim().parse().map_err(|_| "invalid cooking_outcome")?
       }
@@ -141,7 +196,18 @@ pub fn set_draw_count(count: u32) -> Result<(), storage::Error> {
 
 #[cfg(target_os = "switch")]
 pub fn set(settings: Settings) -> Result<(), storage::Error> {
-  storage::save_settings(&mut sdk::SdCard::mount()?, &settings)?;
+  if !settings.valid() {
+    return Err(storage::Error);
+  }
+  let old = current();
+  if !crate::preferences::native::apply(&settings) {
+    return Err(storage::Error);
+  }
+  let saved = (|| storage::save_settings(&mut sdk::SdCard::mount()?, &settings))();
+  if saved.is_err() {
+    crate::preferences::native::apply(&old);
+    return Err(storage::Error);
+  }
   DRAW_COUNT.store(settings.draw_count, Ordering::Relaxed);
   SETTINGS.with(|value| *value.borrow_mut() = settings);
   Ok(())

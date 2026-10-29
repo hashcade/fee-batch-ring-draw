@@ -26,6 +26,7 @@ from convenience_fixture import ConvenienceFixture
 from facility_fixture import FacilityFixture
 from well_fixture import WellFixture
 from shop_fixture import ShopFixture
+from appearance_fixture import AppearanceFixture
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -74,6 +75,9 @@ def smoke(data: bytes, case: str) -> int:
   support_profile = (ROOT / "src/supports.rs").read_text(encoding="utf-8")
   facility_profile = (ROOT / "src/facilities.rs").read_text(encoding="utf-8")
   shop_profile = (ROOT / "src/shops.rs").read_text(encoding="utf-8")
+  preferences_profile = (ROOT / "src/preferences.rs").read_text(encoding="utf-8")
+  outfit_profile = (ROOT / "src/outfits/profile.rs").read_text(encoding="utf-8")
+  preference_patches = [(0x0270DB44, 0x11000508, 0x11000108), (0x02677284, 0xB9402808, 0x52800028), (0x01E40CF8, 0xB9402808, 0x52800028), (0x01E40E88, 0xB9402808, 0x52800028), (0x01CAA7A4, 0x1A9706D4, 0x1A9706D4)]
   patches = [(int(address, 16), int(original, 16), int(replacement, 16))
     for address, original, replacement in re.findall(
       r"\((0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+)\)", activities)]
@@ -83,7 +87,7 @@ def smoke(data: bytes, case: str) -> int:
 
   signatures = [(int(address, 16), b"".join(
     struct.pack("<I", int(word, 16)) for word in re.findall(r"0x[0-9A-Fa-f]+", words)
-  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings_profile + well_profile + cooking_profile + support_profile + facility_profile + shop_profile)]
+  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings_profile + well_profile + cooking_profile + support_profile + facility_profile + shop_profile + preferences_profile + outfit_profile)]
   expected_cooking_hooks = {int(value, 16) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cooking_profile)
     if name in ("CURRENT_CHEF", "GET_COOK_DATA", "COOK", "DETERMINE_TASTE", "ANIMATION_CREATE")}
@@ -93,6 +97,7 @@ def smoke(data: bytes, case: str) -> int:
     "COUNT_MENU", "BUILD_TEXT", "EXECUTE_GACHA", "UNLOAD", "DRAW", "CREATE_DEMO"
   )}
   expected_hooks.update(expected_cooking_hooks)
+  expected_hooks.update((0x02707DD0, offset("PARAMETER"), 0x02B0EA10, 0x01BB5ED0, 0x01BB6C50))
   expected_hooks.update(int(value, 16) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", shop_profile) if name != "LOOKUP")
   ring_menu = int(re.search(r"pub const RING_MENU: usize = (0x[0-9A-Fa-f]+)", facility_profile).group(1), 16)
@@ -187,6 +192,9 @@ def smoke(data: bytes, case: str) -> int:
   well_game = WellFixture(cpu, GAME, write_game, well_profile + collector, profile)
   facility_game = FacilityFixture(cpu, GAME, write_game, facility_profile + collector + support_profile, profile)
   shop_game = ShopFixture(cpu, GAME, write_game, shop_profile, profile)
+  outfit_offsets = dict((name, int(value, 16)) for name, value in re.findall(
+    r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", outfit_profile))
+  appearance = None
 
   def string_at(address: int) -> bytes:
     result = bytearray()
@@ -201,6 +209,8 @@ def smoke(data: bytes, case: str) -> int:
     nonlocal patch_failed, allocation_cursor
     if pc == STOP:
       cpu.emu_stop()
+      return
+    if appearance is not None and appearance.handle(pc, names.get(pc)):
       return
     if shop_game.handle(pc, names.get(pc)):
       return
@@ -242,7 +252,7 @@ def smoke(data: bytes, case: str) -> int:
       cpu.mem_write(argument, b"1.3.0\0" if case == "wrong_version" else b"2.0.0\0")
     elif name == "sky_memcpy":
       length = cpu.reg_read(registers.UC_ARM64_REG_X2)
-      assert length == 4 and argument - GAME in {p[0] for p in patches}
+      assert length == 4 and argument - GAME in {p[0] for p in patches + preference_patches}
       word = bytes(cpu.mem_read(cpu.reg_read(registers.UC_ARM64_REG_X1), length))
       patch_calls.append((argument - GAME, struct.unpack("<I", word)[0]))
       fail = case == "patch_failed" and len(patch_calls) == 2 and not patch_failed
@@ -330,12 +340,15 @@ def smoke(data: bytes, case: str) -> int:
   cpu.emu_start(BASE + main, STOP + 4, count=100_000)
   if cpu.reg_read(registers.UC_ARM64_REG_PC) != STOP:
     raise AssertionError(f"{case}: initialization did not return")
+  startup_patch_calls = patch_calls[:]
   supported = case in ("supported", "shops", "facilities", "convenience", "dialogue", "menus", "mount_failed", "resource_stock_patch", "wrong_activity_instruction", "patch_failed") or case in configs
   expected = expected_hooks if supported else set()
   if set(hooks) != expected or len(hooks) != len(expected):
     raise AssertionError(f"{case}: incorrect hook registration: {hooks}")
   if supported:
-    assert len(settings_callbacks) == 4
+    assert len(settings_callbacks) == 8
+    appearance = AppearanceFixture(cpu, GAME, write_game, outfit_offsets.__getitem__, replacements, STOP, STACK + 0x20000 - 0x20)
+    settings_game.appearance = appearance
     assert fs_calls.count("mount") == 1
     assert fs_calls.count("unmount") == (case != "mount_failed")
     assert fs_calls.count("close") == (case in configs)
@@ -388,12 +401,13 @@ def smoke(data: bytes, case: str) -> int:
       cleaning_game.exercise(cleaning_replacements, STOP, STACK + 0x20000 - 0x20)
       print("menus: compiled well/collection entries use real 27-slot basic and 30-slot map inheritance; repeated openings and callbacks passed")
     if case in ("supported", "convenience", "menus", "resource_stock_patch"):
-      settings_game.exercise(settings_callbacks[0], STOP, STACK + 0x20000 - 0x20)
+      settings_game.exercise(settings_callbacks[4], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled Plugin Settings adjusts counts, persists independent files, retains old values on failure and leaves original classes unchanged")
       new_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cooking_profile + support_profile)
         if int(value, 16) in replacements}
-      settings_game.exercise_new(settings_callbacks, new_hooks, STOP, STACK + 0x20000 - 0x20)
+      settings_game.exercise_new([settings_callbacks[i] for i in (4, 6, 7, 5)], new_hooks, STOP, STACK + 0x20000 - 0x20)
+      settings_game.exercise_preferences(settings_callbacks, replacements, STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled cooking choices preserve independent settings and context; support dispatch uses native A/B actions, excludes special/unready pairs and never writes ranks")
     if case in ("supported", "facilities", "performance", "menus"):
       support_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
@@ -412,7 +426,7 @@ def smoke(data: bytes, case: str) -> int:
       for address, original, _ in patches:
         assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == original
     else:
-      assert patch_calls == [(address, replacement) for address, _, replacement in patches]
+      assert startup_patch_calls == [(address, replacement) for address, _, replacement in patches] + [(address, replacement) for address, original, replacement in preference_patches if original != replacement]
       for address, _, replacement in patches:
         assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == replacement
   else:

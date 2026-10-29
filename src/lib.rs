@@ -11,6 +11,8 @@ pub mod cooking;
 pub mod facilities;
 pub mod labels;
 pub mod meld;
+pub mod outfits;
+pub mod preferences;
 pub mod profile;
 pub mod random;
 pub mod session;

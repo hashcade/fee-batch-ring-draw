@@ -19,6 +19,7 @@ fn extended_settings_round_trip_without_save_variables() {
     chef: "PID_パネトネ".to_owned(),
     cooking_outcome: 3,
     auto_support: false,
+    ..Settings::default()
   };
   assert_eq!(parse_settings(&settings.encode()), Ok(settings));
   for value in [

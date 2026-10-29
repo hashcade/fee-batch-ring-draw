@@ -16,6 +16,8 @@ pub fn install() {
   }
   crate::activities::install();
   config::load();
+  crate::preferences::native::install();
+  crate::outfits::plugin::install();
   crate::settings::native::install();
   skyline::install_hooks!(count_menu, build_text, execute_gacha, draw, create_demo, unload);
   crate::meld::plugin::install();

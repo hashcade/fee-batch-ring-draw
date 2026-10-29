@@ -14,9 +14,17 @@ use core::{
 
 const VTABLE: usize = 0x138;
 const NONE: Method = ptr::null();
-static ITEM_CLASSES: [AtomicUsize; 4] = [const { AtomicUsize::new(0) }; 4];
-const ITEM_NAMES: [&[u8]; 4] =
-  [b"SomnielDrawCount\0", b"SomnielChef\0", b"SomnielCookingOutcome\0", b"SomnielAutoSupport\0"];
+static ITEM_CLASSES: [AtomicUsize; 8] = [const { AtomicUsize::new(0) }; 8];
+const ITEM_NAMES: [&[u8]; 8] = [
+  b"SomnielDrawCount\0",
+  b"SomnielChef\0",
+  b"SomnielCookingOutcome\0",
+  b"SomnielAutoSupport\0",
+  b"SomnielRewindCount\0",
+  b"SomnielBattleSave\0",
+  b"SomnielPersonalOutfits\0",
+  b"SomnielArenaCount\0",
+];
 static SAVE_FAILED: AtomicBool = AtomicBool::new(false);
 
 extern "C" {
@@ -30,8 +38,18 @@ extern "C" {
 }
 
 pub(crate) fn install() {
-  for callback in [create, create_chef, create_outcome, create_support] {
-    unsafe { cobapi_register_configmenuitem_cb(callback) };
+  let callbacks = [
+    create,
+    create_chef,
+    create_outcome,
+    create_support,
+    create_rewind,
+    create_save,
+    create_outfits,
+    create_arena,
+  ];
+  for kind in MENU_ORDER {
+    unsafe { cobapi_register_configmenuitem_cb(callbacks[kind]) };
   }
 }
 
@@ -89,6 +107,18 @@ unsafe extern "C" fn create_outcome() -> Object {
 unsafe extern "C" fn create_support() -> Object {
   unsafe { create_kind(3) }
 }
+unsafe extern "C" fn create_rewind() -> Object {
+  unsafe { create_kind(4) }
+}
+unsafe extern "C" fn create_save() -> Object {
+  unsafe { create_kind(5) }
+}
+unsafe extern "C" fn create_outfits() -> Object {
+  unsafe { create_kind(6) }
+}
+unsafe extern "C" fn create_arena() -> Object {
+  unsafe { create_kind(7) }
+}
 
 unsafe fn kind(item: Object) -> usize {
   // Cobalt clones each returned item's class before adding it to the menu.
@@ -117,11 +147,39 @@ unsafe fn create_kind(kind: usize) -> Object {
     // ConfigMethodKind.Switch, using the game's existing left/right repeat.
     item.cast::<u8>().add(0x64).cast::<i32>().write(0);
     item.cast::<u8>().add(0x80).write(1);
-    reference(item, 0x68, new_text(option_title(text_language(), kind)));
+    reference(item, 0x68, new_text(&localized_title(text_language(), kind)));
     command(item, NONE);
     description(item, NONE);
     item
   }
+}
+
+unsafe fn localized_title(language: i32, kind: usize) -> String {
+  // Confirmed JP/EN/ZH labels stay compact. Other game languages supply their
+  // own system nouns; only the generic uses suffix belongs to this plugin.
+  let key = match kind {
+    4 => "MID_MENU_REWIND",
+    7 => "MID_Hub_Arena_Start",
+    _ => return option_title(language, kind).to_owned(),
+  };
+  if matches!(language, 0 | 1 | 4 | 9 | 10) {
+    return option_title(language, kind).to_owned();
+  }
+  let lookup: unsafe extern "C" fn(Object, Method) -> Object =
+    unsafe { core::mem::transmute(base() + crate::meld::profile::MESS_GET) };
+  let value = unsafe { lookup(new_text(key), NONE) };
+  let Some(name) = (unsafe { crate::meld::native::text(value) }) else {
+    return option_title(language, kind).to_owned();
+  };
+  let suffix = match language {
+    2 | 5 => " : utilisations",
+    3 | 6 => ": usos",
+    7 => ": Nutzungen",
+    8 => ": usi",
+    11 => " 횟수",
+    _ => " Uses",
+  };
+  format!("{name}{suffix}")
 }
 
 pub(crate) unsafe fn lookup_class(namespace: &[u8], name: &[u8]) -> Object {
@@ -157,6 +215,10 @@ unsafe extern "C" fn command(item: Object, _: Method) {
       2 => crate::cooking::native::outcome_name(settings.cooking_outcome)
         .unwrap_or_else(|| outcome_label(language, settings.cooking_outcome).to_owned()),
       3 => support_label(language, settings.auto_support).to_owned(),
+      4 => count_label(language, settings.rewind_count),
+      5 => support_label(language, settings.battle_save).to_owned(),
+      6 => support_label(language, settings.personal_outfits).to_owned(),
+      7 => count_label(language, settings.arena_count),
       _ => settings.draw_count.to_string(),
     };
     reference(item, 0x70, new_text(&label));
@@ -183,9 +245,10 @@ unsafe extern "C" fn description(item: Object, _: Method) {
 unsafe extern "C" fn change(item: Object, _: Method) -> i32 {
   let mut settings = config::current();
   let old = settings.clone();
+  let kind = unsafe { kind(item) };
   let change: unsafe extern "C" fn(i32, i32, i32, i32, Method) -> i32 =
     unsafe { core::mem::transmute(base() + CHANGE_NUMBER) };
-  match unsafe { kind(item) } {
+  match kind {
     1 => {
       let mut chefs = unsafe { crate::cooking::native::chefs() };
       chefs.insert(0, (String::new(), String::new()));
@@ -205,6 +268,21 @@ unsafe extern "C" fn change(item: Object, _: Method) -> i32 {
       let next = unsafe { change(i32::from(settings.auto_support), 0, 1, 1, NONE) };
       if (0..=1).contains(&next) {
         settings.auto_support = next == 1;
+      }
+    }
+    4 | 7 => {
+      let value = if kind == 4 { &mut settings.rewind_count } else { &mut settings.arena_count };
+      let next = unsafe { change(*value as i32, 0, config::MAX_USE_COUNT as i32, 1, NONE) };
+      if (0..=config::MAX_USE_COUNT as i32).contains(&next) {
+        *value = next as u32;
+      }
+    }
+    5 | 6 => {
+      let value =
+        if kind == 5 { &mut settings.battle_save } else { &mut settings.personal_outfits };
+      let next = unsafe { change(i32::from(*value), 0, 1, 1, NONE) };
+      if (0..=1).contains(&next) {
+        *value = next == 1;
       }
     }
     _ => {
