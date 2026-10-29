@@ -35,7 +35,7 @@ unsafe fn message(key: &str) -> Object {
 }
 
 unsafe extern "C" fn name(_: Object, _: Method) -> Object {
-  unsafe { message("MID_Hub_Area_ItemReturn") }
+  unsafe { message("MID_KEYHELP_MENU_ACHIEVEMENT_ALL") }
 }
 
 unsafe extern "C" fn help(_: Object, _: Method) -> Object {

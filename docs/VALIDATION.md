@@ -2,6 +2,12 @@
 
 ## v0.3.6 facility and draw-row regressions
 
+- Collection uses the existing MID_KEYHELP_MENU_ACHIEVEMENT_ALL key. Verified
+  the public [game-text dump](https://github.com/Xzonn/FireEmblemEngageData/tree/master/messages):
+  cnch is `批量领取`, twch `統一領取`, usen `Claim All`, and jpja `一括取得`.
+  The original ItemReturn key means conversion completion in Chinese/Japanese.
+  Runtime text remains supplied by the game's language data; no custom locale
+  table or message asset is added.
 - Reproduced the old facility failure by rejecting AIDs passed to the chapter
   predicate. The corrected compiled boundary resolves HubFacilityData.Get with
   its generic MethodInfo and invokes the instance IsComplete. Tests distinguish

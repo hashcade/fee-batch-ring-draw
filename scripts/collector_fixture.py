@@ -349,7 +349,7 @@ class CollectorFixture:
     assert call(self.callbacks[8], item) == 2
     assert call(self.callbacks[18], item) == 2048
     assert "grant" not in self.events
-    assert self.read_string(call(self.callbacks[4], item)) == "MID_Hub_Area_ItemReturn"
+    assert self.read_string(call(self.callbacks[4], item)) == "MID_KEYHELP_MENU_ACHIEVEMENT_ALL"
     assert self.read_string(call(self.callbacks[28], item)) == "MID_Hub_Well_ItemExchange_Get"
 
     for sequence in (4, 5):
