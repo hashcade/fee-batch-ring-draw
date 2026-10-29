@@ -1,5 +1,43 @@
 # Native implementation boundaries
 
+## Configurable battle conveniences and personal outfits
+
+Settings remain in the independent SD file. Existing files retain chef, outcome,
+draw count and support choices; missing new keys take defaults. Zero is the
+nondecreasing selector for rewind and standard training, never zero available uses.
+The eight Cobalt callbacks register rewind, saves, outfits, training, draws,
+supports, chef and outcome in that order. Their private classes preserve native
+ConfigBasicMenuItem InitContent through Cobalt's second class copy.
+
+MapHistory.Rewind.GetMaxUseCount at 0x02707DD0 supplies the finite quota or the
+native negative-unlimited sentinel. The original IsEnable still checks the game's
+unlock flag. Nondecreasing mode replaces only the use increment at 0x0270DB44;
+finite mode restores it. History recording, rollback and chapter rules are intact.
+Battle saves reversibly replace the three original sequence checks at 0x02677284,
+0x01E40CF8 and 0x01E40E88, without changing mode, difficulty or saved data.
+
+The standard-training parameter is identified by its interned metadata key at
+0x06295CA8. Unrelated Parameter.Get reads call the original with no string scan or
+allocation. A finite selection returns the total quota; the native dictionary
+counter G_拠点_闘技場済み and reset paths remain unchanged. Nondecreasing mode keeps
+the counter's previous value at 0x01CAA7A4 and returns spent + native quota for
+availability/UI, so exhausted training becomes available without erasing history
+or displaying an enormous fake remaining count. Paid training is not changed.
+Code writes occur only at startup or explicit settings edits, not per frame.
+Settings write failures restore the previous runtime words and active values.
+
+Personal outfits integrate the former independent MIT-licensed implementation:
+42 exact PID/dress-gender mappings cover 41 playable identities, both Alear genders
+and DLC allies. The three appearance hooks retain original scene scoping and only
+replace transient dress references on compatible rigs. The off path reads a
+boolean and returns without catalog/string processing. No outfit inventory, job,
+saved appearance ID, hair, resource asset or game-save setting is introduced.
+Do not load the former standalone outfit NRO together with this implementation.
+Models already instantiated refresh on the next native rebuild.
+
+The menu uses the game's Simplified Chinese nouns 龙之时水晶, 一般锻炼,
+牵绊戒指 and 支援对话; Chef is the user-requested concise 料理厨师 label.
+
 ## Facility, support and cooking extensions
 
 The outdoor HubMenu receives a separate facility entry. Its BasicMenu and item

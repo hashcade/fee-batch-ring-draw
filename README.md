@@ -11,7 +11,10 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 - **Single or batch Bond Ring melding:** choose one copy or as many copies of the selected kind and current rank as materials, fragments, and capacity allow, in the original confirmation. Keep normal costs and equipped copies; batch melding automatically skips the result animation.
 - **Single or all-ring cleaning:** keep one-action individual cleaning, or select Polish All at the original facility and choose a cleaner once. Clean eligible dirty rings and bracelets without individual rubbing, keeping native bond rewards for that cleaner.
 - **Quick Sommie interactions:** keep the original feeding and petting choices, shorten feeding waits, and automatically finish a petting round after its initial interaction. Keep native preferences, affection and reward eligibility.
-- **Quick arena training:** skip ordinary and paid Emblem-training battles. Keep native EXP, costs, growth, activity allowances and cleanup.
+- **Quick arena training:** skip ordinary and paid Emblem-training battles. Keep native EXP, costs, growth and cleanup. Standard training defaults to ten uses per native activity reset, with a configurable quota or nondecreasing mode. Paid Emblem training is unchanged.
+- **Draconic Time Crystal uses:** choose a finite quota or nondecreasing uses, which is the default. Keep original unlocks and recorded rewind history.
+- **Battle saves:** allow saving during battle; enabled by default and independently switchable.
+- **Personal outfits:** use each character's original class clothing in ordinary battle and preparation models, even after reclassing. Enabled by default. Keep native hair, weapons, mounts, skeletons, animations and engaged forms; incompatible skeletons retain their native outfit. Changes apply when the model is rebuilt, not immediately to existing models.
 - **Quick relationship dialogues:** automatically skip messages in selected C/B/A support and Emblem bond conversations, including paid training. Keep native scripts, viewed records, rank advancement and callbacks. Story and Pact Ring conversations stay unchanged.
 - **Fast fishing:** shorten the bite wait and simplify landing fish while keeping the original fishing allowance and rewards.
 - **Ancient Well preview and reroll:** the original well menu includes Preview Results and Reroll Results for a pending exchange. Preview uses a private RNG and lists item quantities without claiming anything. Reroll changes only that exchange's seed; normal waiting, deposits and collection remain.
@@ -21,7 +24,7 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 - **Inventory-free ordinary gifts:** give normal gifts even at zero stock without consuming owned copies. Keep the original recipient preferences and support gains.
 - **Collect exploration rewards:** use the first entry in the original exploration menu to collect generated ground items, farm products, eligible animals, and available ordinary villager gifts in the Somniel or after battle. Keep donation bonuses, adoption requirements, and inventory limits; leave rewards that do not fit unclaimed.
 
-Convenience features are enabled automatically; automatic supports can be disabled in Plugin Settings. Menu labels follow the game's text language.
+Convenience features are enabled automatically; the preferences below can be changed in Plugin Settings. Menu labels follow the game's text language.
 
 ## Installation
 
@@ -45,9 +48,22 @@ Fully restart the game after installation or an update.
 
 ## Settings
 
-Open **Settings → Plugin Settings** in the game. Somniel entries include
-**Batch Ring Count**, **Chef**, **Cooking Outcome**, and **Automatic Supports**.
+Open **Settings → Plugin Settings** in the game. Entries appear in this order:
+
+1. **Draconic Time Crystal Uses** — Nondecreasing by default.
+2. **Battle Save** — On by default.
+3. **Personal Outfits** — On by default.
+4. **Standard Training Uses** — 10 by default.
+5. **Batch Ring Count** — 300 by default.
+6. **Automatic Supports** — On by default.
+7. **Chef** — Native by default.
+8. **Cooking Outcome** — Native by default.
+
 Use the original left/right controls; changes save automatically.
+Rewind and standard training offer **Nondecreasing** or **1–1000** uses.
+Finite values are total quotas, not remaining-use refills. Native spent counters
+and reset timing remain in place. Nondecreasing training preserves the current
+spent counter and keeps normal training available even if it was exhausted.
 
 Batch Ring Count defaults to **300**,
 with a range of **2–1000**. Changes are saved automatically and apply when the
@@ -82,6 +98,8 @@ saves; completing a support uses the game's normal progress and viewed records.
 - [engage-il2cpp](https://github.com/DivineDragonFanClub/engage-il2cpp) — native interface references.
 - [KaitoB](https://tekqart.com/thread-327061-1-1.html) — original activity and gift patch references.
 - [Triabolical / MyCodeMods](https://github.com/triabolicals/triabolical-code-mods) — collection, facility and relationship-convenience behavior references.
+- [DeathChaos / Battle Outfits and More Outfits](https://gamebanana.com/mods/424968) — appearance-system research reference; no BOAMO files are redistributed.
+- [FireEmblemEngageData](https://github.com/Xzonn/FireEmblemEngageData) — original outfit mappings and official game terminology references.
 
 Fire Emblem and related names are trademarks of Nintendo and Intelligent Systems.
 This unofficial fan project is not affiliated with or endorsed by them.

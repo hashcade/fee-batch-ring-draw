@@ -1,5 +1,24 @@
 # Validation
 
+## Integrated battle preferences and outfits
+
+- Focused configuration/storage/limit tests cover old files, all new defaults,
+  finite/nondecreasing selectors, invalid values, round trips and write rollback.
+- A compiled AArch64 fixture checks all eight Chinese menu names and registration
+  order, Cobalt's second class clone, finite rewind limits, the native unlimited
+  sentinel, standard-training totals and exhausted-to-nondecreasing availability,
+  unrelated parameter reads, all three save switches and mount-failure rollback.
+- The integrated appearance fixture checks all 42 mappings through battle and
+  preparation paths, disabled passthrough, unchanged units and non-dress fields,
+  incompatible rigs, engaged forms, unsupported identities and excluded scenes.
+  It occupies a separate modeled heap from the existing text fixture.
+- Offline NSO verification now includes 337 instruction windows, including every
+  new patch site and the integrated appearance entry points. No new loader import
+  is introduced and no runtime original-instruction preflight is added.
+- These are static and modeled execution checks, not actual game rendering.
+  Finite rewind display/use/reset, real battle save/load, live training rewards
+  and model refresh after toggling still require device/emulator acceptance.
+
 ## Unreleased facility-scroll buffer correction
 
 - Native CycleMenuItemContent at 0x02464AEC reads the row at index
