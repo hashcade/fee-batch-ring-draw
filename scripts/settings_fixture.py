@@ -40,6 +40,7 @@ class SettingsFixture(CollectorFixture):
       result = self.alloc()
       self.qword(result, x0)
     elif name == "ITEM_CTOR": pass
+    elif name in ("BASE_ON_SELECT", "BASE_ON_DESELECT"): pass
     elif name == "STRING_NEW_SIZE":
       result = self.alloc(0x20 + x0 * 2)
       self.integer(result + 0x10, x0)
@@ -123,6 +124,22 @@ class SettingsFixture(CollectorFixture):
       self.qword(method + 0x10, self.c_string(name))
       self.qword(self.item_class + 0x138 + slot * 16, self.game + 0x3E00000 + slot * 16)
       self.qword(self.item_class + 0x138 + slot * 16 + 8, method)
+    # Execute the pinned ConfigBasicMenuItem selection routines themselves.
+    # Only their base colour/cursor callbacks and UpdateText are modeled.
+    for slot, offset, words in (
+      (12, 0x02536FD0, (0xA9BE7BFD, 0xF9000BF3, 0x910003FD, 0xAA1F03E1,
+        0xAA0003F3, 0x97FCBD63, 0x52800028, 0x39020268,
+        0xAA1303E0, 0xF9400BF3, 0xA8C27BFD, 0x14000001)),
+      (13, 0x025370F0, (0xA9BE7BFD, 0xF9000BF3, 0x910003FD, 0xAA1F03E1,
+        0xAA0003F3, 0x97FCBD73, 0x3902027F, 0xAA1303E0,
+        0xF9400BF3, 0xA8C27BFD, 0x17FFFFBA, 0xD503201F)),
+    ):
+      self.write(self.game + offset, struct.pack("<12I", *words))
+      self.qword(self.item_class + 0x138 + slot * 16, self.game + offset)
+    self.functions[self.game + 0x02466570] = "BASE_ON_SELECT"
+    self.functions[self.game + 0x024666D0] = "BASE_ON_DESELECT"
+    for offset in (0x02466570, 0x024666D0):
+      self.write(self.game + offset, struct.pack("<I", 0xD65F03C0))
     original = bytes(self.cpu.mem_read(self.item_class, self.VTABLE_BYTES))
     self.paths = tuple(b"feesomniel:/fee-better-somniel.cfg" + tail for tail in (b"", b".tmp", b".previous"))
     self.files = {self.paths[0]: b"draw_count=300\n"}

@@ -80,6 +80,25 @@ class ConvenienceFixture(SettingsFixture):
     expected = ["龙之时水晶次数", "战斗存档", "专属服装", "一般锻炼次数", "牵绊戒指精炼次数", "自动完成支援对话", "料理厨师", "料理结果"]
     assert [self.read_string(self.pointer(item + 0x68)) for item in items] == expected
     assert [self.read_string(self.pointer(item + 0x70)) for item in items[:4]] == ["不减", "开启", "开启", "10"]
+    def arrows():
+      return [bool(self.cpu.mem_read(item + 0x80, 1)[0]) for item in items]
+    def selection(index, slot):
+      item = items[index]
+      call(self.pointer(self.pointer(item) + 0x138 + slot * 16), item)
+    assert not any(arrows()), "unselected rows must not start with arrows enabled"
+    saved = dict(self.files)
+    # First entry, one-row moves, reverse traversal and wrap; no prior visits
+    # or preference changes may be needed to initialize a row correctly.
+    current = None
+    for index in [0, 1, 0, 7, *range(7, -1, -1), *range(8)]:
+      if current is not None: selection(current, 13)
+      selection(index, 12)
+      assert arrows() == [i == index for i in range(8)]
+      current = index
+    selection(current, 13)
+    assert not any(arrows()) and self.files == saved
+    reopened = [call(callback) for callback in callbacks]
+    assert not any(self.cpu.mem_read(item + 0x80, 1)[0] for item in reopened)
     def change(index, value):
       self.next_count = value
       item = items[index]

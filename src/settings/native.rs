@@ -146,7 +146,8 @@ unsafe fn create_kind(kind: usize) -> Object {
     item.cast::<usize>().write(private);
     // ConfigMethodKind.Switch, using the game's existing left/right repeat.
     item.cast::<u8>().add(0x64).cast::<i32>().write(0);
-    item.cast::<u8>().add(0x80).write(1);
+    // Native OnSelect/OnDeselect own arrow visibility. Setting every row here
+    // leaves arrows visible until each row has been selected and deselected.
     reference(item, 0x68, new_text(&localized_title(text_language(), kind)));
     command(item, NONE);
     description(item, NONE);
