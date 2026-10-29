@@ -12,6 +12,11 @@ pub const FISHING_USES: usize = 0x0260B190;
 pub const FACILITY_GET: usize = 0x00203E90;
 pub const FACILITY_COMPLETE: usize = 0x028A80D0;
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
+  // Native scrolling accesses the off-screen buffer at GetChild(showRowNum).
+  (0x02464AEC, [0xF9403680, 0xAA1F03E1, 0x941FA763, 0xF9400BE8]),
+  (0x02464AFC, [0xAA1F03E2, 0xB9409D01, 0x944CB88F, 0xF94002F9]),
+  (0x02464D5C, [0xF9403680, 0xAA1F03E1, 0x941FA6C7, 0x52800021]),
+  (0x02464D6C, [0xAA1F03E2, 0x944CB7F4, 0xAA0003FB, 0xF94002A0]),
   (0x00203E90, [0xD10103FF, 0xA9017BFD, 0x910043FD, 0xA90257F6]),
   (0x028A80D0, [0xD10143FF, 0xA9017BFD, 0x910043FD, 0xA9025FF8]),
   (0x024533F0, [0xD10203FF, 0xA9027BFD, 0x910083FD, 0xA9036FFC]),
@@ -41,6 +46,37 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x0260B190, [0xA9BA7BFD, 0xF9000BFB, 0x910003FD, 0xA90267FA]),
   (0x0251E9D0, [0xD10103FF, 0xA9017BFD, 0x910043FD, 0xA90257F6]),
 ];
+
+pub fn visible_rows(items: usize, capacity: usize) -> usize {
+  let visible = items.min(capacity).min(10);
+  if items > visible && visible == capacity {
+    visible.saturating_sub(1)
+  } else {
+    visible
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::visible_rows;
+
+  #[test]
+  fn native_scroll_keeps_one_offscreen_row() {
+    assert_eq!(visible_rows(17, 10), 9);
+    assert_eq!(visible_rows(17, 11), 10);
+    assert_eq!(visible_rows(17, 20), 10);
+    assert_eq!(visible_rows(11, 10), 9);
+  }
+
+  #[test]
+  fn short_menus_do_not_need_a_scroll_buffer() {
+    assert_eq!(visible_rows(10, 10), 10);
+    assert_eq!(visible_rows(7, 10), 7);
+    assert_eq!(visible_rows(0, 10), 0);
+    assert_eq!(visible_rows(17, 1), 0);
+    assert_eq!(visible_rows(17, 0), 0);
+  }
+}
 
 pub struct Facility {
   pub name: &'static str,
@@ -379,6 +415,14 @@ pub(crate) mod native {
       if content.is_null() {
         return false;
       }
+      let content_class: Object = field(content, 0);
+      let capacity: unsafe extern "C" fn(Object, Method) -> i32 =
+        core::mem::transmute(field::<usize>(content_class, VTABLE + 4 * 16));
+      let capacity = capacity(content, field(content_class, VTABLE + 4 * 16 + 8));
+      let rows = visible_rows(FACILITIES.len(), capacity.max(0) as usize);
+      if rows == 0 {
+        return false;
+      }
       let menu = native!(profile::ALLOCATE_OBJECT, unsafe extern "C" fn(Object) -> Object)(class);
       if menu.is_null() {
         return false;
@@ -404,7 +448,11 @@ pub(crate) mod native {
         NONE,
       );
       native!(BIND_PARENT, unsafe extern "C" fn(Object, Method))(menu, NONE);
-      native!(profile::SET_MENU_ROWS, unsafe extern "C" fn(Object, i32, Method))(menu, 10, NONE);
+      native!(profile::SET_MENU_ROWS, unsafe extern "C" fn(Object, i32, Method))(
+        menu,
+        rows as i32,
+        NONE,
+      );
       true
     }
   }

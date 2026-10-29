@@ -25,7 +25,18 @@ class FacilityFixture(CollectorFixture):
     elif name == "DEFAULT_LIST_CTOR": self.init_list(a)
     elif name == "MENU_CTOR": self.qword(a + 0x80, b)
     elif name == "SET_MENU_ROWS": self.integer(a + 0xB8, b)
-    elif name == "CONTENT": result = self.alloc()
+    elif name == "CONTENT":
+      result = self.content
+    elif name == "CONTENT_CAPACITY":
+      assert a == self.content
+      result = len(self.row_nodes)
+    elif name == "GAME_OBJECT_TRANSFORM":
+      assert a == self.content_object
+      result = self.content_transform
+    elif name == "TRANSFORM_CHILD":
+      assert a == self.content_transform
+      assert b < len(self.row_nodes), "native scroll accessed a missing buffer row"
+      result = self.row_nodes[b]
     elif name == "CREATE_DESC": result = self.alloc()
     elif name == "BIND":
       self.qword(a + 0x30, b)
@@ -126,6 +137,13 @@ class FacilityFixture(CollectorFixture):
       self.qword(cls + 0x138 + slot * 16, self.pointer(method))
       self.qword(cls + 0x138 + slot * 16 + 8, method)
 
+    self.content, content_class, self.content_object, self.content_transform = (
+      self.alloc() for _ in range(4))
+    self.qword(self.content, content_class)
+    self.qword(self.content + 0x68, self.content_object)
+    self.write(content_class + 0x126, struct.pack("<H", 31))
+    vtable(content_class, 4, "CONTENT_CAPACITY")
+    self.row_nodes = [self.alloc() for _ in range(10)]
     self.qword(self.menu_class + 0x10, self.c_string("BasicMenu"))
     self.write(self.menu_class + 0x126, struct.pack("<H", 64))
     for slot, name in ((10, "DISPOSE"), (18, "CREATE_DESC"), (21, "OPEN"), (23, "CLOSE")):
@@ -164,6 +182,49 @@ class FacilityFixture(CollectorFixture):
     assert quick and self.pointer(quick + 0x30) == self.menu
     choices = self.values(self.pointer(quick + 0x80))
     assert len(choices) == len(binds)
+    # Execute the actual native CycleMenuItemContent GetChild(showRowNum)
+    # instruction window, not a replacement that silently accepts any index.
+    forward_probe = self.game + 0x02464AEC
+    self.write(forward_probe, struct.pack("<7I", 0xF9403680, 0xAA1F03E1, 0x941FA763,
+      0xF9400BE8, 0xAA1F03E2, 0xB9409D01, 0x944CB88F))
+    backward_probe = self.game + 0x02464D5C
+    self.write(backward_probe, struct.pack("<6I", 0xF9403680, 0xAA1F03E1,
+      0x941FA6C7, 0x52800021, 0xAA1F03E2, 0x944CB7F4))
+    shown = self.number(quick + 0xB8)
+    self.integer(quick + 0x9C, shown)
+
+    def scroll_probe(forward):
+      probe, size, row = (forward_probe, 28, shown) if forward else (backward_probe, 24, 1)
+      old_x20 = self.cpu.reg_read(reg.UC_ARM64_REG_X20)
+      self.cpu.reg_write(reg.UC_ARM64_REG_X20, self.content)
+      self.cpu.reg_write(reg.UC_ARM64_REG_SP, stack)
+      self.cpu.mem_write(stack + 0x10, struct.pack("<Q", quick))
+      self.cpu.emu_start(probe, probe + size, count=1000)
+      assert self.cpu.reg_read(reg.UC_ARM64_REG_PC) == probe + size
+      assert self.cpu.reg_read(reg.UC_ARM64_REG_X0) == self.row_nodes[row]
+      self.cpu.reg_write(reg.UC_ARM64_REG_X20, old_x20)
+
+    scroll_probe(True)
+    scroll_probe(False)
+    assert shown == len(self.row_nodes) - 1
+    names = re.findall(r'Facility\s*\{\s*name: "([^"]+)"', profile)
+    assert len(names) == len(choices)
+    origin = 0
+    # Traverse every page in both directions, then wrap first/last selection.
+    # The engine probes are real instructions; the visible-window mapping is
+    # modeled here and does not claim that Unity text/colours were rendered.
+    for selected in [*range(len(choices)), *reversed(range(len(choices))), len(choices) - 1, 0]:
+      new_origin = max(0, min(len(choices) - shown, min(max(origin, selected - shown + 1), selected)))
+      for _ in range(abs(new_origin - origin)):
+        scroll_probe(new_origin > origin)
+      origin = new_origin
+      self.integer(quick + 0xA0, selected)
+      self.integer(quick + 0xA8, origin)
+      assert origin <= selected < origin + shown
+      for logical_index in range(origin, origin + shown):
+        item = choices[logical_index]
+        assert self.read_string(call(method(item, 4), item)) == names[logical_index]
+        assert call(method(item, 8), item) == 1
     assert self.item_ctors and set(self.item_ctors) == {"MAP_ITEM_CTOR"}
     for item in [entry] + choices:
       assert self.class_name(self.pointer(item)) == b"MapBasicMenuItem"
