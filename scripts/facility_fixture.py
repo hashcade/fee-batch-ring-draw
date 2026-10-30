@@ -168,9 +168,30 @@ class FacilityFixture(CollectorFixture):
       return self.cpu.reg_read(reg.UC_ARM64_REG_X0)
 
     def method(object, slot): return self.pointer(self.pointer(object) + 0x138 + slot * 16)
+
+    def cancel_result(item):
+      result = call(method(item, 19), item)
+      assert result & 1, "B must close the current submenu"
+      assert not result & 0x3E, "B must not close/delete ancestors or the complete menu chain"
+      assert result & 512, "B must retain the native cancel sound"
+      return result
+
+    def back(item):
+      menu = self.pointer(item + 0x10)
+      parent = self.pointer(menu + 0x30)
+      ancestor = self.pointer(parent + 0x30)
+      cancel_result(item)
+      method_info = self.pointer(self.pointer(menu) + 0x138 + 10 * 16 + 8)
+      call(method(menu, 10), menu, method_info)
+      assert self.pointer(parent + 0x38) == 0
+      if ancestor:
+        assert self.pointer(ancestor + 0x38) == parent, "B must leave the previous menu attached"
+      assert self.events[-3:] == [("dispose", menu), ("open", parent), ("footer", self.title)]
+
     call(hook, self.parent)
     entry = self.values(self.full_list)[-1]
     assert self.read_string(call(method(entry, 4), entry)) == "MID_MENU_TITLE_HUB"
+    assert self.read_string(call(method(entry, 28), entry)) == "", "do not repeat the entry title as inline help"
     count = len(self.values(self.full_list))
     assert self.number(self.menu + 0xB8) == 9, "only collection and one hub entry extend the outdoor menu"
     call(hook, self.parent)
@@ -183,7 +204,8 @@ class FacilityFixture(CollectorFixture):
     assert [self.read_string(call(method(item, 4), item)) for item in entries] == ["设施", "活动", "商店"]
     for item in entries:
       self.qword(item + 0x10, categories)
-      assert call(method(item, 19), item) == 33
+      cancel_result(item)
+      assert self.read_string(call(method(item, 28), item)) == ""
     names = re.findall(r'Facility\s*\{\s*name: "([^"]+)"', profile)
     groups = [[int(value) for value in values.split(",")] for values in re.findall(
       r'MenuGroup\s*\{\s*facilities: &\[([^\]]+)\]', profile)]
@@ -205,7 +227,8 @@ class FacilityFixture(CollectorFixture):
       for index, item in zip(indices, items):
         choices[index] = item
         self.qword(item + 0x10, quick)
-        assert call(method(item, 19), item) == 33
+        cancel_result(item)
+        assert self.read_string(call(method(item, 28), item)) == "", "facility names must not be repeated as inline help"
         assert call(method(item, 8), item) == 1
         assert call(method(item, 18), item) == 128
         child = self.pointer(quick + 0x38)
@@ -228,8 +251,7 @@ class FacilityFixture(CollectorFixture):
         call(method(child, 10), child, method_info)
         assert self.events[-3:] == [("dispose", child), ("open", quick), ("footer", self.title)]
         assert self.pointer(quick + 0x38) == 0
-      method_info = self.pointer(self.pointer(quick) + 0x138 + 10 * 16 + 8)
-      call(method(quick, 10), quick, method_info)
+      back(items[-1])
       assert self.pointer(categories + 0x38) == 0
       assert self.pointer(self.menu + 0x38) == categories
       assert self.events[-3:] == [("dispose", quick), ("open", categories), ("footer", self.title)]
@@ -260,17 +282,18 @@ class FacilityFixture(CollectorFixture):
     self.integer(self.user + 0x28, 5)
     assert call(method(entry, 18), entry) == 2048
     self.integer(self.user + 0x28, 4)
-    method_info = self.pointer(self.pointer(categories) + 0x138 + 10 * 16 + 8)
-    call(method(categories, 10), categories, method_info)
+    back(entries[-1])
     assert self.pointer(self.menu + 0x38) == 0
     assert self.events[-3:] == [("dispose", categories), ("open", self.menu), ("footer", self.title)]
     # Reopening after visiting every group must recreate only the three
     # categories, with no direct destination or shopping entry outdoors.
     assert call(method(entry, 18), entry) == 128
     reopened = self.pointer(self.menu + 0x38)
-    assert len(self.values(self.pointer(reopened + 0x80))) == 3
-    method_info = self.pointer(self.pointer(reopened) + 0x138 + 10 * 16 + 8)
-    call(method(reopened, 10), reopened, method_info)
+    reopened_entries = self.values(self.pointer(reopened + 0x80))
+    assert len(reopened_entries) == 3
+    for item in reopened_entries:
+      self.qword(item + 0x10, reopened)
+    back(reopened_entries[0])
     assert self.pointer(self.menu + 0x38) == 0
     self.ready_units = self.list([self.alloc(), self.alloc()])
     self.relation = self.alloc()

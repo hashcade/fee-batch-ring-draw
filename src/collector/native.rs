@@ -3,7 +3,7 @@
 use super::profile as offsets;
 use crate::{
   meld::native::{new_text, text},
-  menu_item::{named, VTABLE},
+  menu_item::{named, no_help, VTABLE},
   native::{base, field, list_count, metadata, object_at, reference, user_data, Method, Object},
   profile,
 };
@@ -38,10 +38,6 @@ unsafe extern "C" fn name(_: Object, _: Method) -> Object {
   unsafe { message("MID_KEYHELP_MENU_ACHIEVEMENT_ALL") }
 }
 
-unsafe extern "C" fn help(_: Object, _: Method) -> Object {
-  unsafe { message("MID_Hub_Well_ItemExchange_Get") }
-}
-
 unsafe fn make_item(first: Object) -> Option<Object> {
   unsafe {
     crate::menu_item::create_hub(
@@ -51,7 +47,7 @@ unsafe fn make_item(first: Object) -> Option<Object> {
         (4, name as *const () as usize),
         (8, attribute as *const () as usize),
         (18, collect as *const () as usize),
-        (28, help as *const () as usize),
+        (28, no_help as *const () as usize),
       ],
     )
   }

@@ -161,7 +161,8 @@ pub(crate) mod native {
   }
 
   unsafe extern "C" fn cancel(_: Object, _: Method) -> i32 {
-    33
+    // BasicMenu.Result: CloseThis | SeCancel, never DeleteAll (32).
+    1 | 512
   }
 
   #[skyline::hook(offset = RING_MENU)]
@@ -367,7 +368,7 @@ pub(crate) mod native {
           (4, name as *const () as usize),
           (8, attribute as *const () as usize),
           (18, open as *const () as usize),
-          (28, name as *const () as usize),
+          (28, menu_item::no_help as *const () as usize),
         ],
       ) else {
         return;
@@ -420,7 +421,7 @@ pub(crate) mod native {
           (8, attribute as *const () as usize),
           (18, action),
           (19, cancel as *const () as usize),
-          (28, name as *const () as usize),
+          (28, menu_item::no_help as *const () as usize),
         ],
       ) else {
         return false;

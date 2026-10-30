@@ -114,6 +114,11 @@ The factory resolves the actual inheritance and checks only requested slots
 even when a private class was cached by an earlier menu. Native facility
 CreateBind entry points keep their full descriptors and OnDispose. The wrapper
 runs original cleanup before reopening the parent and restoring the footer.
+Category and destination B callbacks return CloseThis | SeCancel (513), not
+DeleteAll (32). Each B press closes only the current submenu. Hub entry,
+category, destination and collection help callbacks share an empty-text callback
+rather than repeating their names or borrowing unrelated text beside the selected
+row; native selection/deselection stays intact.
 Only Hub_Solanel sequence 4 is accepted. Remote ring rubbing is hidden because
 it requires the original ring-room scene; normal ring cleaning is unchanged.
 Activity shortcuts bind the complete original facility sequences, including

@@ -90,6 +90,8 @@ class MeldDialogFixture(CollectorFixture):
     self.integer(yes_class + 0xF8, 0x78)
     self.write(yes_class + 0x126, struct.pack("<H", 27))
     self.qword(yes_class + 0x138 + 18 * 16, self.game + 0x021FA240)
+    self.write(yes_class + 0x138 + 19 * 16, struct.pack("<QQ", self.alloc(), self.alloc()))
+    original_class = bytes(self.cpu.mem_read(yes_class, 0x138 + 27 * 16))
     self.qword(self.yes, yes_class)
     self.qword(self.yes + 0x70, self.alloc())
     self.shim = self.alloc()
@@ -111,6 +113,12 @@ class MeldDialogFixture(CollectorFixture):
       items = self.values(self.full)
       assert len(items) == (4 if extended else 3) and items[-1] == self.no
       if extended: assert items[1] == self.extra
+      for item in (items[0], items[-2]):
+        private = self.pointer(item)
+        for slot in (12, 13, 19):
+          start = 0x138 + slot * 16
+          assert bytes(self.cpu.mem_read(private + start, 16)) == original_class[start:start + 16], "single/batch choices must retain native selection and B callbacks"
+      assert bytes(self.cpu.mem_read(yes_class, len(original_class))) == original_class
       assert self.read_string(self.pointer(items[0] + 0x68)) == "合成 1 枚"
       assert self.read_string(self.pointer(items[-2] + 0x68)) == "合成 3 枚"
       assert self.prompt.count("Ring") == 1 and "×600" not in self.prompt

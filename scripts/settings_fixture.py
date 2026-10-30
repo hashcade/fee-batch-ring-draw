@@ -119,7 +119,7 @@ class SettingsFixture(CollectorFixture):
     self.integer(self.item_class + 0xF8, 0x88)
     self.write(self.item_class + 0x126, struct.pack("<H", 28))
     # ConfigBasicMenuItem adds InitContent to BasicMenuItem's 27 slots.
-    for slot, name in ((8, "BuildAttribute"), (18, "ACall"), (26, "CustomCall"), (27, "InitContent")):
+    for slot, name in ((8, "BuildAttribute"), (18, "ACall"), (19, "BCall"), (26, "CustomCall"), (27, "InitContent")):
       method = self.alloc()
       self.qword(method + 0x10, self.c_string(name))
       self.qword(self.item_class + 0x138 + slot * 16, self.game + 0x3E00000 + slot * 16)
@@ -174,7 +174,7 @@ class SettingsFixture(CollectorFixture):
       copy = self.alloc(self.VTABLE_BYTES)
       self.write(copy, bytes(self.cpu.mem_read(self.pointer(item), self.VTABLE_BYTES)))
       self.qword(item, copy)
-      for slot in (12, 13, 27):
+      for slot in (12, 13, 19, 27):
         start = 0x138 + slot * 16
         assert bytes(self.cpu.mem_read(copy + start, 16)) == original[start:start + 16]
       assert self.cpu.mem_read(item + 0x81, 1)[0] == 0

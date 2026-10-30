@@ -63,6 +63,8 @@ class CleaningFixture(MeldDialogFixture):
     self.integer(item_class + 0xF8, 0x88)
     self.write(item_class + 0x126, struct.pack("<H", 27))
     self.qword(item_class + 0x138 + 18 * 16, self.game + 0x02347210)
+    self.write(item_class + 0x138 + 19 * 16, struct.pack("<QQ", self.alloc(), self.alloc()))
+    original_class = bytes(self.cpu.mem_read(item_class, 0x138 + 27 * 16))
     self.gods = [self.alloc() for _ in range(5)]
     self.originals = []
     for god, kind in zip((self.gods[0], self.gods[1], self.gods[1], *self.gods[2:]), (-1, 0, 1, -1, 3, -1)):
@@ -87,6 +89,11 @@ class CleaningFixture(MeldDialogFixture):
       items = self.values(self.full)
       assert items[1:] == self.originals
       item = items[0]
+      private = self.pointer(item)
+      for slot in (12, 13, 19):
+        start = 0x138 + slot * 16
+        assert bytes(self.cpu.mem_read(private + start, 16)) == original_class[start:start + 16], "clean-all must retain native selection and B callbacks"
+      assert bytes(self.cpu.mem_read(item_class, len(original_class))) == original_class
       self.qword(item + 0x10, self.menu)
       label = call(replacements["ITEM_NAME"], item, 0)
       assert self.read_string(label) == "全部清洁"

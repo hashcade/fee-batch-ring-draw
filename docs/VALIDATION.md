@@ -186,6 +186,24 @@ gallery modes fall back to original input. The facility fixture binds all sevent
 menu entry points, tests native cleanup before reopening the parent/footer,
 checks unlock/Somniel gates and keeps the original classes unchanged. Remote
 ring rubbing is hidden on the private shortcut only.
+The compiled facility fixture checks B-result flags for all three categories and
+all seventeen destinations: close current plus cancel sound, without any
+ancestor/all-menu close or delete bits. Modeled disposal after B leaves the
+ancestor attached, reopens the immediate parent, and permits reopening the
+category menu. Empty help is checked for the outdoor entry, categories and
+destinations, and the collector fixture checks the collection entry in both
+Somniel and post-battle contexts. These are callback/lifecycle boundary checks, not live Unity
+rendering or controller-input tests.
+
+The menu audit also covers draw-count rows, the single/batch meld confirmation,
+clean-all, well preview/reroll and all seventeen Plugin Settings items. Draw rows
+use the original item class/constructor and leave original rows unchanged.
+Compiled fixtures verify that meld, cleaning, well and settings class copies
+retain their inherited B and selection callbacks; the original cancel choice
+in the meld dialog remains in place. Plain 27-slot items do not receive a map
+help slot. Plugin Settings keeps its separate bottom help text and native
+selection/initialization callbacks through both class copies. Automatic support
+menus still dispatch the original A/B results rather than synthetic close bits.
 The scene-arrival fixture covers Somniel and post-battle exploration, busy/non-Main
 deferral, once-per-visit dispatch and restoration without invoking menu virtuals
 on HubSequence. Activity shortcuts reject exhausted allowances.

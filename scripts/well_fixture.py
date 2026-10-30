@@ -99,6 +99,9 @@ class WellFixture(CollectorFixture):
       klass = self.pointer(item)
       assert self.class_name(klass) == b"BasicMenuItem"
       assert int.from_bytes(self.cpu.mem_read(klass + 0x126, 2), "little") == 27
+      for slot in (12, 13, 19):
+        start = 0x138 + slot * 16
+        assert bytes(self.cpu.mem_read(klass + start, 16)) == before_class[start:start + 16], "well entries must retain native selection and B callbacks"
       callbacks.append(self.pointer(klass + 0x138 + 18 * 16))
       for self.language in range(12):
         label = self.call(self.pointer(klass + 0x138 + 4 * 16), item, 0)

@@ -9,6 +9,10 @@ use core::{
 
 pub(crate) const VTABLE: usize = 0x138;
 
+pub(crate) unsafe extern "C" fn no_help(_: Object, _: Method) -> Object {
+  crate::meld::native::new_text("")
+}
+
 pub(crate) unsafe fn override_class(
   object: Object,
   cache: &AtomicUsize,

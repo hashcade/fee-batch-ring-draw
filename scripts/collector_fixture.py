@@ -22,6 +22,7 @@ class CollectorFixture:
     self.functions[game + 0x00203E90] = "FACILITY_GET"
     self.functions[game + 0x028A80D0] = "FACILITY_COMPLETE"
     self.heap = game + 0x7000000
+    self.native_cancel = (self.alloc(), self.alloc())
     self.active = False
 
   def alloc(self, size=0x600):
@@ -124,6 +125,7 @@ class CollectorFixture:
     self.qword(self.base_class + 0x10, self.c_string("BasicMenuItem"))
     self.integer(self.base_class + 0xF8, 0x68)
     self.write(self.base_class + 0x126, struct.pack("<H", 27))
+    self.write(self.base_class + 0x138 + 19 * 16, struct.pack("<QQ", *self.native_cancel))
     self.menu_item_classes = [self.base_class]
     parent_class = self.base_class
     hierarchy = ("MapBasicMenuItem", "HubMenuItem", "GodItem") if map_items else ("ItemExchangeMenuItem",)
@@ -133,6 +135,7 @@ class CollectorFixture:
       self.qword(cls + 0x58, parent_class)
       self.integer(cls + 0xF8, 0x68 if map_items else 0x70)
       self.write(cls + 0x126, struct.pack("<H", 30 if map_items else 27))
+      self.write(cls + 0x138 + 19 * 16, struct.pack("<QQ", *self.native_cancel))
       if name == "HubMenuItem":
         for slot, offset in ((12, 0x02ADF650), (13, 0x02ADF760)):
           self.qword(cls + 0x138 + slot * 16, self.game + offset)
@@ -343,6 +346,9 @@ class CollectorFixture:
       assert self.class_name(private) == b"HubMenuItem"
       assert struct.unpack("<H", self.cpu.mem_read(private + 0x126, 2))[0] == 30
       self.callbacks = {slot: self.pointer(private + 0x138 + slot * 16) for slot in (4, 8, 18, 28)}
+      cancel_slot = 0x138 + 19 * 16
+      assert bytes(self.cpu.mem_read(private + cancel_slot, 16)) == bytes(self.cpu.mem_read(self.base_class + cancel_slot, 16)), "collection must retain native B behavior"
+      assert self.read_string(call(self.callbacks[28], item)) == "", "collection must not display a borrowed well description beside its title"
       call(replacement, self.parent)
       assert len(self.values(self.full_list)) == 2 + extra, "do not insert a second menu entry"
       return item
@@ -353,7 +359,6 @@ class CollectorFixture:
     assert call(self.callbacks[18], item) == 2048
     assert "grant" not in self.events
     assert self.read_string(call(self.callbacks[4], item)) == "MID_KEYHELP_MENU_ACHIEVEMENT_ALL"
-    assert self.read_string(call(self.callbacks[28], item)) == "MID_Hub_Well_ItemExchange_Get"
 
     for sequence in (4, 5):
       self.reset(sequence)
