@@ -25,7 +25,9 @@ class FacilityFixture(CollectorFixture):
     elif name == "DEFAULT_LIST_CTOR": self.init_list(a)
     elif name == "MENU_CTOR":
       self.qword(a + 0x80, b)
+      self.qword(a + 0x78, b)
       self.qword(a + 0x70, args[2])
+      self.qword(args[2] + 0x28, a)
       assert self.class_name(self.pointer(args[2])) == b"SortieSubMenuContent"
     elif name == "SET_MENU_ROWS":
       assert 0 < b <= len(self.row_nodes), "submenu rows must fit the original prefab"
@@ -34,6 +36,12 @@ class FacilityFixture(CollectorFixture):
     elif name == "CONTENT":
       result = self.alloc()
       self.qword(result, self.submenu_content_class)
+      root = self.alloc()
+      self.roots[result] = root
+      self.transforms[root] = (result, (0., -700., 320., 700.), (40., 200.))
+      frame = self.alloc()
+      self.frames[frame] = root
+      self.qword(result + 0x38, frame)
     elif name == "CREATE_DESC": result = self.alloc()
     elif name == "BIND":
       self.qword(a + 0x30, b)
@@ -50,6 +58,24 @@ class FacilityFixture(CollectorFixture):
       assert self.pointer(a + 0x70) != self.pointer(b + 0x70), "each panel needs its own content"
       self.anchors[a] = (b, item, self.number(b + 0xA0))
       self.events.append(("anchor", a, b, item))
+    elif name == "CONTENT_RECT": result = self.roots[a]
+    elif name == "GAME_OBJECT_TRANSFORM": result = self.frames[a]
+    elif name == "RECT":
+      for index, value in enumerate(self.transforms[a][1]): self.set_float(index, value)
+    elif name == "TRANSFORM_POINT":
+      x, y, z = (self.get_float(i) for i in range(3))
+      left, top = self.world_origin(a)
+      for index, value in enumerate((left + x * self.scale, top + y * self.scale, z)):
+        self.set_float(index, value)
+    elif name == "TRANSFORM_PARENT": result = self.canvas
+    elif name == "INVERSE_TRANSFORM_POINT":
+      assert a == self.canvas
+      for index in range(2):
+        self.set_float(index, (self.get_float(index) - self.canvas_origin[index]) / self.scale)
+    elif name == "UPDATE_POSITION": self.position_updates += 1
+    elif name == "ON_BUILD":
+      assert b in (0, 1)
+      self.original_builds += 1
     elif name == "EMPTY_UNIT_LIST": result = self.ready_units if self.ready_units else self.list()
     elif name == "RELATION": result = self.relation
     elif name == "CAN_ADVANCE": result = 1
@@ -133,12 +159,36 @@ class FacilityFixture(CollectorFixture):
   def c_read(self, pointer):
     return bytes(self.cpu.mem_read(pointer, 128)).split(b"\0", 1)[0]
 
+  def get_float(self, index):
+    return struct.unpack("<f", struct.pack("<I", self.cpu.reg_read(getattr(reg, f"UC_ARM64_REG_S{index}"))))[0]
+
+  def set_float(self, index, value):
+    bits, = struct.unpack("<I", struct.pack("<f", value))
+    self.cpu.reg_write(getattr(reg, f"UC_ARM64_REG_S{index}"), bits)
+
+  def world_origin(self, transform):
+    owner, _, (x, y) = self.transforms[transform]
+    if owner:
+      dx, dy = struct.unpack("<ff", self.cpu.mem_read(owner + 0x90, 8))
+      x, y = x + dx, y + dy
+    return (x * self.scale + self.canvas_origin[0], y * self.scale + self.canvas_origin[1])
+
+  def world_bounds(self, transform):
+    x, y = self.world_origin(transform)
+    left, bottom, width, height = self.transforms[transform][1]
+    return (x + left * self.scale, y + bottom * self.scale,
+      x + (left + width) * self.scale, y + (bottom + height) * self.scale)
+
   def exercise(self, hook, ring_hook, stop, stack, profile, support_hooks=None):
     self.active = True
     self.forbid_allocations = False
     self.reset(4)
     self.visible = {self.menu: True}
     self.anchors, self.suspensions = {}, {}
+    self.roots, self.frames, self.transforms = {}, {}, {}
+    self.canvas = self.alloc()
+    self.scale, self.canvas_origin = 1., (11., 17.)
+    self.position_updates, self.original_builds = 0, 0
     self.ready_units = 0
     self.unlocked = True
     self.chapter_cleared = True
@@ -176,13 +226,15 @@ class FacilityFixture(CollectorFixture):
     self.qword(self.content, content_class)
     self.qword(content_class + 0x10, self.c_string("HubMenuContent"))
     self.qword(self.submenu_content_class + 0x10, self.c_string("SortieSubMenuContent"))
+    self.write(self.submenu_content_class + 0x126, struct.pack("<H", 31))
+    vtable(self.submenu_content_class, 5, "CONTENT_RECT")
     self.qword(self.menu + 0x70, self.content)
     self.write(content_class + 0x126, struct.pack("<H", 31))
     self.row_nodes = [self.alloc() for _ in range(10)]
     self.qword(self.menu_class + 0x10, self.c_string("BasicMenu"))
     self.write(self.menu_class + 0x126, struct.pack("<H", 64))
     for slot, name in ((10, "DISPOSE"), (18, "CREATE_DESC"), (20, "OPEN"),
-        (21, "OPEN_ALL"), (22, "CLOSE"), (23, "CLOSE_ALL")):
+        (21, "OPEN_ALL"), (22, "CLOSE"), (23, "CLOSE_ALL"), (24, "ON_BUILD")):
       vtable(self.menu_class, slot, name)
     hierarchy = self.alloc()
     self.qword(hierarchy, self.menu_class)
@@ -215,6 +267,19 @@ class FacilityFixture(CollectorFixture):
       return self.cpu.reg_read(reg.UC_ARM64_REG_X0)
 
     def method(object, slot): return self.pointer(self.pointer(object) + 0x138 + slot * 16)
+
+    # Exact BasicMenu.Build tail from Engage 2.0.0: dispatch OnBuild(bool)
+    # through slot 24 with the real menu receiver and original MethodInfo.
+    build_tail = self.game + 0x0245C024
+    self.write(build_tail, struct.pack("<6I", 0xF9400268, 0xF9415D09, 0xF9416102,
+      0x1A9F17E1, 0xAA1303E0, 0xD63F0120))
+
+    def native_build_end(menu, first):
+      self.cpu.reg_write(reg.UC_ARM64_REG_X19, menu)
+      self.cpu.reg_write(reg.UC_ARM64_REG_NZCV, 0x40000000 if first else 0)
+      self.cpu.reg_write(reg.UC_ARM64_REG_SP, stack)
+      self.cpu.emu_start(build_tail, build_tail + 24, count=100_000)
+      assert self.cpu.reg_read(reg.UC_ARM64_REG_PC) == build_tail + 24
 
     def shown(*menus):
       actual = {item for item, visible in self.visible.items() if visible}
@@ -273,6 +338,11 @@ class FacilityFixture(CollectorFixture):
     sidebars_visible(categories)
     assert self.anchors[categories][1] == entry
     entries = self.values(self.pointer(categories + 0x80))
+    category_content = self.pointer(categories + 0x70)
+    category_root = self.roots[category_content]
+    self.transforms[category_root] = (category_content, (0., -210., 320., 210.), (450., 200.))
+    native_build_end(categories, True)
+    assert self.original_builds == 1 and self.position_updates == 0, "category positioning remains native"
     assert len(entries) == self.number(categories + 0xB8) == 3
     assert [self.read_string(call(method(item, 4), item)) for item in entries] == ["设施", "活动", "商店"]
     for item in entries:
@@ -289,6 +359,34 @@ class FacilityFixture(CollectorFixture):
       self.integer(categories + 0xA0, entries.index(category))
       assert call(method(category, 18), category) == 128
       quick = self.pointer(categories + 0x38)
+      content = self.pointer(quick + 0x70)
+      root = self.roots[content]
+      self.transforms[root] = (content, (0., -len(indices) * 70., 320., len(indices) * 70.), (40., 200.))
+      assert method(quick, 24) != method(self.menu, 24), "third-level geometry needs its own post-build placement"
+      # Execute the real compiled placement callback, not an assertion that
+      # SetTransformAsSubMenu received a parent. Start it on the wrong side.
+      for scale in (0.5, 2. / 3., 1., 1.5, 2.):
+        self.scale = scale
+        for parent_top in (200., 900., 1200.):
+          self.transforms[category_root] = (category_content, (0., -210., 320., 210.), (450., parent_top))
+          # Native Build has already sized and vertically fitted the panel.
+          # The plugin must fix X without undoing that native Y result.
+          row_top = (parent_top - entries.index(category) * 70.) * scale + self.canvas_origin[1]
+          top = max(len(indices) * 70. * scale, min(row_top, 1080. * scale))
+          native_y = (top - self.canvas_origin[1]) / scale - 200.
+          self.write(content + 0x90, struct.pack("<ff", -30., native_y))
+          native_box = self.world_bounds(root)
+          builds, updates = self.original_builds, self.position_updates
+          native_build_end(quick, True)
+          assert self.original_builds == builds + 1 and self.position_updates == updates + 1
+          child_box, parent_box = self.world_bounds(root), self.world_bounds(category_root)
+          assert abs(child_box[0] - parent_box[2]) < .005, "destination panel must follow its immediate parent's right edge"
+          assert child_box[1] >= -.005 and child_box[3] <= round(1080 * scale) + .005
+          assert abs(child_box[1] - native_box[1]) < .005 and abs(child_box[3] - native_box[3]) < .005, "keep native vertical fitting unchanged"
+          before = child_box
+          native_build_end(quick, False)
+          assert all(abs(x - y) < .005 for x, y in zip(before, self.world_bounds(root))), "rebuild must not accumulate positional drift"
+      self.scale = 1.
       sidebars_visible(quick)
       assert self.anchors[quick][1] == category
       assert quick and self.pointer(quick + 0x30) == categories

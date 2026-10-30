@@ -108,8 +108,16 @@ needs custom scrolling, a spare-row calculation or expanded prefab nodes.
 Both shortcut levels use the original HubMenu.SubSystemMenu construction pattern:
 SortieSubMenuContent.Create (`0x024EB420`), BasicMenu construction and binding,
 BindParentMenu, row count, and SetTransformAsSubMenu (`0x0245E330`) with the
-actual selected parent item. The game owns right-side placement and vertical
-alignment; no fixed coordinates or replacement full-page content are used.
+actual selected parent item. Category placement and vertical alignment remain
+native. Private shortcut menus wrap BasicMenu.OnBuild(bool) (slot 24), retaining
+the original callback. Only a destination with another shortcut menu as parent
+measures the actual menu-frame RectTransforms after native sizing/adjustment.
+Its left edge is placed at the category frame's right
+edge. The horizontal world-space displacement is converted through the content
+root's parent transform before updating native m_pos and calling UpdatePos
+(`0x02464780`). Native Y fitting is unchanged. Rebuilding measures the current
+edges again, so displacement does not accumulate. No fixed coordinates, global
+layout hooks, per-frame poller or replacement full-page content are used.
 Parents remain visible and suspended, retaining their selected rows. Its
 BasicMenu and item classes are private copies, not shared-vtable mutations.
 Hub entries instantiate native HubMenuItem, retaining its selection/help

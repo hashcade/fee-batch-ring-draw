@@ -1,5 +1,26 @@
 # Validation
 
+## v0.3.13 nested destination placement
+
+- The destination panel now corrects its horizontal position after the original
+  BasicMenu.OnBuild(bool) callback, after native sizing and adjustment. Category
+  placement, vertical fitting, menu descriptors, native B handling and
+  collection behavior are unchanged.
+- The AArch64 fixture executes the game's original six-instruction Build-tail
+  virtual dispatch into that compiled callback, with modeled frame
+  RectTransforms, uniform canvas scales from 0.5 to 2, translated coordinate
+  origins, all three category selections, five/seven-row panels and native
+  vertical positions near either screen edge. It starts the destination on
+  the wrong side and checks actual left/right coordinates, conversion to
+  parent-local displacement, preserved native Y, original callback execution
+  and repeated-build idempotence. Existing facility entry/return and one-level
+  B checks remain in place. The old placement implementation fails the new
+  requirement for a private post-build placement callback. Category builds
+  call the original OnBuild without moving their panels.
+- These are modeled geometry/lifecycle checks, not Unity rendering tests.
+  Actual three-panel placement and device controller behavior still need
+  in-game acceptance. No installation or user-save modification is performed.
+
 ## Unreleased EXP/SP multipliers
 
 - EXP and SP lead the flat list, both defaulting to 1x. Host tests cover all
@@ -204,8 +225,10 @@ only the child, resumes its parent and does not replay parent animations.
 Entering any of the seventeen facilities hides every shortcut panel and the
 outdoor menu; original facility disposal restores the side-panel chain. Repeated
 category visits, B returns, reopening and automatic support return are covered.
-Positioning is verified at the original ABI boundary, not by fabricated pixel
-coordinates. Actual Unity placement, animations and screen-edge behavior still
+The v0.3.12 checks only verified positioning at the ABI boundary; the user's
+in-game report demonstrated that correct arguments alone did not establish
+correct nested placement. The v0.3.13 checks above add modeled coordinate
+outcomes. Actual Unity placement, animations and screen-edge behavior still
 require game acceptance.
 
 The menu audit also covers draw-count rows, the single/batch meld confirmation,
