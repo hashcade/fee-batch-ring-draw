@@ -61,7 +61,7 @@ class ShopFixture(CollectorFixture):
     assert self.cpu.reg_read(reg.UC_ARM64_REG_PC) == self.stop
     return self.cpu.reg_read(reg.UC_ARM64_REG_X0)
 
-  def exercise(self, replacements, stop, stack, profile):
+  def exercise(self, replacements, stop, stack, profile, enabled=True):
     self.active, self.stop, self.stack = True, stop, stack - 0x100
     self.key, self.dictionary = [self.alloc() for _ in range(2)]
     self.value = self.stack + 0x28
@@ -83,8 +83,9 @@ class ShopFixture(CollectorFixture):
       for method in methods[kind + "_METHODS"]:
         before = len(self.calls)
         result = self.run(replacements[kind], args + [method])
-        assert len(self.calls) == before
-        if expected is not None: assert result == expected
+        assert len(self.calls) == before + int(not enabled)
+        if enabled and expected is not None: assert result == expected
+        if not enabled: assert self.calls[-1] == kind
       self.run(replacements[kind], args + [other])
       assert self.calls[-1] == kind
     for method in methods["CONTENT_METHODS"] + [other, 0]:
@@ -93,7 +94,7 @@ class ShopFixture(CollectorFixture):
         before = self.reads
         result = self.run(site, [self.dictionary, self.key, self.value, 0], method)
         assert self.reads == before + 1
-        allowed = method in methods["CONTENT_METHODS"]
+        allowed = enabled and method in methods["CONTENT_METHODS"]
         expected = -1 if allowed else (count if count != -999 else 0)
         assert self.effective == expected & 0xFFFFFFFF
         assert self.unlimited == (expected == -1)

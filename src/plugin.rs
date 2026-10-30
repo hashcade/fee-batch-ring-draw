@@ -14,9 +14,10 @@ pub fn install() {
   if !supported_game() {
     return;
   }
-  crate::activities::install();
   config::load();
   crate::preferences::native::install();
+  crate::fishing::native::install();
+  crate::gains::native::install();
   crate::outfits::plugin::install();
   crate::settings::native::install();
   skyline::install_hooks!(count_menu, build_text, execute_gacha, draw, create_demo, unload);

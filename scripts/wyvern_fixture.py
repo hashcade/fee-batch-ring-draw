@@ -70,7 +70,7 @@ class WyvernFixture:
     self.cpu.reg_write(registers.UC_ARM64_REG_PC, self.cpu.reg_read(registers.UC_ARM64_REG_X30))
     return True
 
-  def exercise(self, replacement, stop, stack):
+  def exercise(self, replacement, stop, stack, enabled=True):
     self.active = True
 
     def call(sequence=None):
@@ -80,6 +80,13 @@ class WyvernFixture:
       self.cpu.reg_write(registers.UC_ARM64_REG_X30, stop)
       self.cpu.emu_start(replacement, stop + 4, count=100_000)
       assert self.cpu.reg_read(registers.UC_ARM64_REG_PC) == stop
+
+    if not enabled:
+      self.reset()
+      call()
+      assert self.events == ["tick"] and self.score == 140
+      self.active = False
+      return
 
     for level in (1, 2, 3):
       self.reset(level)

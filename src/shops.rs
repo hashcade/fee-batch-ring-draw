@@ -94,7 +94,10 @@ pub(crate) mod native {
     let lookup: unsafe extern "C" fn(Object, Object, *mut i32, Method) -> bool =
       unsafe { core::mem::transmute(base() + LOOKUP) };
     let found = unsafe { lookup(dictionary, key, value, method) };
-    if !value.is_null() && unsafe { matches(list_method, &CONTENT_METHODS) } {
+    if crate::config::enabled(crate::config::Feature::ShopStock)
+      && !value.is_null()
+      && unsafe { matches(list_method, &CONTENT_METHODS) }
+    {
       // Replace only the returned integer, not the dictionary, variant tag,
       // reference field, unlock keys or persistent stock. -1 is native infinity.
       unsafe { value.write(-1) };
@@ -105,7 +108,10 @@ pub(crate) mod native {
 
   #[skyline::hook(offset = STOCK)]
   fn stock(iid: Object, key: Object, method: Method) -> i32 {
-    if !iid.is_null() && unsafe { matches(method, &STOCK_METHODS) } {
+    if crate::config::enabled(crate::config::Feature::ShopStock)
+      && !iid.is_null()
+      && unsafe { matches(method, &STOCK_METHODS) }
+    {
       -1
     } else {
       call_original!(iid, key, method)
@@ -114,7 +120,10 @@ pub(crate) mod native {
 
   #[skyline::hook(offset = INFINITY)]
   fn infinity(iid: Object, key: Object, method: Method) -> bool {
-    if !iid.is_null() && unsafe { matches(method, &INFINITY_METHODS) } {
+    if crate::config::enabled(crate::config::Feature::ShopStock)
+      && !iid.is_null()
+      && unsafe { matches(method, &INFINITY_METHODS) }
+    {
       true
     } else {
       call_original!(iid, key, method)
@@ -123,7 +132,10 @@ pub(crate) mod native {
 
   #[skyline::hook(offset = PURCHASE)]
   fn purchase(iid: Object, count: i32, added_key: Object, stock_key: Object, method: Method) {
-    if !iid.is_null() && unsafe { matches(method, &PURCHASE_METHODS) } {
+    if crate::config::enabled(crate::config::Feature::ShopStock)
+      && !iid.is_null()
+      && unsafe { matches(method, &PURCHASE_METHODS) }
+    {
       // This method only decrements the shop's saved stock. Native callers
       // still validate capacity, deduct the price and grant the purchased item.
       return;

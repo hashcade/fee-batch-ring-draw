@@ -1,5 +1,5 @@
-//! One-time activity patches and scoped gift extensions for Engage 2.0.0.
-//! No inventory polling, allowance changes, or feature switches are added.
+//! Reversible activity patches and scoped gift extensions for Engage 2.0.0.
+//! Written at startup or explicit settings changes, never polled.
 
 /// Main-relative offset, original instruction, replacement instruction.
 pub const PATCHES: &[(usize, u32, u32)] = &[
@@ -83,6 +83,31 @@ pub trait CodeMemory {
   fn write(&mut self, offset: usize, word: u32) -> bool;
 }
 
+pub fn desired(settings: &crate::config::Settings) -> Vec<(usize, u32)> {
+  use crate::config::Feature;
+  PATCHES
+    .iter()
+    .map(|&(offset, original, replacement)| {
+      let feature = match offset {
+        0x02D8158C => Some(Feature::RepeatCooking),
+        0x025245A8 | 0x02524E6C | 0x025245F8 => Some(Feature::GiftStock),
+        0x026F2624 | 0x026F26BC | 0x026F275C | 0x026F2964 | 0x026F29D0 | 0x026F4714 => {
+          Some(Feature::FastFishing)
+        }
+        0x0278F4C4 | 0x0278FAF0 | 0x0278FAFC | 0x0278F9B4 | 0x0279039C | 0x02791438
+        | 0x02DC5FC4 | 0x02DC6A5C | 0x02DC7AF0 | 0x02DD10E0 | 0x02DD1C88 | 0x02DD2D28 => {
+          Some(Feature::FastTraining)
+        }
+        _ => None,
+      };
+      (
+        offset,
+        if feature.is_none_or(|feature| feature.value(settings)) { replacement } else { original },
+      )
+    })
+    .collect()
+}
+
 /// Apply the target-version replacements; restore writes on an actual write failure.
 pub fn apply(memory: &mut impl CodeMemory) -> bool {
   let previous: Vec<_> = PATCHES.iter().map(|&(offset, _, _)| memory.read(offset)).collect();
@@ -95,26 +120,4 @@ pub fn apply(memory: &mut impl CodeMemory) -> bool {
     }
   }
   true
-}
-
-#[cfg(target_os = "switch")]
-pub(crate) fn install() -> bool {
-  // Import only Cobalt's verified memory writer. Pulling in Skyline's broader
-  // patching module also links NRO-loader APIs that Cobalt 1.31 does not export.
-  extern "C" {
-    fn sky_memcpy(destination: *const core::ffi::c_void, source: *const u32, size: usize) -> u32;
-  }
-  struct NativeCode;
-
-  impl CodeMemory for NativeCode {
-    fn read(&self, offset: usize) -> u32 {
-      unsafe { ((crate::native::base() + offset) as *const u32).read_volatile() }
-    }
-
-    fn write(&mut self, offset: usize, word: u32) -> bool {
-      unsafe { sky_memcpy((crate::native::base() + offset) as *const _, &word, 4) == 0 }
-    }
-  }
-
-  apply(&mut NativeCode)
 }

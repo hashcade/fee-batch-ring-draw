@@ -27,6 +27,7 @@ from facility_fixture import FacilityFixture
 from well_fixture import WellFixture
 from shop_fixture import ShopFixture
 from appearance_fixture import AppearanceFixture
+from gains_fixture import GainsFixture
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -70,6 +71,8 @@ def smoke(data: bytes, case: str) -> int:
   arena = (ROOT / "src/arena.rs").read_text(encoding="utf-8")
   bond_talk = (ROOT / "src/bond_talk.rs").read_text(encoding="utf-8")
   settings_profile = (ROOT / "src/settings.rs").read_text(encoding="utf-8")
+  fishing_profile = (ROOT / "src/fishing.rs").read_text(encoding="utf-8")
+  gains_profile = (ROOT / "src/gains.rs").read_text(encoding="utf-8")
   well_profile = (ROOT / "src/well.rs").read_text(encoding="utf-8")
   cooking_profile = (ROOT / "src/cooking.rs").read_text(encoding="utf-8")
   support_profile = (ROOT / "src/supports.rs").read_text(encoding="utf-8")
@@ -81,13 +84,18 @@ def smoke(data: bytes, case: str) -> int:
   patches = [(int(address, 16), int(original, 16), int(replacement, 16))
     for address, original, replacement in re.findall(
       r"\((0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+)\)", activities)]
+  switchable_addresses = {address for address, _, _ in patches
+    if address in (0x02D8158C, 0x025245A8, 0x02524E6C, 0x025245F8)
+    or 0x026F0000 <= address < 0x02700000
+    or 0x02780000 <= address < 0x027A0000
+    or 0x02DC0000 <= address < 0x02DE0000}
 
   def offset(name: str) -> int:
     return int(re.search(rf"pub const {name}: usize = (0x[0-9A-Fa-f]+)", profile).group(1), 16)
 
   signatures = [(int(address, 16), b"".join(
     struct.pack("<I", int(word, 16)) for word in re.findall(r"0x[0-9A-Fa-f]+", words)
-  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings_profile + well_profile + cooking_profile + support_profile + facility_profile + shop_profile + preferences_profile + outfit_profile)]
+  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings_profile + well_profile + cooking_profile + support_profile + facility_profile + shop_profile + preferences_profile + outfit_profile + fishing_profile + gains_profile)]
   expected_cooking_hooks = {int(value, 16) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cooking_profile)
     if name in ("CURRENT_CHEF", "GET_COOK_DATA", "COOK", "DETERMINE_TASTE", "ANIMATION_CREATE")}
@@ -98,6 +106,8 @@ def smoke(data: bytes, case: str) -> int:
   )}
   expected_hooks.update(expected_cooking_hooks)
   expected_hooks.update((0x02707DD0, offset("PARAMETER"), 0x02B0EA10, 0x01BB5ED0, 0x01BB6C50))
+  expected_hooks.add(0x026FFF90)
+  expected_hooks.update((0x024E8C20, 0x024E8370, 0x01A39D40, 0x01BE1260))
   expected_hooks.update(int(value, 16) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", shop_profile) if name != "LOOKUP")
   ring_menu = int(re.search(r"pub const RING_MENU: usize = (0x[0-9A-Fa-f]+)", facility_profile).group(1), 16)
@@ -178,7 +188,8 @@ def smoke(data: bytes, case: str) -> int:
     "config_high": b"draw_count=1000\n", "config_invalid": b"draw_count=1001\n",
     "config_utf8": b"\xff", "config_large": b" " * 4097,
     "config_short": b"draw_count=600\n", "config_empty": b"",
-    "performance": b"draw_count=300\nchef=PID_performance\n"}
+    "performance": b"draw_count=300\nchef=PID_performance\n",
+    "config_switches_off": b"fishing_unlimited=0\nshop_stock=0\ngift_stock=0\nrepeat_cooking=0\nfast_fishing=0\nfast_training=0\nfast_wyvern=0\n"}
   text = TextFixture(cpu, GAME, STUB + 0xE000, write_game, offset)
   wyvern_game = WyvernFixture(cpu, GAME, write_game, wyvern)
   collector_game = CollectorFixture(cpu, GAME, write_game, collector, profile)
@@ -188,10 +199,11 @@ def smoke(data: bytes, case: str) -> int:
   cleaning_game.tls = meld_dialog.tls
   arena_game = ArenaFixture(cpu, GAME, write_game, arena, profile)
   bond_dialogue = BondTalkFixture(cpu, GAME, write_game, bond_talk, profile)
-  settings_game = ConvenienceFixture(cpu, GAME, write_game, settings_profile + cooking_profile + support_profile, profile)
+  settings_game = ConvenienceFixture(cpu, GAME, write_game, settings_profile + cooking_profile + support_profile + fishing_profile, profile)
   well_game = WellFixture(cpu, GAME, write_game, well_profile + collector, profile)
   facility_game = FacilityFixture(cpu, GAME, write_game, facility_profile + collector + support_profile, profile)
   shop_game = ShopFixture(cpu, GAME, write_game, shop_profile, profile)
+  gains_game = GainsFixture(cpu, GAME, write_game, gains_profile, profile)
   outfit_offsets = dict((name, int(value, 16)) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", outfit_profile))
   appearance = None
@@ -209,6 +221,8 @@ def smoke(data: bytes, case: str) -> int:
     nonlocal patch_failed, allocation_cursor
     if pc == STOP:
       cpu.emu_stop()
+      return
+    if gains_game.handle(pc, names.get(pc)):
       return
     if appearance is not None and appearance.handle(pc, names.get(pc)):
       return
@@ -346,7 +360,7 @@ def smoke(data: bytes, case: str) -> int:
   if set(hooks) != expected or len(hooks) != len(expected):
     raise AssertionError(f"{case}: incorrect hook registration: {hooks}")
   if supported:
-    assert len(settings_callbacks) == 8
+    assert len(settings_callbacks) == 17
     appearance = AppearanceFixture(cpu, GAME, write_game, outfit_offsets.__getitem__, replacements, STOP, STACK + 0x20000 - 0x20)
     settings_game.appearance = appearance
     assert fs_calls.count("mount") == 1
@@ -401,13 +415,24 @@ def smoke(data: bytes, case: str) -> int:
       cleaning_game.exercise(cleaning_replacements, STOP, STACK + 0x20000 - 0x20)
       print("menus: compiled well/collection entries use real 27-slot basic and 30-slot hub/map inheritance; repeated openings and callbacks passed")
     if case in ("supported", "convenience", "menus", "resource_stock_patch"):
-      settings_game.exercise(settings_callbacks[4], STOP, STACK + 0x20000 - 0x20)
+      settings_game.exercise(settings_callbacks, STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled Plugin Settings adjusts counts, persists independent files, retains old values on failure and leaves original classes unchanged")
       new_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cooking_profile + support_profile)
         if int(value, 16) in replacements}
-      settings_game.exercise_new([settings_callbacks[i] for i in (4, 6, 7, 5)], new_hooks, STOP, STACK + 0x20000 - 0x20)
-      settings_game.exercise_preferences(settings_callbacks, replacements, STOP, STACK + 0x20000 - 0x20)
+      settings_game.exercise_new([settings_game.factories[i] for i in (0, 1, 2, 3)], new_hooks, STOP, STACK + 0x20000 - 0x20)
+      settings_game.exercise_preferences([settings_game.factories[i] for i in (4, 5, 6, 7, 0, 3, 1, 2)], replacements, STOP, STACK + 0x20000 - 0x20)
+      def check_disabled():
+        for address, original, replacement in patches:
+          assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == (original if address in switchable_addresses else replacement)
+        shop_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
+          r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", shop_profile) if int(value, 16) in replacements}
+        settings_game.active = False
+        shop_game.exercise(shop_replacements, STOP, STACK + 0x20000 - 0x20, shop_profile, enabled=False)
+        wyvern_game.exercise(replacements[wyvern_main], STOP, STACK + 0x20000 - 0x20, enabled=False)
+        settings_game.active = True
+      settings_game.exercise_features(replacements, STOP, STACK + 0x20000 - 0x20, check_disabled)
+      gains_game.exercise(replacements, STOP, STACK + 0x20000 - 0x20, settings_game.configure_multipliers, gains_profile)
       print("supported: compiled cooking choices preserve independent settings and context; support dispatch uses native A/B actions, excludes special/unready pairs and never writes ranks")
     if case in ("supported", "facilities", "performance", "menus"):
       support_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
@@ -426,9 +451,12 @@ def smoke(data: bytes, case: str) -> int:
       for address, original, _ in patches:
         assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == original
     else:
-      assert startup_patch_calls == [(address, replacement) for address, _, replacement in patches] + [(address, replacement) for address, original, replacement in preference_patches if original != replacement]
-      for address, _, replacement in patches:
-        assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == replacement
+      enabled_patches = [(address, replacement) for address, _, replacement in patches
+        if case != "config_switches_off" or address not in switchable_addresses]
+      assert startup_patch_calls == enabled_patches + [(address, replacement) for address, original, replacement in preference_patches if original != replacement]
+      for address, original, replacement in patches:
+        expected_word = original if case == "config_switches_off" and address in switchable_addresses else replacement
+        assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == expected_word
   else:
     assert not patch_calls, "unsupported executables must not be modified"
   return len(hooks)
@@ -442,7 +470,7 @@ def main() -> None:
   for case in ("supported", "wrong_version", "wrong_build_id", "wrong_segment_layout",
     "wrong_activity_instruction", "patch_failed", "menus", "resource_stock_patch",
     "mount_failed", "performance", "config_ten", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
-    "config_large", "config_short", "config_empty"):
+    "config_large", "config_short", "config_empty", "config_switches_off"):
     count = smoke(args.nro.read_bytes(), case)
     print(f"{case}: initialization returned normally; {count} hooks; no unavailable API call")
 

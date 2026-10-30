@@ -4,6 +4,7 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 
 ## Features
 
+- **EXP and SP rewards:** independently choose 1×, 2×, 3×, 5× or 10× rewards. EXP also offers Max Level: the next positive EXP reward reaches the current class level cap. Keep normal experience/level-up animations, native growth and level/SP caps. No automatic reclassing or stat maximization; skill books stay unchanged.
 - **Unlimited shop stock:** keep unlocked armory, item-shop and flea-market goods available, including sold-out goods. Keep native prices, chapter requirements and inventory limits. Outfit/accessory ownership rules stay unchanged.
 - **Somniel facility shortcuts:** one outdoor menu entry opens Facilities / Activities / Shops. Facilities contains the notice board, Ring Chamber, Ancient Well, animal management and jukebox; Activities contains arena, cooking, Sommie, strength training, fishing, Wyvern Ride and recreation; Shops contains the armory, item shop, smithy, boutique and flea market. Each list fits without scrolling. Keep native unlocks, activity allowances, scene setup and cleanup; return to the previous menu on exit. Ring cleaning remains at its original facility.
 - **Automatic ready supports:** on entering the Somniel or post-battle exploration, process eligible C/B/A support conversations through their original menus and events once the scene is ready. Opening the Somniel exploration menu also checks newly available pairs. Do not add support points or force ranks; leave Pact Ring events and the conversation gallery unchanged.
@@ -16,7 +17,7 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 - **Battle saves:** allow saving during battle; enabled by default and independently switchable.
 - **Personal outfits:** use each character's original class clothing in ordinary battle and preparation models, even after reclassing. Enabled by default. Keep native hair, weapons, mounts, skeletons, animations and engaged forms; incompatible skeletons retain their native outfit. Changes apply when the model is rebuilt, not immediately to existing models.
 - **Quick relationship dialogues:** automatically skip messages in selected C/B/A support and Emblem bond conversations, including paid training. Keep native scripts, viewed records, rank advancement and callbacks. Story and Pact Ring conversations stay unchanged.
-- **Fast fishing:** shorten the bite wait and simplify landing fish while keeping the original fishing allowance and rewards.
+- **Fishing controls:** independently switch nondecreasing fishing uses and faster bite/landing. Both default to on; native unlocks, fish records and rewards remain. If uses are already exhausted, nondecreasing mode supplies one available use on entering the Somniel or enabling the option.
 - **Ancient Well preview and reroll:** the original well menu includes Preview Results and Reroll Results for a pending exchange. Preview uses a private RNG and lists item quantities without claiming anything. Reroll changes only that exchange's seed; normal waiting, deposits and collection remain.
 - **Fast perfect strength training:** quickly finish push-ups, sit-ups, and squats with perfect results while keeping the original training allowance.
 - **Fast SSS Wyvern Ride:** after the opening, finish at the selected difficulty's SSS score threshold and continue through the original result and reward flow. Keep difficulty unlocks and reward eligibility unchanged.
@@ -24,7 +25,7 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 - **Inventory-free ordinary gifts:** give normal gifts even at zero stock without consuming owned copies. Keep the original recipient preferences and support gains.
 - **Collect exploration rewards:** use the first entry in the original exploration menu to collect generated ground items, farm products, eligible animals, and available ordinary villager gifts in the Somniel or after battle. Keep donation bonuses, adoption requirements, and inventory limits; leave rewards that do not fit unclaimed.
 
-Convenience features are enabled automatically; the preferences below can be changed in Plugin Settings. Menu labels follow the game's text language.
+Preferences below can be changed independently in Plugin Settings. Menu labels follow the game's text language.
 
 ## Installation
 
@@ -48,18 +49,43 @@ Fully restart the game after installation or an update.
 
 ## Settings
 
-Open **Settings → Plugin Settings** in the game. Entries appear in this order:
-
-1. **Draconic Time Crystal Uses** — Nondecreasing by default.
-2. **Battle Save** — On by default.
-3. **Personal Outfits** — On by default.
-4. **Standard Training Uses** — 10 by default.
-5. **Batch Ring Count** — 300 by default.
-6. **Automatic Supports** — On by default.
-7. **Chef** — Native by default.
-8. **Cooking Outcome** — Native by default.
-
+Open **Settings → Plugin Settings** in the game. All options appear directly
+in one scrolling list, in the following order, without extra group menus.
 Use the original left/right controls; changes save automatically.
+
+| Option | Default | Choices |
+| --- | --- | --- |
+| EXP Multiplier | 1× | 1× / 2× / 3× / 5× / 10× / Max Level |
+| SP Multiplier | 1× | 1× / 2× / 3× / 5× / 10× |
+| Battle Save | On | On / Off |
+| Personal Outfits | On | On / Off |
+| Automatic Supports | On | On / Off |
+| Draconic Time Crystal Uses | Nondecreasing | Nondecreasing / 1–1000 |
+| Standard Training Uses | 10 | Nondecreasing / 1–1000 |
+| Nondecreasing Fishing Uses | On | On / Off |
+| Batch Ring Count | 300 | 2–1000 |
+| Unlimited Shop Stock | On | On / Off |
+| Gifts Without Consumption | On | On / Off |
+| Fast Fishing | On | On / Off |
+| Fast Perfect Strength Training | On | On / Off |
+| Fast SSS Wyvern Ride | On | On / Off |
+| Repeat Cooking | On | On / Off |
+| Chef | Native | Native / recruited chef |
+| Cooking Outcome | Native | Native / chef's native outcome branches |
+
+Turning a feature off restores its original behavior on subsequent actions;
+it does not undo previously earned items, scores or progress. Reopen shop/activity
+menus to refresh availability after a change. Personal outfits refresh when
+models are rebuilt. Other conveniences, such as batch melding, all-ring cleaning,
+collection and shortened relationship dialogues, keep their existing behavior.
+
+EXP and SP choices apply to the next native EXP/SP reward, including ordinary
+arena training. The settings do not multiply each other: 20 EXP and 10 SP at
+2× EXP / 3× SP award 40 EXP and 30 SP. Max Level requires a positive EXP
+reward; it does not grant levels on zero-EXP actions or change SP on its own.
+Normal playback and manual skipping retain the same rewards; no animation is
+automatically skipped by these options.
+
 Rewind and standard training offer **Nondecreasing** or **1–1000** uses.
 Finite values are total quotas, not remaining-use refills. Native spent counters
 and reset timing remain in place. Nondecreasing training preserves the current

@@ -8,7 +8,6 @@ pub const SHOW_FOOTER: usize = 0x021EDE30;
 pub const SCENE_NAME: usize = 0x02A71860;
 pub const RING_MENU: usize = 0x023397D0;
 pub const VARIABLE_NUMBER: usize = 0x0251E9D0;
-pub const FISHING_USES: usize = 0x0260B190;
 pub const FACILITY_GET: usize = 0x00203E90;
 pub const FACILITY_COMPLETE: usize = 0x028A80D0;
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
@@ -275,11 +274,7 @@ pub(crate) mod native {
   unsafe fn available(entry: usize) -> i32 {
     unsafe {
       if entry == 0x0260A4A0 {
-        return if native!(FISHING_USES, unsafe extern "C" fn(Method) -> i32)(NONE) > 0 {
-          1
-        } else {
-          2
-        };
+        return if crate::fishing::native::remaining() > 0 { 1 } else { 2 };
       }
       let key = match entry {
         0x02DD8250 => "G_MuscleExercise_GetPrize",

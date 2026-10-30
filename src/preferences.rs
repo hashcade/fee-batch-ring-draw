@@ -30,8 +30,9 @@ pub fn patches(settings: &Settings) -> [(usize, u32); 5] {
 }
 
 pub fn apply(memory: &mut impl CodeMemory, settings: &Settings) -> bool {
-  let desired = patches(settings);
-  let previous = desired.map(|(address, _)| memory.read(address));
+  let desired: Vec<_> =
+    crate::activities::desired(settings).into_iter().chain(patches(settings)).collect();
+  let previous: Vec<_> = desired.iter().map(|&(address, _)| memory.read(address)).collect();
   for (index, &(address, word)) in desired.iter().enumerate() {
     if memory.read(address) == word {
       continue;

@@ -6,6 +6,19 @@ from settings_fixture import SettingsFixture
 
 
 class ConvenienceFixture(SettingsFixture):
+  def configure_multipliers(self, exp, sp):
+    self.active = True
+    for kind, rate in ((15, exp), (16, sp)):
+      item = self.invoke(self.factories[kind])
+      self.next_count = ([1, 2, 3, 5, 10, 0] if kind == 15 else [1, 2, 3, 5, 10]).index(rate)
+      result = self.invoke(self.pointer(self.pointer(item) + 0x138 + 26 * 16), item)
+      assert result in (0, 4096)
+      assert self.read_string(self.pointer(item + 0x70)) == (f"{rate}×" if rate else "满级")
+      saved = self.files[self.paths[0]]
+      key = "exp_multiplier" if kind == 15 else "sp_multiplier"
+      assert (f"{key}={rate}\n".encode() in saved) == (rate != 1)
+    self.active = False
+
   def handle(self, pc, import_name):
     if not self.active: return False
     name = self.functions.get(pc, import_name)
@@ -15,8 +28,16 @@ class ConvenienceFixture(SettingsFixture):
     if name == "SINGLETON_GET": result = self.user
     elif name == "PARAMETER": result = 3
     elif pc == self.game + 0x0251E9D0:
-      assert self.read_string(b) == "G_拠点_闘技場済み"
-      result = self.arena_spent
+      key = self.read_string(b)
+      assert key in ("G_拠点_闘技場済み", "G_Fishing_PlayCount")
+      result = self.arena_spent if key == "G_拠点_闘技場済み" else self.fishing_remaining
+    elif name == "SET_NUMBER":
+      assert self.read_string(b) == "G_Fishing_PlayCount" and args[2] == 1
+      self.fishing_remaining = 1
+      self.fishing_refills += 1
+    elif name == "DECREASE":
+      self.fishing_remaining -= 1
+      self.fishing_decrements += 1
     elif name == "INITIALIZE_METADATA": pass
     elif name == "UNIT_LIST": result = self.units
     elif name == "UNIT_PID": result = self.pids[a]
@@ -140,7 +161,55 @@ class ConvenienceFixture(SettingsFixture):
     assert change(2, 1) == 4096
     self.active = False
     self.appearance.exercise()
-    print("compiled eight-row settings: order, finite/nondecreasing counts, reversible saves, disabled outfits and mount-failure rollback passed")
+    print("compiled settings: initial arrows, finite/nondecreasing counts, reversible saves, disabled outfits and mount-failure rollback passed")
+
+  def exercise_features(self, hooks, stop, stack, check_disabled):
+    self.active = True
+    self.fishing_remaining, self.fishing_refills, self.fishing_decrements = 3, 0, 0
+    self.integer(self.user + 0x28, 4)
+    self.qword(self.user + 0x50, self.alloc())
+    self.metadata(0x062840F0)
+
+    def call(address, *args):
+      for i in range(8): self.cpu.reg_write(getattr(reg, f"UC_ARM64_REG_X{i}"), args[i] if i < len(args) else 0)
+      self.cpu.reg_write(reg.UC_ARM64_REG_SP, stack)
+      self.cpu.reg_write(reg.UC_ARM64_REG_X30, stop)
+      self.cpu.emu_start(address, stop + 4, count=1_000_000)
+      assert self.cpu.reg_read(reg.UC_ARM64_REG_PC) == stop
+      return self.cpu.reg_read(reg.UC_ARM64_REG_X0)
+
+    def change(item, value):
+      self.next_count = value
+      return call(self.pointer(self.pointer(item) + 0x138 + 26 * 16), item)
+
+    keys = ["fishing_unlimited", "shop_stock", "gift_stock", "repeat_cooking", "fast_fishing", "fast_training", "fast_wyvern"]
+    items = [call(self.factories[kind]) for kind in range(8, 15)]
+    assert [self.read_string(self.pointer(item + 0x70)) for item in items] == ["开启"] * 7
+    call(hooks[0x026FFF90], self.user)
+    assert self.fishing_remaining == 3 and self.fishing_decrements == 0
+    for item, key in zip(items, keys):
+      assert change(item, 0) == 4096
+      assert self.read_string(self.pointer(item + 0x70)) == "关闭"
+      assert f"{key}=0\n".encode() in self.files[self.paths[0]]
+    call(hooks[0x026FFF90], self.user)
+    assert self.fishing_remaining == 2 and self.fishing_decrements == 1
+    check_disabled()
+    for key in keys:
+      assert f"{key}=0\n".encode() in self.files[self.paths[0]]
+    self.fishing_remaining = 0
+    for item, key in zip(items, keys):
+      assert change(item, 1) == 4096
+      assert f"{key}=0\n".encode() not in self.files[self.paths[0]]
+    assert self.fishing_remaining == self.fishing_refills == 1
+    call(hooks[0x026FFF90], self.user)
+    assert self.fishing_remaining == 1 and self.fishing_decrements == 1
+    # Turning fast fishing off must not turn nondecreasing uses off.
+    assert change(items[4], 0) == 4096
+    call(hooks[0x026FFF90], self.user)
+    assert self.fishing_remaining == 1
+    assert change(items[4], 1) == 4096
+    self.active = False
+    print("compiled seven independent switches: persisted off/on, native fishing decrement, exhausted-use recovery and separate fast-fishing control passed")
 
   def exercise_new(self, callbacks, hooks, stop, stack):
     self.active = True

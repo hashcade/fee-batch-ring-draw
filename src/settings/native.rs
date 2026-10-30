@@ -1,4 +1,4 @@
-//! One private ConfigBasicMenuItem class; no global vtable/save-variable edits.
+//! Private ConfigBasicMenuItem classes; native scrolling and selection.
 
 use super::*;
 use crate::{
@@ -14,8 +14,8 @@ use core::{
 
 const VTABLE: usize = 0x138;
 const NONE: Method = ptr::null();
-static ITEM_CLASSES: [AtomicUsize; 8] = [const { AtomicUsize::new(0) }; 8];
-const ITEM_NAMES: [&[u8]; 8] = [
+static ITEM_CLASSES: [AtomicUsize; OPTION_COUNT] = [const { AtomicUsize::new(0) }; OPTION_COUNT];
+const ITEM_NAMES: [&[u8]; OPTION_COUNT] = [
   b"SomnielDrawCount\0",
   b"SomnielChef\0",
   b"SomnielCookingOutcome\0",
@@ -24,6 +24,15 @@ const ITEM_NAMES: [&[u8]; 8] = [
   b"SomnielBattleSave\0",
   b"SomnielPersonalOutfits\0",
   b"SomnielArenaCount\0",
+  b"SomnielFishingUses\0",
+  b"SomnielShopStock\0",
+  b"SomnielGiftStock\0",
+  b"SomnielRepeatCooking\0",
+  b"SomnielFastFishing\0",
+  b"SomnielFastTraining\0",
+  b"SomnielFastWyvern\0",
+  b"SomnielExpMultiplier\0",
+  b"SomnielSpMultiplier\0",
 ];
 static SAVE_FAILED: AtomicBool = AtomicBool::new(false);
 
@@ -39,7 +48,7 @@ extern "C" {
 
 pub(crate) fn install() {
   let callbacks = [
-    create,
+    create_draw,
     create_chef,
     create_outcome,
     create_support,
@@ -47,6 +56,15 @@ pub(crate) fn install() {
     create_save,
     create_outfits,
     create_arena,
+    create_fishing_uses,
+    create_shop_stock,
+    create_gift_stock,
+    create_repeat_cooking,
+    create_fast_fishing,
+    create_fast_training,
+    create_fast_wyvern,
+    create_exp_multiplier,
+    create_sp_multiplier,
   ];
   for kind in MENU_ORDER {
     unsafe { cobapi_register_configmenuitem_cb(callbacks[kind]) };
@@ -95,7 +113,7 @@ unsafe extern "C" fn no_action(_: Object, _: Method) -> i32 {
   0
 }
 
-unsafe extern "C" fn create() -> Object {
+unsafe extern "C" fn create_draw() -> Object {
   unsafe { create_kind(0) }
 }
 unsafe extern "C" fn create_chef() -> Object {
@@ -118,6 +136,33 @@ unsafe extern "C" fn create_outfits() -> Object {
 }
 unsafe extern "C" fn create_arena() -> Object {
   unsafe { create_kind(7) }
+}
+unsafe extern "C" fn create_fishing_uses() -> Object {
+  unsafe { create_kind(8) }
+}
+unsafe extern "C" fn create_shop_stock() -> Object {
+  unsafe { create_kind(9) }
+}
+unsafe extern "C" fn create_gift_stock() -> Object {
+  unsafe { create_kind(10) }
+}
+unsafe extern "C" fn create_repeat_cooking() -> Object {
+  unsafe { create_kind(11) }
+}
+unsafe extern "C" fn create_fast_fishing() -> Object {
+  unsafe { create_kind(12) }
+}
+unsafe extern "C" fn create_fast_training() -> Object {
+  unsafe { create_kind(13) }
+}
+unsafe extern "C" fn create_fast_wyvern() -> Object {
+  unsafe { create_kind(14) }
+}
+unsafe extern "C" fn create_exp_multiplier() -> Object {
+  unsafe { create_kind(15) }
+}
+unsafe extern "C" fn create_sp_multiplier() -> Object {
+  unsafe { create_kind(16) }
 }
 
 unsafe fn kind(item: Object) -> usize {
@@ -220,6 +265,11 @@ unsafe extern "C" fn command(item: Object, _: Method) {
       5 => support_label(language, settings.battle_save).to_owned(),
       6 => support_label(language, settings.personal_outfits).to_owned(),
       7 => count_label(language, settings.arena_count),
+      15 => multiplier_label(language, settings.exp_multiplier),
+      16 => format!("{}×", settings.sp_multiplier),
+      kind @ 8..=14 => {
+        support_label(language, config::Feature::ALL[kind - 8].value(&settings)).to_owned()
+      }
       _ => settings.draw_count.to_string(),
     };
     reference(item, 0x70, new_text(&label));
@@ -250,6 +300,17 @@ unsafe extern "C" fn change(item: Object, _: Method) -> i32 {
   let change: unsafe extern "C" fn(i32, i32, i32, i32, Method) -> i32 =
     unsafe { core::mem::transmute(base() + CHANGE_NUMBER) };
   match kind {
+    15 | 16 => {
+      let value =
+        if kind == 15 { &mut settings.exp_multiplier } else { &mut settings.sp_multiplier };
+      let choices: &[u32] =
+        if kind == 15 { &crate::gains::EXP_MULTIPLIERS } else { &crate::gains::MULTIPLIERS };
+      let index = choices.iter().position(|choice| choice == value).unwrap_or(0);
+      let next = unsafe { change(index as i32, 0, choices.len() as i32 - 1, 1, NONE) };
+      if let Some(choice) = choices.get(next as usize) {
+        *value = *choice;
+      }
+    }
     1 => {
       let mut chefs = unsafe { crate::cooking::native::chefs() };
       chefs.insert(0, (String::new(), String::new()));
@@ -284,6 +345,13 @@ unsafe extern "C" fn change(item: Object, _: Method) -> i32 {
       let next = unsafe { change(i32::from(*value), 0, 1, 1, NONE) };
       if (0..=1).contains(&next) {
         *value = next == 1;
+      }
+    }
+    kind @ 8..=14 => {
+      let feature = config::Feature::ALL[kind - 8];
+      let next = unsafe { change(i32::from(feature.value(&settings)), 0, 1, 1, NONE) };
+      if (0..=1).contains(&next) {
+        feature.set(&mut settings, next == 1);
       }
     }
     _ => {

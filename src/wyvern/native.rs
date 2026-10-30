@@ -50,6 +50,9 @@ unsafe fn plan(sequence: Object) -> Option<(Object, i32)> {
 
 #[skyline::hook(offset = MAIN)]
 fn wyvern_main(sequence: Object, method: Method) {
+  if !crate::config::enabled(crate::config::Feature::FastWyvern) {
+    return call_original!(sequence, method);
+  }
   let completion = unsafe { plan(sequence) };
   if let Some((camera, _)) = completion {
     // FinishRail only signals the same flag tested by the original Main loop.

@@ -60,6 +60,12 @@ pub fn help(language: i32, failed: bool) -> &'static str {
 pub(crate) mod native;
 
 pub fn option_title(language: i32, kind: usize) -> &'static str {
+  if kind >= 15 {
+    return multiplier_title(language, kind == 16);
+  }
+  if kind >= 8 {
+    return feature_title(language, kind - 8);
+  }
   if kind == 0 {
     return title(language);
   }
@@ -138,6 +144,21 @@ pub fn outcome_label(language: i32, option: u8) -> &'static str {
 }
 
 pub fn option_help(language: i32, kind: usize) -> &'static str {
+  if kind >= 15 {
+    return match (language, kind == 16) {
+      (9, false) => "調整經驗倍率，或在獲得經驗時升至目前職業滿級。",
+      (10, false) => "调整经验倍率，或在获得经验时升至本职业满级。",
+      (0, false) => "獲得経験値の倍率、または経験値獲得時に現在の兵種レベルを最大にします。",
+      (9, true) => "獨立調整獲得的SP倍率，不影響技能書。",
+      (10, true) => "独立调整获得的SP倍率，不影响技能书。",
+      (0, true) => "獲得SPの倍率。経験値倍率とは独立。スキルの書は対象外。",
+      (_, false) => "Multiply earned EXP, or reach the current class cap on gaining EXP.",
+      (_, true) => "Multiply earned SP independently of EXP. Skill books stay unchanged.",
+    };
+  }
+  if kind >= 8 {
+    return feature_help(language, kind - 8);
+  }
   if kind == 0 {
     return help(language, false);
   }
@@ -193,7 +214,162 @@ pub fn option_help(language: i32, kind: usize) -> &'static str {
   })[kind.saturating_sub(1).min(2)]
 }
 
-pub const MENU_ORDER: [usize; 8] = [4, 5, 6, 7, 0, 3, 1, 2];
+pub const OPTION_COUNT: usize = 17;
+pub const MENU_ORDER: [usize; OPTION_COUNT] =
+  [15, 16, 5, 6, 3, 4, 7, 8, 0, 9, 10, 12, 13, 14, 11, 1, 2];
+
+fn multiplier_title(language: i32, sp: bool) -> &'static str {
+  let labels = match language {
+    0 => ["経験値倍率", "SP倍率"],
+    2 | 5 => ["Multiplicateur d’EXP", "Multiplicateur de SP"],
+    3 | 6 => ["Multiplicador de EXP", "Multiplicador de SP"],
+    7 => ["EP-Multiplikator", "SP-Multiplikator"],
+    8 => ["Moltiplicatore ESP", "Moltiplicatore SP"],
+    9 => ["經驗倍率", "SP倍率"],
+    10 => ["经验倍率", "SP倍率"],
+    11 => ["경험치 배율", "SP 배율"],
+    _ => ["EXP Multiplier", "SP Multiplier"],
+  };
+  labels[usize::from(sp)]
+}
+
+pub fn multiplier_label(language: i32, multiplier: u32) -> String {
+  if multiplier != 0 {
+    return format!("{multiplier}×");
+  }
+  match language {
+    0 => "レベル最大",
+    2 | 5 => "Niveau max.",
+    3 | 6 => "Nivel máximo",
+    7 => "Max. Level",
+    8 => "Livello massimo",
+    9 => "滿級",
+    10 => "满级",
+    11 => "최대 레벨",
+    _ => "Max Level",
+  }
+  .to_owned()
+}
+
+pub fn feature_title(language: i32, feature: usize) -> &'static str {
+  let labels = match language {
+    0 => [
+      "釣り回数を消費しない",
+      "ショップ在庫無限",
+      "贈り物を消費しない",
+      "繰り返し料理",
+      "高速釣り",
+      "筋肉体操で即満点",
+      "ドラゴンシューターで即SSS",
+    ],
+    2 | 5 => [
+      "Pêche sans consommation",
+      "Stocks illimités",
+      "Cadeaux sans consommation",
+      "Cuisine répétable",
+      "Pêche rapide",
+      "Musculation parfaite rapide",
+      "Vol en wyverne SSS rapide",
+    ],
+    3 | 6 => [
+      "Pesca sin gastar usos",
+      "Existencias ilimitadas",
+      "Regalos sin consumo",
+      "Cocina repetible",
+      "Pesca rápida",
+      "Ejercicio perfecto rápido",
+      "Vuelo en wyvern SSS rápido",
+    ],
+    7 => [
+      "Angeln ohne Verbrauch",
+      "Unbegrenzte Ladenbestände",
+      "Geschenke ohne Verbrauch",
+      "Wiederholt kochen",
+      "Schnelles Angeln",
+      "Schnelles perfektes Training",
+      "Schneller SSS-Wyvernflug",
+    ],
+    8 => [
+      "Pesca senza consumare usi",
+      "Scorte illimitate",
+      "Regali senza consumo",
+      "Cucina ripetibile",
+      "Pesca rapida",
+      "Esercizi perfetti rapidi",
+      "Volo wyvern SSS rapido",
+    ],
+    9 => [
+      "釣魚次數不減",
+      "商店庫存無限",
+      "贈送禮物不消耗",
+      "重複料理",
+      "快速釣魚",
+      "力量訓練快速滿分",
+      "飛龍小遊戲快速SSS",
+    ],
+    10 => [
+      "钓鱼次数不减",
+      "商店库存无限",
+      "赠送礼物不消耗",
+      "重复料理",
+      "快速钓鱼",
+      "力量训练快速满分",
+      "飞龙小游戏快速SSS",
+    ],
+    11 => [
+      "낚시 횟수 감소 없음",
+      "상점 재고 무제한",
+      "선물 소모 없음",
+      "반복 요리",
+      "빠른 낚시",
+      "빠른 체력 단련 만점",
+      "빠른 드래곤 슈터 SSS",
+    ],
+    _ => [
+      "Nondecreasing Fishing Uses",
+      "Unlimited Shop Stock",
+      "Inventory-free Gifts",
+      "Repeat Cooking",
+      "Fast Fishing",
+      "Fast Perfect Strength Training",
+      "Fast SSS Wyvern Ride",
+    ],
+  };
+  labels[feature]
+}
+
+fn feature_help(language: i32, feature: usize) -> &'static str {
+  let labels = match language {
+    10 => [
+      "不扣除钓鱼次数。次数已用完时提供一次可用次数。",
+      "武器店、道具店及跳蚤市场库存无限，价格和解锁条件不变。",
+      "普通礼物不消耗库存，也可在零库存时赠送。",
+      "允许在两场战斗之间重复料理。",
+      "缩短等待并简化钓起过程，不改变次数设置。",
+      "快速完成力量训练并获得满分，不增加训练次数。",
+      "快速按当前难度的SSS门槛结算，不增加游玩次数。",
+    ],
+    9 => [
+      "不扣除釣魚次數。次數已用完時提供一次可用次數。",
+      "武器店、道具店及跳蚤市場庫存無限，價格與解鎖條件不變。",
+      "普通禮物不消耗庫存，也可在零庫存時贈送。",
+      "允許在兩場戰鬥之間重複料理。",
+      "縮短等待並簡化釣起過程，不改變次數設定。",
+      "快速完成力量訓練並獲得滿分，不增加訓練次數。",
+      "快速按目前難度的SSS門檻結算，不增加遊玩次數。",
+    ],
+    _ => [
+      "Do not spend fishing uses. An exhausted session receives one available use.",
+      "Unlimited armory, item-shop and flea-market stock; keep prices and unlocks.",
+      "Give ordinary gifts without consuming copies, including at zero stock.",
+      "Allow repeated cooking between battles.",
+      "Shorten bite waits and simplify landing, independently of use limits.",
+      "Finish strength training quickly with a perfect result; keep its allowance.",
+      "Finish at the difficulty's SSS threshold; keep its native allowance.",
+    ],
+  };
+  labels[feature]
+}
 
 fn preference_title(language: i32, kind: usize) -> &'static str {
   let labels = match language {

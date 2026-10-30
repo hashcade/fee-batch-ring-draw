@@ -36,15 +36,27 @@ fn defaults_legacy_files_and_every_preference_round_trip() {
 
 #[test]
 fn official_chinese_menu_names_and_order() {
+  let mut kinds = settings::MENU_ORDER;
+  kinds.sort();
+  assert_eq!(kinds, std::array::from_fn(|i| i));
   assert_eq!(
     settings::MENU_ORDER.map(|kind| settings::option_title(10, kind)),
     [
-      "龙之时水晶次数",
+      "经验倍率",
+      "SP倍率",
       "战斗存档",
       "专属服装",
-      "一般锻炼次数",
-      "牵绊戒指精炼次数",
       "自动完成支援对话",
+      "龙之时水晶次数",
+      "一般锻炼次数",
+      "钓鱼次数不减",
+      "牵绊戒指精炼次数",
+      "商店库存无限",
+      "赠送礼物不消耗",
+      "快速钓鱼",
+      "力量训练快速满分",
+      "飞龙小游戏快速SSS",
+      "重复料理",
       "料理厨师",
       "料理结果",
     ]
@@ -90,13 +102,45 @@ fn patches_switch_both_ways_and_rollback_the_actual_previous_words() {
   let defaults = Settings::default();
   let finite =
     Settings { rewind_count: 25, battle_save: false, arena_count: 0, ..defaults.clone() };
-  let mut memory = Memory { words: patches(&defaults).into(), writes: 0, fail: None };
+  let words = |settings: &Settings| {
+    patches(settings)
+      .into_iter()
+      .chain(fee_better_somniel::activities::desired(settings))
+      .collect::<BTreeMap<_, _>>()
+  };
+  let mut memory = Memory { words: words(&defaults), writes: 0, fail: None };
   assert!(apply(&mut memory, &finite));
-  assert_eq!(memory.words, patches(&finite).into());
+  assert_eq!(memory.words, words(&finite));
   assert!(apply(&mut memory, &defaults));
   let before = memory.words.clone();
   memory.writes = 0;
   memory.fail = Some(3);
   assert!(!apply(&mut memory, &finite));
   assert_eq!(memory.words, before);
+}
+
+#[test]
+fn disabling_convenience_features_restores_only_their_native_instructions() {
+  use fee_better_somniel::{activities, config::Feature};
+  let defaults = Settings::default();
+  for feature in Feature::ALL {
+    let mut settings = defaults.clone();
+    feature.set(&mut settings, false);
+    let before = activities::desired(&defaults);
+    let after = activities::desired(&settings);
+    let changed = before.iter().zip(&after).filter(|(old, new)| old != new).count();
+    let expected = match feature {
+      Feature::RepeatCooking => 1,
+      Feature::GiftStock => 3,
+      Feature::FastFishing => 6,
+      Feature::FastTraining => 12,
+      _ => 0, // Event hooks, not instruction patches.
+    };
+    assert_eq!(changed, expected, "{feature:?}");
+    for &(address, value) in &after {
+      let (_, original, replacement) =
+        activities::PATCHES.iter().find(|&&(offset, _, _)| offset == address).unwrap();
+      assert_eq!(value, if before.contains(&(address, value)) { *replacement } else { *original });
+    }
+  }
 }

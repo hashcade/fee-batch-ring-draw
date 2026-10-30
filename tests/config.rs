@@ -8,6 +8,27 @@ fn missing_setting_and_comments_keep_300_default() {
 }
 
 #[test]
+fn convenience_switches_default_on_and_round_trip_independently() {
+  use fee_better_somniel::config::{parse_settings, Feature, Settings};
+  let defaults = Settings::default();
+  for mask in 0..1 << Feature::ALL.len() {
+    let mut settings = defaults.clone();
+    for (index, feature) in Feature::ALL.into_iter().enumerate() {
+      assert!(feature.value(&defaults));
+      feature.set(&mut settings, mask & (1 << index) != 0);
+    }
+    assert_eq!(parse_settings(&settings.encode()), Ok(settings));
+  }
+  for feature in Feature::ALL {
+    let key = feature.key();
+    assert!(feature.value(&parse_settings(&format!("{key}=1")).unwrap()));
+    for invalid in [format!("{key}=2"), format!("{key}=true"), format!("{key}=0\n{key}=1")] {
+      assert!(parse_settings(&invalid).is_err());
+    }
+  }
+}
+
+#[test]
 fn extended_settings_round_trip_without_save_variables() {
   use fee_better_somniel::config::{parse_settings, Settings};
   assert_eq!(

@@ -5,9 +5,13 @@
 Settings remain in the independent SD file. Existing files retain chef, outcome,
 draw count and support choices; missing new keys take defaults. Zero is the
 nondecreasing selector for rewind and standard training, never zero available uses.
-The eight Cobalt callbacks register rewind, saves, outfits, training, draws,
-supports, chef and outcome in that order. Their private classes preserve native
-ConfigBasicMenuItem InitContent through Cobalt's second class copy.
+Seventeen Cobalt callbacks register the options in one flat list: EXP/SP
+multipliers, general preferences, counts, stock, minigames and cooking. There are no category headers
+or extra submenus. Cobalt's original PluginSubmenu adds each returned item to the
+native ConfigMenu fullMenuItemList; it owns the menu's lifecycle and scrolling.
+This plugin does not change ConfigMenu's class, visible row count, prefab rows,
+viewport or scroll geometry. Private item classes preserve ConfigBasicMenuItem
+InitContent and native selection callbacks through Cobalt's second class copy.
 
 MapHistory.Rewind.GetMaxUseCount at 0x02707DD0 supplies the finite quota or the
 native negative-unlimited sentinel. The original IsEnable still checks the game's
@@ -26,6 +30,24 @@ or displaying an enormous fake remaining count. Paid training is not changed.
 Code writes occur only at startup or explicit settings edits, not per frame.
 Settings write failures restore the previous runtime words and active values.
 
+Seven additional booleans default to true: fishing_unlimited, shop_stock,
+gift_stock, repeat_cooking, fast_fishing, fast_training and fast_wyvern.
+Missing keys retain defaults, explicit zeroes persist disabled features.
+Configuration loads before the combined activity/preference patch transaction;
+there is no temporary default-on patch pass before reading saved choices.
+Settings edits skip unchanged words and roll back the actual previous words
+on failure. Shop/Wyvern hooks directly call their originals when disabled.
+
+FishingGameSequence.DecreasePlayCount at 0x026FFF90 is the only suppressed use
+settlement; IncreasePlayCounter, fish records and reward paths remain native.
+Availability reads G_Fishing_PlayCount through GameVariable.GetNumber. The old
+FishingSequence.GetFishingPlayCount at 0x0260B190 returns the rod's maximum,
+not remaining uses. With nondecreasing mode enabled, Somniel initialization or
+an off-to-on settings transition supplies one native remaining use only if
+already exhausted, through GameVariable.SetNumber at 0x0251F290. This changes
+the normal use counter, not unlocks or custom save settings. No frame polling
+or global variable hook is added. Fast fishing remains independent.
+
 Personal outfits integrate the former independent MIT-licensed implementation:
 42 exact PID/dress-gender mappings cover 41 playable identities, both Alear genders
 and DLC allies. The three appearance hooks retain original scene scoping and only
@@ -37,6 +59,45 @@ Models already instantiated refresh on the next native rebuild.
 
 The menu uses the game's Simplified Chinese nouns 龙之时水晶, 一般锻炼,
 牵绊戒指 and 支援对话; Chef is the user-requested concise 料理厨师 label.
+
+## EXP and SP settlement
+
+The first two settings independently select 1/2/3/5/10; both default to one.
+EXP additionally accepts zero as the Max Level selector (UI: 满级), not zero EXP.
+The independent file stores exp_multiplier and sp_multiplier only when they
+differ from one. Existing configurations therefore retain native rewards.
+
+ExpSequence.CreateBind at 0x024E8C20 receives separately calculated EXP and SP.
+Scale each once, after the native calculation and SP eligibility checks.
+Both map ItemUseSequence and InventorySubMenu item confirmation also reach
+this entry. Walk the actual native ProcInst parent chain and leave those item
+reward contexts unchanged, including SP books. Do not infer item use from zero
+EXP: a capped combat unit can still legitimately receive SP.
+The original SP conversion is not recalculated from amplified EXP. Keep zero
+rewards zero, and limit amplified rewards to the current job's level cap and
+9999 SP. Max Level replaces a positive EXP reward with the remaining EXP to
+the current class cap, without changing SP or triggering on zero-EXP actions.
+Both-one settings call the original with unchanged arguments.
+
+Native Unit.AddExp at 0x01A39D40 increments at most one level per call, even
+for an amount above 100. Normal ExpSequence.Tick awards individual points,
+but CreateBind's GameSkip branch and Tick's fast-forward branch pass a whole
+remaining reward in one call. Scope the original CreateBind and large-reward
+Tick to their unit on the menu/game thread; the AddExp hook splits only these
+scoped large amounts into calls of at most 100. It never multiplies again.
+Unrelated AddExp calls and the global AddSkillPoint function are unchanged.
+Native LevelUpSequnece.Prepare (0x01BE1260) copies the post-EXP unit, restores
+its old level in the preview and calls Unit.LevelUp(2) only once. For an enabled
+EXP multiplier/Max Level, finish the remaining native LevelUp(2) calls on that
+same preview until it reaches the real unit's earned level, before native
+Reflect copies it back. Do not grow the real unit twice or bypass native growth
+RNG, fixed-growth accumulation, skill handling or caps. Default 1x and reclass
+previews retain their original behavior.
+Do not select skip mode, synthesize input or bypass the native sequences.
+Existing growth, history, displays and cleanup retain the original outer flow.
+
+This is event-driven; there is no battle-frame polling, settings allocation
+per point, custom experience bar or save-variable configuration.
 
 ## Facility, support and cooking extensions
 
@@ -151,7 +212,7 @@ mod-settings variable in the save.
 
 One entry point validates the display version, mapped segment layout, loaded Build ID, draw/meld native functions, semantic call sites, and every activity patch's surrounding instructions before changing any game code.
 
-Activities use 32 one-time instruction replacements without runtime original-word matching. Each write is read back; an actual write failure restores the words observed before this operation. It does not disable unrelated hooks or settings. The memory writer imports only Cobalt's `sky_memcpy` ABI, not Skyline's NRO-loader APIs.
+Activities have 32 instruction sites without runtime original-word matching. Settings choose the enabled or original word at startup and explicit edits; there are no per-frame writes. Each write is read back; an actual write failure restores the words observed before this operation. It does not disable unrelated hooks or settings. The memory writer imports only Cobalt's `sky_memcpy` ABI, not Skyline's NRO-loader APIs.
 
 Draw, meld, Wyvern Ride, collection and settings initialize independently of activity-write success. The ring modules have separate thread-local sessions and uniquely named exported hook symbols. No repeating timer or background inventory writer is used.
 
@@ -367,8 +428,8 @@ must be checked in-game.
 
 ## Independent in-game settings
 
-Cobalt 1.31.0's `cobapi_register_configmenuitem_cb` registers the batch-count
-row in Plugin Settings. Its class lookup uses Cobalt's exported IL2CPP
+Cobalt 1.31.0's `cobapi_register_configmenuitem_cb` registers all seventeen
+rows directly in Plugin Settings. Their class lookup uses Cobalt's exported IL2CPP
 forwarders. All four added imports were checked in the pinned release's
 `subsdk9` (SHA-256 recorded in `tools/cobalt-imports.json`). No new dependency,
 game-setting hook, custom save key or global class/vtable edit is required.
@@ -379,7 +440,7 @@ and CustomCall (26) are replaced; command/help text use the original fields.
 Only the accessed slots must exist, with no arbitrary instance-size or maximum
 vtable-size requirement. Cobalt's Assembly::Load export returns an assembly;
 its image field is passed to class lookup. Distinct static class names identify
-the four settings after Cobalt clones their classes again.
+all seventeen options after Cobalt clones their classes again.
 Native `ChangeKeyValue(int,int,int,int)` handles the original
 left/right repeat. Labels follow the game's current text language. The count
 is changed in memory only after its independent file has been committed.

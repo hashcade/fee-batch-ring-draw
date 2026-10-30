@@ -1,5 +1,66 @@
 # Validation
 
+## Unreleased EXP/SP multipliers
+
+- EXP and SP lead the flat list, both defaulting to 1x. Host tests cover all
+  30 valid pairs (six EXP choices including Max Level, five SP choices),
+  legacy defaults, invalid/duplicate keys, independent scaling, zero/negative
+  passthrough, class caps and SP capacity. File-failure tests include Max Level
+  and independent SP values. The Chinese value label is exactly 满级.
+- The compiled fixture changes both options through their real registered
+  callbacks, checks their labels and independently persisted file keys, and
+  executes the compiled reward/point hooks. AddExp uses its complete original
+  22-instruction native body, verified against the supplied NSO; surrounding
+  reward sequence, SP and UI behavior are modeled boundaries. Growth tests
+  assert one native preview growth call per earned level, the original abort
+  argument, unchanged real-unit memory and native class-change/default paths.
+- Checked all numeric multipliers, independent SP gains, normal point-by-point
+  playback without skip input, manual skip after partial progress, 20/40 class
+  caps, partial starting EXP, Max Level after a positive reward, zero reward,
+  capped EXP with continuing SP, 9999-SP saturation, item-reward exclusion in
+  both InventorySubMenu and ItemUseSequence process trees, and out-of-scope passthrough.
+  The options do not request GameSkip or suppress any animation.
+- The locked NRO build and its Cobalt import contract pass. Offline executable
+  verification matches 352 instruction windows. Full regression is left to CI.
+- These are not Unity/device tests. Actual EXP-bar presentation, multi-level
+  growth/stat outcomes, history/rewind, battle and arena rewards, and skill-book
+  exclusion still require in-game acceptance. No release or installation made.
+
+## Unreleased independent convenience switches and flat settings list
+
+- All seventeen options register directly in one Cobalt Plugin Settings list,
+  ordered by EXP/SP multipliers, general preferences, counts, stock, minigames and cooking.
+  Removed the unshipped group entries, submenu construction/disposal, command
+  selection wrappers and unused group labels/signatures. Cobalt's native
+  ConfigMenu retains scrolling, visible rows and the viewport unchanged.
+  The compiled AArch64 fixture checks all seventeen callbacks, cold construction,
+  first selections beyond the initial viewport, forward/reverse traversal,
+  wrapping and reopening. Native selection callbacks and InitContent survive
+  the private class and Cobalt's second clone. No prior row visits or value
+  changes are required for correct arrow selection at these boundaries.
+- Focused host tests cover all 128 combinations of the seven new booleans,
+  default-on/legacy-file behavior, independent round trips, invalid values,
+  exact reversible patch ownership and failed-save rollback.
+- Compiled switch checks persist all seven off/on changes. Disabled shop hooks
+  use native stock, purchase and list results; disabled Wyvern Ride performs
+  only the original tick. Gift, repeat-cooking, fast-fishing and strength-training
+  sites restore their original instructions without disabling other patches.
+- Fishing nondecreasing uses and fast fishing are independent. The compiled
+  settlement hook calls the original decrement only when disabled. Enabling
+  after exhaustion supplies one use; ordinary Somniel initialization also
+  recovers an exhausted session, but post-battle exploration does not.
+  Fish records, rewards and the separate total-play counter are not hooked.
+- Configuration loads before startup patches: a compiled all-disabled config
+  never temporarily applies its disabled activity instructions. A failed-write
+  startup case still registers unrelated hooks/settings and restores prior words.
+- The NRO builds with the locked toolchain. Read-only NSO verification matches
+  352 instruction signatures. Scoped configuration, storage, preference and
+  activity tests passed; full regression remains CI's responsibility.
+- These checks execute plugin machine code against modeled game boundaries,
+  not Unity itself. Actual long-list scrolling/rendering, input/return behavior,
+  shop/menu refresh and native fishing reward settlement still need in-game acceptance.
+  No release, installation or user-save modification was made.
+
 ## v0.3.8 menu hierarchy and lifecycle corrections
 
 - ConfigBasicMenuItem selection callbacks own arrow visibility. Removed the

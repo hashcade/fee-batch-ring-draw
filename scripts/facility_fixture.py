@@ -40,8 +40,11 @@ class FacilityFixture(CollectorFixture):
     elif name == "CAN_ADVANCE": result = 1
     elif name in ("HUB_INIT", "HUB_TICK"): self.events.append((name, a))
     elif name == "HUB_IS_MAIN": result = self.is_main
-    elif name == "VARIABLE_NUMBER": result = self.activity_used
-    elif name == "FISHING_USES": result = 3 if not self.activity_used else 0
+    elif name == "VARIABLE_NUMBER":
+      result = self.fishing_remaining if self.read_string(b) == "G_Fishing_PlayCount" else self.activity_used
+    elif pc == self.game + 0x0251F290:
+      assert self.read_string(b) == "G_Fishing_PlayCount" and args[2] == 1
+      self.fishing_remaining = 1
     elif name == "IS_BOND": result = self.mode[0]
     elif name == "READY_ONLY": result = self.mode[1]
     elif name == "SET_BOND": self.mode[0] = bool(a)
@@ -111,6 +114,7 @@ class FacilityFixture(CollectorFixture):
     self.functions[self.game + 0x00203E90] = "FACILITY_GET"
     self.functions[self.game + 0x028A80D0] = "FACILITY_COMPLETE"
     self.activity_used, self.is_main = 0, True
+    self.fishing_remaining = 3
     self.qword(self.user + 0x50, self.alloc())
     self.image, self.title, self.title_class, fields = (self.alloc() for _ in range(4))
     self.assembly = self.alloc()
@@ -232,10 +236,12 @@ class FacilityFixture(CollectorFixture):
     assert all(choices) and set(self.item_ctors) == {"HUB_ITEM_CTOR"}
     assert bytes(self.cpu.mem_read(self.sequence_class, len(original))) == original
     self.activity_used = 1
+    self.fishing_remaining = 0
     for index in (13, 14, 15):
       assert call(method(choices[index], 8), choices[index]) == 2
       assert call(method(choices[index], 18), choices[index]) == 2048
     self.activity_used = 0
+    self.fishing_remaining = 3
     self.unlocked = False
     assert call(method(choices[1], 8), choices[1]) == 4
     assert call(method(choices[1], 18), choices[1]) == 2048
@@ -284,7 +290,9 @@ class FacilityFixture(CollectorFixture):
       hub = self.alloc()
       for sequence in (4, 5):
         self.integer(self.user + 0x28, sequence)
+        self.fishing_remaining = 0
         call(support_hooks["HUB_INIT"], hub)
+        assert self.fishing_remaining == int(sequence == 4), "recover exhausted fishing only in the Somniel"
         self.is_main = False
         self.forbid_allocations = True
         call(support_hooks["HUB_TICK"], hub)

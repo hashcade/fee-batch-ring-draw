@@ -69,6 +69,8 @@ fn all_preferences_survive_each_transaction_failure() {
     Settings,
   };
   let old = Settings {
+    exp_multiplier: 3,
+    sp_multiplier: 5,
     draw_count: 527,
     chef: "PID_パネトネ".into(),
     cooking_outcome: 3,
@@ -77,8 +79,11 @@ fn all_preferences_survive_each_transaction_failure() {
     battle_save: false,
     personal_outfits: false,
     arena_count: 0,
+    ..Settings::default()
   };
   let new = Settings {
+    exp_multiplier: 0,
+    sp_multiplier: 10,
     draw_count: 612,
     chef: "PID_エーティエ".into(),
     cooking_outcome: 2,

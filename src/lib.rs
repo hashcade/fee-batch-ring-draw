@@ -9,6 +9,8 @@ pub mod collector;
 pub mod config;
 pub mod cooking;
 pub mod facilities;
+pub mod fishing;
+pub mod gains;
 pub mod labels;
 pub mod meld;
 pub mod outfits;

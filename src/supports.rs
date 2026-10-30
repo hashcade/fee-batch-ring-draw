@@ -78,6 +78,7 @@ pub(crate) mod native {
     // Reset per visit, including when the managed allocator reuses an address.
     ENTERED.with(|entered| entered.set(0));
     call_original!(hub, method);
+    crate::fishing::native::ensure_allowance();
   }
 
   #[skyline::hook(offset = HUB_TICK)]

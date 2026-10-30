@@ -111,7 +111,7 @@ class SettingsFixture(CollectorFixture):
     self.cpu.reg_write(reg.UC_ARM64_REG_PC, self.cpu.reg_read(reg.UC_ARM64_REG_X30))
     return True
 
-  def exercise(self, callback, stop, stack):
+  def exercise(self, callbacks, stop, stack):
     self.active = True
     self.image, self.item_class = self.alloc(), self.alloc(self.VTABLE_BYTES)
     self.assembly = self.alloc()
@@ -145,15 +145,56 @@ class SettingsFixture(CollectorFixture):
     self.files = {self.paths[0]: b"draw_count=300\n"}
     self.handles, self.next_handle = {}, 100
     self.mounts, self.unmounts, self.refreshes, self.failure = 0, 0, 0, ""
+    self.user = 0
+    self.metadata(0x062840F0)
 
     def call(address, *args):
       for index in range(8): self.cpu.reg_write(getattr(reg, f"UC_ARM64_REG_X{index}"), args[index] if index < len(args) else 0)
       self.cpu.reg_write(reg.UC_ARM64_REG_SP, stack)
       self.cpu.reg_write(reg.UC_ARM64_REG_X30, stop)
-      self.cpu.emu_start(address, stop + 4, count=500_000)
+      try:
+        self.cpu.emu_start(address, stop + 4, count=500_000)
+      except Exception as error:
+        pc = self.cpu.reg_read(reg.UC_ARM64_REG_PC)
+        raise AssertionError(f"settings call {address:#x}, PC {pc:#x}, X0 {self.cpu.reg_read(reg.UC_ARM64_REG_X0):#x}") from error
       assert self.cpu.reg_read(reg.UC_ARM64_REG_PC) == stop
       return self.cpu.reg_read(reg.UC_ARM64_REG_X0)
 
+    self.invoke = call
+
+    order = [15, 16, 5, 6, 3, 4, 7, 8, 0, 9, 10, 12, 13, 14, 11, 1, 2]
+    assert len(callbacks) == 17
+    self.factories = [callbacks[order.index(kind)] for kind in range(17)]
+    items = [call(callback) for callback in callbacks]
+    assert [self.read_string(self.pointer(item + 0x68)) for item in items] == [
+      "经验倍率", "SP倍率", "战斗存档", "专属服装", "自动完成支援对话", "龙之时水晶次数", "一般锻炼次数",
+      "钓鱼次数不减", "牵绊戒指精炼次数", "商店库存无限", "赠送礼物不消耗", "快速钓鱼",
+      "力量训练快速满分", "飞龙小游戏快速SSS", "重复料理", "料理厨师", "料理结果"]
+    for item in items:
+      copy = self.alloc(self.VTABLE_BYTES)
+      self.write(copy, bytes(self.cpu.mem_read(self.pointer(item), self.VTABLE_BYTES)))
+      self.qword(item, copy)
+      for slot in (12, 13, 27):
+        start = 0x138 + slot * 16
+        assert bytes(self.cpu.mem_read(copy + start, 16)) == original[start:start + 16]
+      assert self.cpu.mem_read(item + 0x81, 1)[0] == 0
+    def arrows():
+      return [self.cpu.mem_read(item + 0x80, 1)[0] for item in items]
+    assert not any(arrows())
+    # Invoke the pinned native callbacks across all seventeen rows, including
+    # first visits beyond the initial viewport, reverse traversal and wraps.
+    saved = dict(self.files)
+    for index in [*range(17), *range(16, -1, -1), 16, 0]:
+      item = items[index]
+      cls = self.pointer(item)
+      call(self.pointer(cls + 0x138 + 12 * 16), item)
+      assert arrows() == [int(i == index) for i in range(17)]
+      call(self.pointer(cls + 0x138 + 13 * 16), item)
+      assert not any(arrows())
+    assert self.files == saved
+    reopened = [call(callback) for callback in callbacks]
+    assert not any(self.cpu.mem_read(item + 0x80, 1)[0] for item in reopened)
+    callback = self.factories[0]
     item = call(callback)
     assert self.read_string(self.pointer(item + 0x68)) == "牵绊戒指精炼次数"
     assert self.read_string(self.pointer(item + 0x70)) == "300"
