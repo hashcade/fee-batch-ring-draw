@@ -4,16 +4,12 @@ pub const MENU_CTOR: usize = 0x024533F0;
 pub const BIND_PARENT: usize = 0x02454310;
 pub const BIND: usize = 0x0280A6B0;
 pub const CONTENT: usize = 0x024EB420;
+pub const PAGE_CONTENT: usize = 0x028B78C0;
 pub const SET_SUBMENU_TRANSFORM: usize = 0x0245E330;
 pub const SHOW_FOOTER: usize = 0x021EDE30;
 pub const SCENE_NAME: usize = 0x02A71860;
 pub const RING_MENU: usize = 0x023397D0;
 pub const VARIABLE_NUMBER: usize = 0x0251E9D0;
-pub const RECT: usize = 0x02F7C3F0;
-pub const TRANSFORM_POINT: usize = 0x03792280;
-pub const INVERSE_TRANSFORM_POINT: usize = 0x037923C0;
-pub const TRANSFORM_PARENT: usize = 0x037909F0;
-pub const UPDATE_POSITION: usize = 0x02464780;
 pub const FACILITY_GET: usize = 0x00203E90;
 pub const FACILITY_COMPLETE: usize = 0x028A80D0;
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
@@ -25,13 +21,7 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x0280A6B0, [0x52800024, 0x14004F87, 0xD503201F, 0xD503201F]),
   (0x024EB420, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
   (0x0245E330, [0xF9403800, 0x14000003, 0xD503201F, 0xD503201F]),
-  (0x02F7C3F0, [0xD100C3FF, 0xA9017BFD, 0x910043FD, 0xA9024FF4]),
-  (0x03792280, [0xD10103FF, 0xA9027BFD, 0x910083FD, 0xA9034FF4]),
-  (0x037923C0, [0xD10103FF, 0xA9027BFD, 0x910083FD, 0xA9034FF4]),
-  (0x037909F0, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xD0015C94]),
-  (0x02464780, [0xA9BE7BFD, 0xF9000BF3, 0x910003FD, 0xAA0003F3]),
-  (0x0245C024, [0xF9400268, 0xF9415D09, 0xF9416102, 0x1A9F17E1]),
-  (0x0245C034, [0xAA1303E0, 0xD63F0120, 0xA9474FF4, 0xF9401BFB]),
+  (0x028B78C0, [0xA9BD7BFD, 0xA90157F6, 0x910003FD, 0xA9024FF4]),
   (0x023374F0, [0xA9BC7BFD, 0xF9000BF7, 0x910003FD, 0xA90257F6]),
   (0x0293AC80, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
   (0x02A744F0, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
@@ -154,6 +144,7 @@ pub(crate) mod native {
   static ENTRY_CLASS: AtomicUsize = AtomicUsize::new(0);
   static GROUP_CLASSES: [AtomicUsize; GROUPS.len()] = [const { AtomicUsize::new(0) }; GROUPS.len()];
   static MENU_CLASS: AtomicUsize = AtomicUsize::new(0);
+  static PAGE_CLASS: AtomicUsize = AtomicUsize::new(0);
   static CLEANING_CLASS: AtomicUsize = AtomicUsize::new(0);
   static ITEM_CLASSES: [AtomicUsize; FACILITIES.len()] =
     [const { AtomicUsize::new(0) }; FACILITIES.len()];
@@ -179,96 +170,6 @@ pub(crate) mod native {
     1 | 512
   }
 
-  #[repr(C)]
-  #[derive(Clone, Copy)]
-  struct Point {
-    x: f32,
-    y: f32,
-    z: f32,
-  }
-
-  #[repr(C)]
-  struct Rect {
-    x: f32,
-    y: f32,
-    width: f32,
-    height: f32,
-  }
-
-  unsafe fn rect_transform(object: Object, slot: usize) -> Object {
-    unsafe {
-      let class: Object = field(object, 0);
-      let call: unsafe extern "C" fn(Object, Method) -> Object =
-        core::mem::transmute(field::<usize>(class, VTABLE + slot * 16));
-      call(object, field(class, VTABLE + slot * 16 + 8))
-    }
-  }
-
-  unsafe fn frame_transform(content: Object) -> Object {
-    unsafe {
-      native!(profile::GAME_OBJECT_TRANSFORM, unsafe extern "C" fn(Object, Method) -> Object)(
-        field(content, 0x38),
-        NONE,
-      )
-    }
-  }
-
-  unsafe fn horizontal_bounds(transform: Object) -> [f32; 2] {
-    unsafe {
-      let rect = native!(RECT, unsafe extern "C" fn(Object, Method) -> Rect)(transform, NONE);
-      let corners = [
-        (rect.x, rect.y),
-        (rect.x + rect.width, rect.y),
-        (rect.x, rect.y + rect.height),
-        (rect.x + rect.width, rect.y + rect.height),
-      ]
-      .map(|(x, y)| {
-        let point = native!(TRANSFORM_POINT, unsafe extern "C" fn(Object, Point, Method) -> Point)(
-          transform,
-          Point { x, y, z: 0.0 },
-          NONE,
-        );
-        point.x
-      });
-      [
-        corners.iter().copied().fold(f32::INFINITY, f32::min),
-        corners.iter().copied().fold(f32::NEG_INFINITY, f32::max),
-      ]
-    }
-  }
-
-  unsafe extern "C" fn menu_built(menu: Object, first: bool, method: Method) {
-    unsafe {
-      let original: unsafe extern "C" fn(Object, bool, Method) =
-        core::mem::transmute(field::<usize>(method as Object, 0));
-      original(menu, first, method);
-      let parent: Object = field(menu, 0x30);
-      if parent.is_null() || field::<usize>(parent, 0) != MENU_CLASS.load(Ordering::Relaxed) {
-        return;
-      }
-      let content: Object = field(menu, 0x70);
-      // BasicMenu.Build ends with OnBuild. Run after its original callback,
-      // when both panels have real geometry. Do not assume this prefab
-      // supplies a usable anchor for a further nested submenu.
-      let parent_bounds = horizontal_bounds(frame_transform(field(parent, 0x70)));
-      let child_bounds = horizontal_bounds(frame_transform(content));
-      let x = parent_bounds[1] - child_bounds[0];
-      let root = rect_transform(content, 5);
-      let space =
-        native!(TRANSFORM_PARENT, unsafe extern "C" fn(Object, Method) -> Object)(root, NONE);
-      let inverse =
-        native!(INVERSE_TRANSFORM_POINT, unsafe extern "C" fn(Object, Point, Method) -> Point);
-      let origin = inverse(space, Point { x: 0.0, y: 0.0, z: 0.0 }, NONE);
-      let target = inverse(space, Point { x, y: 0.0, z: 0.0 }, NONE);
-      // m_pos is the native layout offset, not a world/screen position.
-      // Move horizontally only; keep native row alignment and vertical fitting.
-      let position = content.cast::<u8>().add(0x90).cast::<f32>();
-      position.write(position.read() + target.x - origin.x);
-      position.add(1).write(position.add(1).read() + target.y - origin.y);
-      native!(UPDATE_POSITION, unsafe extern "C" fn(Object, Method))(content, NONE);
-    }
-  }
-
   #[skyline::hook(offset = RING_MENU)]
   fn ring_menu(parent: Object, selected: i32, handler: Object, method: Method) {
     call_original!(parent, selected, handler, method);
@@ -277,7 +178,7 @@ pub(crate) mod native {
     }
     unsafe {
       let quick: Object = field(parent, 0x30);
-      if quick.is_null() || field::<usize>(quick, 0) != MENU_CLASS.load(Ordering::Relaxed) {
+      if quick.is_null() || field::<usize>(quick, 0) != PAGE_CLASS.load(Ordering::Relaxed) {
         return;
       }
       let menu: Object = field(parent, 0x38);
@@ -412,19 +313,18 @@ pub(crate) mod native {
     }
   }
 
-  unsafe fn animate_menu_chain(mut menu: Object, slot: usize) {
+  unsafe fn animate_visible_menus(menu: Object, slot: usize) {
     unsafe {
-      while !menu.is_null() {
-        virtual_void(menu, slot);
-        if field::<usize>(menu, 0) != MENU_CLASS.load(Ordering::Relaxed) {
-          break;
-        }
-        menu = field(menu, 0x30);
+      virtual_void(menu, slot);
+      // Only the category panel and the outdoor menu are visible together.
+      // A destination page replaces both, including on facility returns.
+      if field::<usize>(menu, 0) == MENU_CLASS.load(Ordering::Relaxed) {
+        virtual_void(field(menu, 0x30), slot);
       }
     }
   }
 
-  unsafe extern "C" fn disposed(sequence: Object, method: Method) {
+  pub(crate) unsafe extern "C" fn disposed(sequence: Object, method: Method) {
     unsafe {
       let parent: Object = field(sequence, 0x30);
       let original: unsafe extern "C" fn(Object, Method) =
@@ -434,14 +334,16 @@ pub(crate) mod native {
     }
   }
 
+  pub(crate) unsafe fn hide(menu: Object) {
+    unsafe { animate_visible_menus(menu, 22) };
+  }
+
   pub(crate) unsafe fn restore(menu: Object) {
     if menu.is_null() {
       return;
     }
     unsafe {
-      // Facility scenes hide the complete shortcut chain. Restore its native
-      // side-by-side panels without changing suspension or selection.
-      animate_menu_chain(menu, 20);
+      animate_visible_menus(menu, 20);
       let class = crate::settings::native::lookup_class(b"App\0", b"TitleBar\0");
       if class.is_null() {
         return;
@@ -589,7 +491,10 @@ pub(crate) mod native {
         }
         class = field(class, 0x58);
       }
-      let content = native!(CONTENT, unsafe extern "C" fn(Method) -> Object)(NONE);
+      let content = native!(
+        if group.is_some() { PAGE_CONTENT } else { CONTENT },
+        unsafe extern "C" fn(Method) -> Object
+      )(NONE);
       if content.is_null() {
         return false;
       }
@@ -600,9 +505,12 @@ pub(crate) mod native {
       native!(MENU_CTOR, unsafe extern "C" fn(Object, Object, Object, Method))(
         menu, items, content, NONE,
       );
-      // Private identity scopes facility returns; side-menu disposal itself
-      // stays native so B only removes the child and resumes its parent.
-      if !menu_item::override_class(menu, &MENU_CLASS, &[(24, menu_built as *const () as usize)]) {
+      let copied = if group.is_some() {
+        menu_item::override_class(menu, &PAGE_CLASS, &[(10, disposed as *const () as usize)])
+      } else {
+        menu_item::override_class(menu, &MENU_CLASS, &[])
+      };
+      if !copied {
         return false;
       }
       let class: Object = field(menu, 0);
@@ -625,9 +533,11 @@ pub(crate) mod native {
         rows as i32,
         NONE,
       );
-      native!(SET_SUBMENU_TRANSFORM, unsafe extern "C" fn(Object, Object, Object, Method))(
-        menu, parent, item, NONE,
-      );
+      if group.is_none() {
+        native!(SET_SUBMENU_TRANSFORM, unsafe extern "C" fn(Object, Object, Object, Method))(
+          menu, parent, item, NONE,
+        );
+      }
       true
     }
   }
@@ -652,6 +562,9 @@ pub(crate) mod native {
       }
       if !bind_menu(menu, item, group) {
         return 2048;
+      }
+      if group.is_some() {
+        hide(menu);
       }
       128
     }
@@ -698,7 +611,7 @@ pub(crate) mod native {
       ) {
         return 2048;
       }
-      animate_menu_chain(menu, 22);
+      hide(menu);
       128
     }
   }
