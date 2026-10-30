@@ -34,6 +34,7 @@ class FacilityFixture(CollectorFixture):
     elif name == "BIND":
       self.qword(a + 0x30, b)
       self.qword(b + 0x38, a)
+      self.visible[a] = True
     elif name == "BIND_PARENT": pass
     elif name == "EMPTY_UNIT_LIST": result = self.ready_units if self.ready_units else self.list()
     elif name == "RELATION": result = self.relation
@@ -54,6 +55,8 @@ class FacilityFixture(CollectorFixture):
       self.qword(child, self.sequence_class)
       self.qword(child + 0x30, a)
       self.qword(a + 0x38, child)
+      if a in self.visible:
+        self.visible[child] = True
       self.events.append(("supports", a))
     elif name == "RING_MENU": pass
     elif name == "ENABLED": result = 1
@@ -75,12 +78,25 @@ class FacilityFixture(CollectorFixture):
       self.qword(child, self.sequence_class)
       self.qword(child + 0x30, a)
       self.qword(a + 0x38, child)
+      self.visible[child] = True
       result = child
     elif name == "DISPOSE":
       self.events.append(("dispose", a))
+      self.visible[a] = False
       self.qword(self.pointer(a + 0x30) + 0x38, 0)
-    elif name == "OPEN": self.events.append(("open", a))
-    elif name == "CLOSE": self.events.append(("close", a))
+    elif name in ("OPEN", "CLOSE", "CLOSE_ALL"):
+      opening = name.startswith("OPEN")
+      self.visible[a] = opening
+      # Native *AnimeAll calls the single-menu operation on self and its
+      # immediate BasicMenu parent, not merely the menu passed by the plugin.
+      parent = self.pointer(a + 0x30)
+      if name.endswith("_ALL") and parent in self.visible:
+        self.visible[parent] = opening
+      if opening:
+        event = "open"
+      else:
+        event = "close"
+      self.events.append((event, a))
     elif name == "SHOW_FOOTER":
       assert a == self.title
       self.events.append(("footer", a))
@@ -101,6 +117,7 @@ class FacilityFixture(CollectorFixture):
     self.active = True
     self.forbid_allocations = False
     self.reset(4)
+    self.visible = {self.menu: True}
     self.ready_units = 0
     self.unlocked = True
     self.chapter_cleared = True
@@ -130,7 +147,8 @@ class FacilityFixture(CollectorFixture):
 
     def vtable(cls, slot, name):
       method = self.alloc()
-      self.qword(method, stub(name, slot))
+      address = self.game + 0x0245C610 if name == "OPEN_ALL" else stub(name, slot)
+      self.qword(method, address)
       self.qword(cls + 0x138 + slot * 16, self.pointer(method))
       self.qword(cls + 0x138 + slot * 16 + 8, method)
 
@@ -140,8 +158,15 @@ class FacilityFixture(CollectorFixture):
     self.row_nodes = [self.alloc() for _ in range(10)]
     self.qword(self.menu_class + 0x10, self.c_string("BasicMenu"))
     self.write(self.menu_class + 0x126, struct.pack("<H", 64))
-    for slot, name in ((10, "DISPOSE"), (18, "CREATE_DESC"), (21, "OPEN"), (23, "CLOSE")):
+    for slot, name in ((10, "DISPOSE"), (18, "CREATE_DESC"), (20, "OPEN"),
+        (21, "OPEN_ALL"), (22, "CLOSE"), (23, "CLOSE_ALL")):
       vtable(self.menu_class, slot, name)
+    hierarchy = self.alloc()
+    self.qword(hierarchy, self.menu_class)
+    self.qword(self.menu_class + 0xC8, hierarchy)
+    self.write(self.menu_class + 0x12C, b"\x01")
+    self.metadata(0x0628BC30, self.menu_class)
+    self.write(self.game + 0x0631883D, b"\x01")
     self.sequence_class = self.alloc(0x138 + 32 * 16)
     self.write(self.sequence_class + 0x126, struct.pack("<H", 19))
     vtable(self.sequence_class, 10, "DISPOSE")
@@ -169,6 +194,10 @@ class FacilityFixture(CollectorFixture):
 
     def method(object, slot): return self.pointer(self.pointer(object) + 0x138 + slot * 16)
 
+    def only_visible(menu):
+      actual = {item for item, visible in self.visible.items() if visible}
+      assert actual == {menu}, f"only the active menu may be visible, got {actual}, expected {menu:#x}"
+
     def cancel_result(item):
       result = call(method(item, 19), item)
       assert result & 1, "B must close the current submenu"
@@ -183,6 +212,7 @@ class FacilityFixture(CollectorFixture):
       cancel_result(item)
       method_info = self.pointer(self.pointer(menu) + 0x138 + 10 * 16 + 8)
       call(method(menu, 10), menu, method_info)
+      only_visible(parent)
       assert self.pointer(parent + 0x38) == 0
       if ancestor:
         assert self.pointer(ancestor + 0x38) == parent, "B must leave the previous menu attached"
@@ -199,6 +229,13 @@ class FacilityFixture(CollectorFixture):
     self.qword(entry + 0x10, self.menu)
     assert call(method(entry, 18), entry) == 128
     categories = self.pointer(self.menu + 0x38)
+    only_visible(categories)
+    # Run the pinned game's OpenAnimeAll, not a single-menu replacement stub.
+    # Its virtual calls expose why using it during return overlays two levels.
+    call(method(categories, 21), categories)
+    assert {item for item, visible in self.visible.items() if visible} == {categories, self.menu}
+    call(method(self.menu, 22), self.menu)
+    only_visible(categories)
     entries = self.values(self.pointer(categories + 0x80))
     assert len(entries) == self.number(categories + 0xB8) == 3
     assert [self.read_string(call(method(item, 4), item)) for item in entries] == ["设施", "活动", "商店"]
@@ -215,6 +252,7 @@ class FacilityFixture(CollectorFixture):
     for category, indices in zip(entries, groups):
       assert call(method(category, 18), category) == 128
       quick = self.pointer(categories + 0x38)
+      only_visible(quick)
       assert quick and self.pointer(quick + 0x30) == categories
       items = self.values(self.pointer(quick + 0x80))
       assert len(items) == len(indices) == self.number(quick + 0xB8)
@@ -232,6 +270,7 @@ class FacilityFixture(CollectorFixture):
         assert call(method(item, 8), item) == 1
         assert call(method(item, 18), item) == 128
         child = self.pointer(quick + 0x38)
+        only_visible(child)
         assert self.events[-2:] == [("bind", self.game + binds[index]), ("close", quick)]
         if index == 1:
           cleaner, ordinary = self.alloc(), self.alloc()
@@ -249,6 +288,7 @@ class FacilityFixture(CollectorFixture):
           assert call(method(ordinary, 8), ordinary) == 1, "original ring cleaning must remain available"
         method_info = self.pointer(self.pointer(child) + 0x138 + 10 * 16 + 8)
         call(method(child, 10), child, method_info)
+        only_visible(quick)
         assert self.events[-3:] == [("dispose", child), ("open", quick), ("footer", self.title)]
         assert self.pointer(quick + 0x38) == 0
       back(items[-1])
@@ -289,6 +329,7 @@ class FacilityFixture(CollectorFixture):
     # categories, with no direct destination or shopping entry outdoors.
     assert call(method(entry, 18), entry) == 128
     reopened = self.pointer(self.menu + 0x38)
+    only_visible(reopened)
     reopened_entries = self.values(self.pointer(reopened + 0x80))
     assert len(reopened_entries) == 3
     for item in reopened_entries:
@@ -302,10 +343,12 @@ class FacilityFixture(CollectorFixture):
     before = bytes(self.cpu.mem_read(self.relation, 0x40))
     call(hook, self.parent)
     support = self.pointer(self.menu + 0x38)
+    only_visible(support)
     assert support and self.mode == [False, True]
     assert self.events[-2:] == [("supports", self.menu), ("close", self.menu)]
     method_info = self.pointer(self.pointer(support) + 0x138 + 10 * 16 + 8)
     call(method(support, 10), support, method_info)
+    only_visible(self.menu)
     assert self.mode == [True, False] and self.pointer(self.menu + 0x38) == 0
     assert bytes(self.cpu.mem_read(self.relation, 0x40)) == before
     assert self.events[-3:] == [("dispose", support), ("open", self.menu), ("footer", self.title)]

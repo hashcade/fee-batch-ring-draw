@@ -195,6 +195,15 @@ destinations, and the collector fixture checks the collection entry in both
 Somniel and post-battle contexts. These are callback/lifecycle boundary checks, not live Unity
 rendering or controller-input tests.
 
+The visibility regression executes the complete pinned native OpenAnimeAll body
+from `0x0245C610` and checks that it opens self plus the immediate BasicMenu
+parent. Only the single-menu rendering endpoint is modeled. It tracks visible
+menus on entry, return from all seventeen facilities, each category B return,
+reopening and the automatic support return. Exactly one layer must remain
+visible at each settled boundary. The previous compiled plugin fails this
+check on returning from a facility; the single-menu restore passes. This does
+not replace actual Unity animation/rendering acceptance on the device.
+
 The menu audit also covers draw-count rows, the single/batch meld confirmation,
 clean-all, well preview/reroll and all seventeen Plugin Settings items. Draw rows
 use the original item class/constructor and leave original rows unchanged.
