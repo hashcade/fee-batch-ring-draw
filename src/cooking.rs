@@ -140,17 +140,8 @@ pub(crate) mod native {
   }
 
   unsafe fn taste_name(taste: Object) -> Option<String> {
-    unsafe {
-      let name: Object = field(taste, 0x28);
-      if name.is_null() {
-        return None;
-      }
-      let translated = native!(
-        crate::meld::profile::MESS_GET,
-        unsafe extern "C" fn(Object, Method) -> Object
-      )(name, NONE);
-      text(translated)
-    }
+    // Cook's localized table already contains display text, not an MSBT key.
+    unsafe { text(field(taste, 0x28)) }
   }
 
   pub(crate) unsafe fn outcome_detail(option: u8, language: i32) -> Option<String> {

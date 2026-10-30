@@ -46,7 +46,10 @@ class ConvenienceFixture(SettingsFixture):
     elif name == "CURRENT_CHEF": result = self.pids[self.unit_a]
     elif name == "GET_COOK_DATA": result = self.cooks["PID_a"]
     elif name == "TASTE_DATA": result = self.tastes.get(self.read_string(a), 0)
-    elif name in ("MESS_GET", "MESSAGE"): result = a
+    elif name in ("MESS_GET", "MESSAGE"):
+      # Literal localized text is not a message key. The previous identity
+      # stand-in hid accidental second translations of TasteData.Name.
+      result = a if self.read_string(a).startswith("MID_") else self.string("")
     elif name == "GRADE_NAME": result = self.string("SS")
     elif name == "STAT_NAME": result = self.string(f"Stat{a}")
     elif name == "IS_CONDITIONAL": result = 1
@@ -275,9 +278,24 @@ class ConvenienceFixture(SettingsFixture):
     assert call(hooks["CURRENT_CHEF"]) == self.pids[self.unit_a]
     self.units = self.list([self.unit_a, self.unit_b, invalid])
 
+    localized_names = (
+      ("霸王的", "美味的", "入口即化的"),
+      ("Savory", "Delicious", "Melting"),
+      ("覇王の", "おいしい", "とろける"),
+    )
+    for names in localized_names:
+      for index, label in enumerate(names):
+        self.qword(self.tastes[f"taste{index}"] + 0x28, self.string(label))
+      for option, label in enumerate(names, 1):
+        assert change(outcome, option) == 4096
+        assert self.read_string(self.pointer(outcome + 0x70)) == label, "display localized TasteData.Name directly, without a second message lookup"
+        assert label in self.read_string(self.pointer(outcome + 0x78))
+    assert change(outcome, 0) == 4096
+    for index, label in enumerate(localized_names[0]):
+      self.qword(self.tastes[f"taste{index}"] + 0x28, self.string(label))
     assert change(outcome, 3) == 4096
     detail = self.read_string(self.pointer(outcome + 0x78))
-    for part in ("SS", "Stat1 +3", "Stat2 -1", "料理基础能力 +2", "其他能力 +1", "依条件变化"):
+    for part in ("SS", "入口即化的", "Stat1 +3", "Stat2 -1", "料理基础能力 +2", "其他能力 +1", "依条件变化"):
       assert part in detail, detail
     assert b"chef=PID_b\n" in self.files[self.paths[0]] and b"cooking_outcome=3\n" in self.files[self.paths[0]]
     call(hooks["DETERMINE_TASTE"], self.unit_b, 4)

@@ -1,5 +1,18 @@
 # Validation
 
+## Cooking outcome names
+
+- Display TasteData.Name directly from the localized Cook table. Do not send
+  an already localized name through Mess.Get as though it were an MSBT key.
+  The same name reader serves both the selected option and its preview help.
+- The compiled settings fixture now returns empty text for non-message-key
+  lookups instead of echoing any input. Chinese, English and Japanese literal
+  names are checked across all three chef branches, including the selected
+  value and preview description. The previous build fails this regression.
+- Cooking settlement, selected branches, configuration, menu layout and
+  collection are unchanged. These are modeled callback checks; the actual
+  game UI still needs acceptance. No release or installation is part of this fix.
+
 ## v0.3.13 nested destination placement
 
 - The destination panel now corrects its horizontal position after the original
