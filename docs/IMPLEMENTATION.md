@@ -105,7 +105,13 @@ The outdoor HubMenu receives one facility entry, alongside the existing collecti
 entry. It opens three categories: Facilities (five destinations), Activities
 (seven), and Shops (five). Categories are not additional outdoor entries; no list
 needs custom scrolling, a spare-row calculation or expanded prefab nodes.
-Its BasicMenu and item classes are private copies, not shared-vtable mutations.
+Both shortcut levels use the original HubMenu.SubSystemMenu construction pattern:
+SortieSubMenuContent.Create (`0x024EB420`), BasicMenu construction and binding,
+BindParentMenu, row count, and SetTransformAsSubMenu (`0x0245E330`) with the
+actual selected parent item. The game owns right-side placement and vertical
+alignment; no fixed coordinates or replacement full-page content are used.
+Parents remain visible and suspended, retaining their selected rows. Its
+BasicMenu and item classes are private copies, not shared-vtable mutations.
 Hub entries instantiate native HubMenuItem, retaining its selection/help
 visibility callbacks and 30-slot map interface, rather than stripping it to
 MapBasicMenuItem or its 27-slot BasicMenuItem parent. Ordinary well entries need only BasicMenuItem and
@@ -113,11 +119,12 @@ do not register a nonexistent help slot. Each uses its own native constructor.
 The factory resolves the actual inheritance and checks only requested slots
 even when a private class was cached by an earlier menu. Native facility
 CreateBind entry points keep their full descriptors and OnDispose. The wrapper
-runs original cleanup before reopening the parent and restoring the footer.
-Return restoration invokes OpenAnime (slot 20) only. Native OpenAnimeAll
-(slot 21, `0x0245C610`) opens both the supplied menu and its immediate BasicMenu
-parent; using it here overlays the outdoor and category lists. Ancestors stay
-hidden while the immediate parent resumes. Native binding/suspension is unchanged.
+runs original cleanup before restoring the shortcut panels and footer after a
+facility scene. Each owned shortcut menu and the outdoor menu close with
+CloseAnime (slot 22) on facility entry and reopen with OpenAnime (slot 20) on
+return. Native OpenAnimeAll is not used. Closing a side submenu itself retains
+the original OnDispose/OnUnbind and resume behavior: only that child disappears,
+without replaying an already-visible parent's open animation.
 Category and destination B callbacks return CloseThis | SeCancel (513), not
 DeleteAll (32). Each B press closes only the current submenu. Hub entry,
 category, destination and collection help callbacks share an empty-text callback

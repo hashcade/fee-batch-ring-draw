@@ -3,7 +3,8 @@
 pub const MENU_CTOR: usize = 0x024533F0;
 pub const BIND_PARENT: usize = 0x02454310;
 pub const BIND: usize = 0x0280A6B0;
-pub const CONTENT: usize = 0x028B78C0;
+pub const CONTENT: usize = 0x024EB420;
+pub const SET_SUBMENU_TRANSFORM: usize = 0x0245E330;
 pub const SHOW_FOOTER: usize = 0x021EDE30;
 pub const SCENE_NAME: usize = 0x02A71860;
 pub const RING_MENU: usize = 0x023397D0;
@@ -16,19 +17,9 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x028A80D0, [0xD10143FF, 0xA9017BFD, 0x910043FD, 0xA9025FF8]),
   (0x024533F0, [0xD10203FF, 0xA9027BFD, 0x910083FD, 0xA9036FFC]),
   (0x02454310, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0x9001F634]),
-  // Pin the complete native OpenAnimeAll body used by the visibility fixture.
-  (0x0245C610, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0x9001F5F4]),
-  (0x0245C620, [0x3960F688, 0xAA0003F3, 0x370000C8, 0xF001F160]),
-  (0x0245C630, [0xF9461800, 0x9780D68B, 0x52800028, 0x3920F688]),
-  (0x0245C640, [0xF9400268, 0xAA1303E0, 0xF9413D09, 0xF9414101]),
-  (0x0245C650, [0xD63F0120, 0xF9401A60, 0xB40001C0, 0xF001F168]),
-  (0x0245C660, [0xF9461908, 0xF9400109, 0xF9400008, 0x3944B10B]),
-  (0x0245C670, [0x3944B12A, 0x6B0A017F, 0x540000C3, 0xF940650B]),
-  (0x0245C680, [0x8B0A0D6A, 0xF85F814A, 0xEB09015F, 0x54000080]),
-  (0x0245C690, [0xA9414FF4, 0xA8C27BFD, 0xD65F03C0, 0xF9413D02]),
-  (0x0245C6A0, [0xF9414101, 0xA9414FF4, 0xA8C27BFD, 0xD61F0040]),
   (0x0280A6B0, [0x52800024, 0x14004F87, 0xD503201F, 0xD503201F]),
-  (0x028B78C0, [0xA9BD7BFD, 0xA90157F6, 0x910003FD, 0xA9024FF4]),
+  (0x024EB420, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
+  (0x0245E330, [0xF9403800, 0x14000003, 0xD503201F, 0xD503201F]),
   (0x023374F0, [0xA9BC7BFD, 0xF9000BF7, 0x910003FD, 0xA90257F6]),
   (0x0293AC80, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
   (0x02A744F0, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
@@ -319,6 +310,18 @@ pub(crate) mod native {
     }
   }
 
+  unsafe fn animate_menu_chain(mut menu: Object, slot: usize) {
+    unsafe {
+      while !menu.is_null() {
+        virtual_void(menu, slot);
+        if field::<usize>(menu, 0) != MENU_CLASS.load(Ordering::Relaxed) {
+          break;
+        }
+        menu = field(menu, 0x30);
+      }
+    }
+  }
+
   unsafe extern "C" fn disposed(sequence: Object, method: Method) {
     unsafe {
       let parent: Object = field(sequence, 0x30);
@@ -334,8 +337,9 @@ pub(crate) mod native {
       return;
     }
     unsafe {
-      // OpenAnime only: OpenAnimeAll also reopens this menu's parent.
-      virtual_void(menu, 20);
+      // Facility scenes hide the complete shortcut chain. Restore its native
+      // side-by-side panels without changing suspension or selection.
+      animate_menu_chain(menu, 20);
       let class = crate::settings::native::lookup_class(b"App\0", b"TitleBar\0");
       if class.is_null() {
         return;
@@ -443,7 +447,7 @@ pub(crate) mod native {
     }
   }
 
-  unsafe fn bind_menu(parent: Object, group: Option<usize>) -> bool {
+  unsafe fn bind_menu(parent: Object, item: Object, group: Option<usize>) -> bool {
     unsafe {
       let list: Object = field(parent, 0x80);
       let Some(first) = object_at(list, 0) else { return false };
@@ -494,7 +498,9 @@ pub(crate) mod native {
       native!(MENU_CTOR, unsafe extern "C" fn(Object, Object, Object, Method))(
         menu, items, content, NONE,
       );
-      if !menu_item::override_class(menu, &MENU_CLASS, &[(10, disposed as *const () as usize)]) {
+      // Private identity scopes facility returns; side-menu disposal itself
+      // stays native so B only removes the child and resumes its parent.
+      if !menu_item::override_class(menu, &MENU_CLASS, &[]) {
         return false;
       }
       let class: Object = field(menu, 0);
@@ -516,6 +522,9 @@ pub(crate) mod native {
         menu,
         rows as i32,
         NONE,
+      );
+      native!(SET_SUBMENU_TRANSFORM, unsafe extern "C" fn(Object, Object, Object, Method))(
+        menu, parent, item, NONE,
       );
       true
     }
@@ -539,10 +548,9 @@ pub(crate) mod native {
       if menu.is_null() || !field::<Object>(menu, 0x38).is_null() {
         return 2048;
       }
-      if !bind_menu(menu, group) {
+      if !bind_menu(menu, item, group) {
         return 2048;
       }
-      virtual_void(menu, 23);
       128
     }
   }
@@ -588,7 +596,7 @@ pub(crate) mod native {
       ) {
         return 2048;
       }
-      virtual_void(menu, 23);
+      animate_menu_chain(menu, 22);
       128
     }
   }
