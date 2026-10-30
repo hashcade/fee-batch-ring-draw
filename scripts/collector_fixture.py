@@ -16,7 +16,12 @@ class CollectorFixture:
     self.functions[game + 0x0252FF50] = "REWARD_DIALOG"
     self.close = game + 0x02459A70
     self.write(self.close, struct.pack("<I", 0xD65F03C0))
-    self.functions[self.close] = "CLOSE"
+    self.functions[self.close] = "CLOSE_ALL"
+    self.menu_close, self.menu_open, self.reward_dispose = [game + 0x03D20000 + i * 16 for i in range(3)]
+    for address, name in ((self.menu_close, "CLOSE"), (self.menu_open, "OPEN"), (self.reward_dispose, "REWARD_DISPOSE")):
+      self.write(address, struct.pack("<I", 0xD65F03C0))
+      self.functions[address] = name
+    self.functions[game + 0x021EDE30] = "SHOW_FOOTER"
     self.functions[game + 0x02393F60] = "EMPTY_UNIT_LIST"
     self.functions[game + 0x02A71860] = "SCENE_NAME"
     self.functions[game + 0x00203E90] = "FACILITY_GET"
@@ -94,6 +99,8 @@ class CollectorFixture:
 
   def reset(self, sequence=5, map_items=True):
     self.pending_rewards = None
+    self.pending_sequence = None
+    self.menu_visible = True
     self.resources_loaded = False
     self.flags, self.inventory, self.items, self.animals = {}, {}, {}, {}
     self.counts, self.effects, self.events, self.adoptions = {}, [], [], []
@@ -147,9 +154,21 @@ class CollectorFixture:
     self.qword(self.original, parent_class)
     self.menu_class = self.alloc()
     self.write(self.menu_class + 0x126, struct.pack("<H", 24))
+    self.qword(self.menu_class + 0x138 + 20 * 16, self.menu_open)
+    self.qword(self.menu_class + 0x138 + 22 * 16, self.menu_close)
     self.qword(self.menu_class + 0x138 + 23 * 16, self.close)
     self.qword(self.menu, self.menu_class)
+    self.qword(self.menu + 0x30, self.parent)
     self.qword(self.parent + 0x38, self.menu)
+    self.integer(self.menu + 0x90, 3)
+    self.reward_class, self.reward_method = self.alloc(), self.alloc()
+    self.write(self.reward_class + 0x126, struct.pack("<H", 19))
+    self.qword(self.reward_method, self.reward_dispose)
+    self.write(self.reward_class + 0x138 + 10 * 16, struct.pack("<QQ", self.reward_dispose, self.reward_method))
+    self.image, self.title, self.title_class, fields, self.assembly = [self.alloc() for _ in range(5)]
+    self.qword(self.assembly, self.image)
+    self.qword(self.title_class + 0xB8, fields)
+    self.qword(fields, self.title)
     self.full_list = self.list([self.original])
     self.qword(self.menu + 0x80, self.full_list)
     self.integer(self.menu + 0xB8, 7)
@@ -265,21 +284,30 @@ class CollectorFixture:
       result = self.string(self.read_string(x0))
     elif name in ("CALC_REWARDS", "REWARD_DIALOG"):
       raise AssertionError("collection bypassed the native reward resource-loading sequence")
-    elif name == "MINIMAP":
-      assert x0 == self.hub
-      result = self.hub
-    elif name == "MINIMAP_IS_SHOW": result = 1
-    elif name == "MINIMAP_MODE":
-      assert x0 == self.hub and x1 == 0
-    elif name == "HIDE_SYSTEM_MENU":
-      assert x0 == self.hub
-      self.events.append("hide map menu")
     elif name == "REWARD_SEQUENCE":
       assert x0 == self.menu
       assert self.read_string(x2) in ("MID_MENU_TITLE_HUB", "MID_MENU_TITLE_KIZUNA")
       assert self.pending_rewards is None
       self.pending_rewards = self.values(x1)
+      self.pending_sequence = self.alloc()
+      self.qword(self.pending_sequence, self.reward_class)
+      self.qword(self.pending_sequence + 0x30, self.menu)
+      self.qword(self.menu + 0x38, self.pending_sequence)
       self.events.append("reward sequence")
+    elif name == "REWARD_DISPOSE":
+      assert not self.resources_loaded
+      assert self.pointer(x0 + 0x30) == self.menu
+      assert self.pointer(self.menu + 0x38) == x0
+      self.qword(self.menu + 0x38, 0)
+      self.events.append("dispose reward")
+    elif name == "il2cpp_assembly_get_image": result = self.assembly
+    elif name == "il2cpp_class_from_name":
+      assert x0 == self.image and bytes(self.cpu.mem_read(x2, 9)) == b"TitleBar\0"
+      result = self.title_class
+    elif name == "il2cpp_class_init": assert x0 == self.title_class
+    elif name == "SHOW_FOOTER":
+      assert x0 == self.title
+      self.events.append("footer")
     elif name == "DONE_ACCESS":
       data = self.pointer(x0 + 0x60)
       assert self.flags[self.read_string(self.pointer(data + 0x40))] == 1
@@ -289,7 +317,14 @@ class CollectorFixture:
       self.effects.append(x0)
     elif name == "CLOSE":
       assert x0 == self.menu
+      self.menu_visible = False
       self.events.append("close")
+    elif name == "OPEN":
+      assert x0 == self.menu
+      self.menu_visible = True
+      self.events.append("open")
+    elif name == "CLOSE_ALL":
+      raise AssertionError("collection must not close the menu chain")
     elif name == "malloc":
       result = self.alloc(x0)
     elif name in ("memcpy", "memmove"):
@@ -311,18 +346,23 @@ class CollectorFixture:
   def exercise(self, replacement, stop, stack):
     self.active = True
 
-    def call(function, argument):
+    def call(function, argument, method=0):
       self.cpu.reg_write(registers.UC_ARM64_REG_SP, stack)
       self.cpu.reg_write(registers.UC_ARM64_REG_X0, argument)
-      self.cpu.reg_write(registers.UC_ARM64_REG_X1, 0)
+      self.cpu.reg_write(registers.UC_ARM64_REG_X1, method)
       self.cpu.reg_write(registers.UC_ARM64_REG_X30, stop)
       self.cpu.emu_start(function, stop + 4, count=2_000_000)
       assert self.cpu.reg_read(registers.UC_ARM64_REG_PC) == stop
+      result = self.cpu.reg_read(registers.UC_ARM64_REG_X0)
       if self.pending_rewards is not None:
         # Binding queues the native sequence; it does not synchronously grant
         # or instantiate a dialog before its resources have finished loading.
         items, self.pending_rewards = self.pending_rewards, None
-        assert self.events[-2:] == ["close", "reward sequence"]
+        sequence, self.pending_sequence = self.pending_sequence, None
+        assert self.events[-2:] == ["reward sequence", "close"]
+        assert result == 128 and not self.menu_visible
+        selection = self.number(self.menu + 0x90)
+        assert call(self.callbacks[18], self.values(self.full_list)[0]) == 2048, "pending results must block a second dispatch"
         self.events.extend(["load resources", "wait resources"])
         self.resources_loaded = True
         self.events.append("grant")
@@ -330,7 +370,13 @@ class CollectorFixture:
           self.inventory[item][0] = min(self.inventory[item][0] + 1, self.inventory[item][1])
         assert self.resources_loaded
         self.events.extend(["dialog", "unload resources"])
-      return self.cpu.reg_read(registers.UC_ARM64_REG_X0)
+        self.resources_loaded = False
+        klass = self.pointer(sequence)
+        call(self.pointer(klass + 0x138 + 10 * 16), sequence, self.pointer(klass + 0x138 + 10 * 16 + 8))
+        assert self.menu_visible and self.pointer(self.menu + 0x38) == 0
+        assert self.pointer(self.parent + 0x38) == self.menu
+        assert self.number(self.menu + 0x90) == selection
+      return result
 
     def menu():
       original_classes = [(cls, bytes(self.cpu.mem_read(cls, 0x400))) for cls in self.menu_item_classes]
@@ -388,7 +434,7 @@ class CollectorFixture:
       assert self.animals["cat"][1] == (99 if sequence == 5 else 98)
       assert ("cat2" in self.flags) == (sequence == 5)
       assert self.events.count("grant") == 1
-      assert self.events[-5:] == ["load resources", "wait resources", "grant", "dialog", "unload resources"]
+      assert self.events[-8:] == ["load resources", "wait resources", "grant", "dialog", "unload resources", "dispose reward", "open", "footer"]
       assert call(self.callbacks[18], item) == 2048
       assert self.events.count("grant") == 1, "repeat dispatch must not duplicate rewards"
       assert call(self.callbacks[8], item) == 2
@@ -407,16 +453,17 @@ class CollectorFixture:
     self.animals["cat"] = [animal, 0]
     self.add_source("cat", "cat", kind=7)
     item = menu()
-    assert call(self.callbacks[18], item) == 129
+    assert call(self.callbacks[18], item) == 128
     assert self.animals["cat"][1] == 1
     assert "grant" not in self.events and "dialog" not in self.events
+    assert self.menu_visible and "close" not in self.events
 
     self.reset()
     herb = self.add_item("herb")
     self.add_source("zero", "herb")
     self.flags["zero"] = 0
     item = menu()
-    assert call(self.callbacks[18], item) == 129
+    assert call(self.callbacks[18], item) == 128
     assert self.flags["zero"] == 1 and self.inventory[herb][0] == 3
     assert call(self.callbacks[18], item) == 2048
 
@@ -434,7 +481,7 @@ class CollectorFixture:
     self.add_source("full", "herb")
     item = menu()
     assert call(self.callbacks[8], item) == 1
-    assert call(self.callbacks[18], item) == 129
+    assert call(self.callbacks[18], item) == 128
     assert self.flags["full"] == 1 and self.inventory[herb][0] == 99
     assert self.events.count("grant") == 1
 

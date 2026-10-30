@@ -3,7 +3,7 @@
 use super::profile as offsets;
 use crate::{
   meld::native::{new_text, text},
-  menu_item::{named, no_help, VTABLE},
+  menu_item::{named, no_help},
   native::{base, field, list_count, metadata, object_at, reference, user_data, Method, Object},
   profile,
 };
@@ -15,6 +15,7 @@ use std::collections::BTreeSet;
 
 const NONE: Method = ptr::null();
 static ITEM_CLASS: AtomicUsize = AtomicUsize::new(0);
+static REWARD_CLASS: AtomicUsize = AtomicUsize::new(0);
 static ACTIVE: AtomicBool = AtomicBool::new(false);
 
 macro_rules! native {
@@ -397,13 +398,6 @@ unsafe fn execute(item: Object) -> bool {
   if menu.is_null() || !unsafe { field::<Object>(menu, 0x38) }.is_null() {
     return false;
   }
-  let class: Object = unsafe { field(menu, 0) };
-  if class.is_null() || unsafe { field::<u16>(class, 0x126) } < 24 {
-    return false;
-  }
-  let close_address: usize = unsafe { field(class, VTABLE + 23 * 16) };
-  let close: unsafe extern "C" fn(Object, Method) = unsafe { core::mem::transmute(close_address) };
-  let close_method: Method = unsafe { field(class, VTABLE + 23 * 16 + 8) };
   let Some(context) = (unsafe { context() }) else {
     return false;
   };
@@ -425,17 +419,6 @@ unsafe fn execute(item: Object) -> bool {
   };
   unsafe { settle(&context, &sources) };
   unsafe {
-    let minimap =
-      native!(offsets::MINIMAP, unsafe extern "C" fn(Object, Method) -> Object)(context.hub, NONE);
-    if !minimap.is_null() {
-      if native!(offsets::MINIMAP_IS_SHOW, unsafe extern "C" fn(Object, Method) -> bool)(
-        minimap, NONE,
-      ) {
-        native!(offsets::MINIMAP_MODE, unsafe extern "C" fn(Object, i32, Method))(minimap, 0, NONE);
-      }
-      native!(offsets::HIDE_SYSTEM_MENU, unsafe extern "C" fn(Object, Method))(minimap, NONE);
-    }
-    close(menu, close_method);
     if copies > 0 {
       // Use the complete native sequence: load/wait for prefabs, grant once,
       // display results, handle overflow and unload. A bare reward dialog
@@ -443,6 +426,14 @@ unsafe fn execute(item: Object) -> bool {
       native!(offsets::REWARD_SEQUENCE, unsafe extern "C" fn(Object, Object, Object, Method))(
         menu, list, title, NONE,
       );
+      let sequence: Object = field(menu, 0x38);
+      if crate::menu_item::override_class(
+        sequence,
+        &REWARD_CLASS,
+        &[(10, crate::facilities::native::disposed as *const () as usize)],
+      ) {
+        crate::facilities::native::hide(menu);
+      }
     }
   }
   true
@@ -455,7 +446,7 @@ unsafe extern "C" fn collect(item: Object, _: Method) -> i32 {
   let success = unsafe { execute(item) };
   ACTIVE.store(false, Ordering::Relaxed);
   if success {
-    129
+    128
   } else {
     2048
   }

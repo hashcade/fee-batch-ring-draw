@@ -105,20 +105,16 @@ The outdoor HubMenu receives one facility entry, alongside the existing collecti
 entry. It opens three categories: Facilities (five destinations), Activities
 (seven), and Shops (five). Categories are not additional outdoor entries; no list
 needs custom scrolling, a spare-row calculation or expanded prefab nodes.
-Both shortcut levels use the original HubMenu.SubSystemMenu construction pattern:
+Categories use the original HubMenu.SubSystemMenu construction pattern:
 SortieSubMenuContent.Create (`0x024EB420`), BasicMenu construction and binding,
 BindParentMenu, row count, and SetTransformAsSubMenu (`0x0245E330`) with the
-actual selected parent item. Category placement and vertical alignment remain
-native. Private shortcut menus wrap BasicMenu.OnBuild(bool) (slot 24), retaining
-the original callback. Only a destination with another shortcut menu as parent
-measures the actual menu-frame RectTransforms after native sizing/adjustment.
-Its left edge is placed at the category frame's right
-edge. The horizontal world-space displacement is converted through the content
-root's parent transform before updating native m_pos and calling UpdatePos
-(`0x02464780`). Native Y fitting is unchanged. Rebuilding measures the current
-edges again, so displacement does not accumulate. No fixed coordinates, global
-layout hooks, per-frame poller or replacement full-page content are used.
-Parents remain visible and suspended, retaining their selected rows. Its
+actual selected parent item. This panel and the outdoor menu remain visible.
+Destinations instead use native HubMenuContent.Create (`0x028B78C0`) with
+no submenu transform. Both ancestors are hidden while this full-page list is
+open, but remain bound and suspended with their selected rows intact.
+The previous third-column OnBuild override, RectTransform measurements,
+coordinate conversions and UpdatePos calls have been removed. Native content
+owns page layout; there is no custom scrolling or positional adjustment. Its
 BasicMenu and item classes are private copies, not shared-vtable mutations.
 Hub entries instantiate native HubMenuItem, retaining its selection/help
 visibility callbacks and 30-slot map interface, rather than stripping it to
@@ -127,12 +123,13 @@ do not register a nonexistent help slot. Each uses its own native constructor.
 The factory resolves the actual inheritance and checks only requested slots
 even when a private class was cached by an earlier menu. Native facility
 CreateBind entry points keep their full descriptors and OnDispose. The wrapper
-runs original cleanup before restoring the shortcut panels and footer after a
-facility scene. Each owned shortcut menu and the outdoor menu close with
-CloseAnime (slot 22) on facility entry and reopen with OpenAnime (slot 20) on
-return. Native OpenAnimeAll is not used. Closing a side submenu itself retains
-the original OnDispose/OnUnbind and resume behavior: only that child disappears,
-without replaying an already-visible parent's open animation.
+runs original cleanup before restoring the destination page and footer after a
+facility scene; the outdoor and category panels stay hidden. The destination
+page's private OnDispose similarly runs native cleanup, then restores those two
+ancestors on B. Category B retains the original disposal/resume and removes only
+the side panel, without reopening the already-visible outdoor menu.
+Visibility changes use CloseAnime (slot 22) and OpenAnime (slot 20), never
+OpenAnimeAll. Native binding, suspension and input ownership remain unchanged.
 Category and destination B callbacks return CloseThis | SeCancel (513), not
 DeleteAll (32). Each B press closes only the current submenu. Hub entry,
 category, destination and collection help callbacks share an empty-text callback
@@ -386,10 +383,13 @@ ItemData list and the original TitleMID key once. The complete native sequence
 loads/waits for resources, grants items, displays results, handles overflow and
 unloads. Collection does not call CalcRewardItemList or CommonRewardDialog
 directly. A fresh exploration visit need not have the message-content prefab
-already loaded. The minimap/system menu is closed through its native methods
-before binding the reward sequence, matching the reference flow.
-Adoption-only batches use the original decide sound and menu close, without
-an empty result dialog. Menu names/help retain the reference's original keys;
+already loaded. The outdoor menu is retained rather than closed: after binding,
+its panel hides with CloseAnime, and the reward sequence's private OnDispose
+runs original cleanup before reopening that same menu and restoring the footer.
+The action returns only the decide sound (128), without CloseThis or DeleteAll.
+The pending native child prevents a second collection before results complete.
+Adoption-only batches leave the menu visible without an empty result dialog.
+Menu names/help retain the reference's original keys;
 no rename or new localization table is introduced.
 Only settled pickup/animal nodes have their loaded markers/effects disabled;
 unrelated NPCs and unselected sources are left alone.

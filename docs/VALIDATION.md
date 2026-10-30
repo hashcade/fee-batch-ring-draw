@@ -1,6 +1,6 @@
 # Validation
 
-## Cooking outcome names
+## v0.3.14 cooking outcome names
 
 - Display TasteData.Name directly from the localized Cook table. Do not send
   an already localized name through Mess.Get as though it were an MSBT key.
@@ -11,28 +11,31 @@
   value and preview description. The previous build fails this regression.
 - Cooking settlement, selected branches, configuration, menu layout and
   collection are unchanged. These are modeled callback checks; the actual
-  game UI still needs acceptance. No release or installation is part of this fix.
+  game UI still needs acceptance. No installation or user-save change was made.
 
-## v0.3.13 nested destination placement
+## v0.3.14 destination pages and collection returns
 
-- The destination panel now corrects its horizontal position after the original
-  BasicMenu.OnBuild(bool) callback, after native sizing and adjustment. Category
-  placement, vertical fitting, menu descriptors, native B handling and
-  collection behavior are unchanged.
-- The AArch64 fixture executes the game's original six-instruction Build-tail
-  virtual dispatch into that compiled callback, with modeled frame
-  RectTransforms, uniform canvas scales from 0.5 to 2, translated coordinate
-  origins, all three category selections, five/seven-row panels and native
-  vertical positions near either screen edge. It starts the destination on
-  the wrong side and checks actual left/right coordinates, conversion to
-  parent-local displacement, preserved native Y, original callback execution
-  and repeated-build idempotence. Existing facility entry/return and one-level
-  B checks remain in place. The old placement implementation fails the new
-  requirement for a private post-build placement callback. Category builds
-  call the original OnBuild without moving their panels.
-- These are modeled geometry/lifecycle checks, not Unity rendering tests.
-  Actual three-panel placement and device controller behavior still need
-  in-game acceptance. No installation or user-save modification is performed.
+- Categories retain the native side panel beside the outdoor menu. The compiled
+  fixture requires HubMenuContent for destinations, forbids their submenu
+  positioning, and checks that both ancestors hide while the page is visible.
+  B disposes the page, resumes its parent and reopens both ancestors without
+  resetting either selection. Category B removes only that side panel.
+- Every one of the seventeen facility shortcuts is exercised through binding,
+  entry, original cleanup and return. Only the destination page reopens after a
+  facility; the category and outdoor menu stay hidden until leaving the page.
+  The old third-column geometry callback and its fixtures have been removed.
+- Compiled collection callbacks retain the same outdoor menu instance and row
+  selection in Somniel and post-battle contexts. The fixture checks binding,
+  hide, load/wait, grant, dialog, unload, original disposal and menu/footer
+  restoration in that order. A pending result blocks repeat collection.
+  Adoption-only batches stay open and do not bind an empty result sequence.
+- These are modeled native-boundary/lifecycle checks, not live Unity rendering
+  or controller tests. Device acceptance still needs to check page layout,
+  animation timing, B returns and reward-result dismissal. No installation or
+  user-save modification was performed.
+- The release-profile NRO compiles; the supplied Engage 2.0.0 NSO passes
+  read-only Build ID, segment-checksum and 350 instruction-signature checks,
+  including the native HubMenuContent factory now used by destination pages.
 
 ## Unreleased EXP/SP multipliers
 
@@ -229,20 +232,14 @@ destinations, and the collector fixture checks the collection entry in both
 Somniel and post-battle contexts. These are callback/lifecycle boundary checks, not live Unity
 rendering or controller-input tests.
 
-The side-menu fixture checks a distinct SortieSubMenuContent per panel and the
-native SetTransformAsSubMenu call with the correct parent and selected item,
-after configuring the native row count. It models native suspension counters,
-retained selection and visible panels across both submenu levels. All sidebar
-ancestors remain visible, but only the deepest panel receives input. B disposes
-only the child, resumes its parent and does not replay parent animations.
-Entering any of the seventeen facilities hides every shortcut panel and the
-outdoor menu; original facility disposal restores the side-panel chain. Repeated
-category visits, B returns, reopening and automatic support return are covered.
-The v0.3.12 checks only verified positioning at the ABI boundary; the user's
-in-game report demonstrated that correct arguments alone did not establish
-correct nested placement. The v0.3.13 checks above add modeled coordinate
-outcomes. Actual Unity placement, animations and screen-edge behavior still
-require game acceptance.
+The facility fixture checks distinct native content and row counts, with
+SetTransformAsSubMenu applied only to categories and their selected outdoor
+entry. Native suspension counters, retained selection and visible/input-owning
+panels are checked through repeated category visits, B returns, reopening,
+all seventeen facility returns and automatic support return. The previous
+three-column layout was not validated by the user's in-game reports and has
+been replaced by destination pages as described above. Actual Unity placement,
+animations and screen-edge behavior still require game acceptance.
 
 The menu audit also covers draw-count rows, the single/batch meld confirmation,
 clean-all, well preview/reroll and all seventeen Plugin Settings items. Draw rows
