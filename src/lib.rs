@@ -1,28 +1,22 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod activities;
-pub mod arena;
 pub mod batch;
-pub mod bond_talk;
 pub mod cleaning;
 pub mod collector;
 pub mod config;
 pub mod cooking;
 pub mod facilities;
 pub mod fishing;
-pub mod gains;
 pub mod labels;
 pub mod meld;
-pub mod outfits;
 pub mod preferences;
 pub mod profile;
 pub mod random;
-pub mod resources;
 pub mod session;
 pub mod settings;
 pub mod shops;
 pub mod supports;
-pub mod well;
 pub mod wyvern;
 
 #[cfg(target_os = "switch")]
@@ -31,6 +25,8 @@ mod menu_item;
 mod native;
 #[cfg(target_os = "switch")]
 mod plugin;
+#[cfg(target_os = "switch")]
+mod roster;
 
 #[cfg(target_os = "switch")]
 #[skyline::main(name = "feesomniel")]

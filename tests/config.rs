@@ -3,6 +3,7 @@ use fee_better_somniel::config::{parse, DEFAULT_DRAW_COUNT, MAX_CONFIG_BYTES};
 #[test]
 fn missing_setting_and_comments_keep_300_default() {
   assert_eq!(DEFAULT_DRAW_COUNT, 300);
+  assert_eq!(fee_better_somniel::settings::DRAW_COUNT_STEP, 10);
   assert_eq!(parse(""), Ok(300));
   assert_eq!(parse("# optional config\r\n\n"), Ok(300));
 }
@@ -113,4 +114,19 @@ fn settings_labels_follow_all_supported_game_languages() {
   }
   assert_eq!(fee_better_somniel::settings::default_label(10), "默认");
   assert_eq!(fee_better_somniel::settings::outcome_label(10, 5), "失败");
+}
+
+#[test]
+fn removed_preferences_are_ignored_and_not_written_back() {
+  use fee_better_somniel::config::{parse_settings, Settings};
+  let text = "draw_count=527\nexp_multiplier=10\nsp_multiplier=5\nrewind_count=0\nbattle_save=1\npersonal_outfits=0\narena_count=23\nauto_polish=0\n";
+  let expected =
+    Settings { draw_count: 527, arena_count: 23, auto_polish: false, ..Settings::default() };
+  let actual = parse_settings(text).unwrap();
+  assert_eq!(actual, expected);
+  assert_eq!(parse_settings(&actual.encode()).unwrap(), expected);
+  for key in ["exp_multiplier", "sp_multiplier", "rewind_count", "battle_save", "personal_outfits"]
+  {
+    assert!(!actual.encode().contains(key));
+  }
 }

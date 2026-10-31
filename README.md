@@ -4,28 +4,19 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 
 ## Features
 
-- **EXP and SP rewards:** independently choose 1×, 2×, 3×, 5× or 10× rewards. EXP also offers Max Level: the next positive EXP reward reaches the current class level cap. Keep normal experience/level-up animations, native growth and level/SP caps. No automatic reclassing or stat maximization; skill books stay unchanged.
-- **Unlimited shop stock:** keep unlocked armory, item-shop and flea-market goods available, including sold-out goods. Keep native prices, chapter requirements and inventory limits. Outfit/accessory ownership rules stay unchanged.
-- **Somniel facility shortcuts:** one outdoor menu entry opens Facilities / Activities / Shops beside the main menu. Selecting a category hides both panels and opens a native destination page; B restores the previous menus and selection. Facilities contains the notice board, Ring Chamber, Ancient Well, animal management, jukebox and arena; Activities contains cooking, Sommie, strength training, fishing, Wyvern Ride and recreation; Shops contains the armory, item shop, smithy, boutique and flea market. Each list fits without scrolling. Keep native unlocks, activity allowances, scene setup and cleanup; return to the destination page on facility exit. The Ring Chamber retains its native polishing entry.
-- **Automatic ready supports:** directly complete eligible ordinary C/B/A supports in the Somniel using native progression and achievement handling, without opening or clicking through the support list. Check on scene arrival and exploration-menu opening. Keep native eligibility; do not add support points or complete Pact Ring events. Post-battle exploration does not trigger automation.
-- **Batch Bond Ring creation:** keep Create One and Create Ten, and add a configurable batch, defaulting to **300**. Batch creation keeps normal costs and probabilities, skips the result animation, and leaves acquired rings in the original ring list.
-- **Single or batch Bond Ring melding:** choose one copy or as many copies of the selected kind and current rank as materials, fragments, and capacity allow, in the original confirmation. Keep normal costs and equipped copies; batch melding automatically skips the result animation.
-- **Ring polishing:** automatically polish eligible dirty rings and bracelets on Somniel arrival or exploration-menu opening, with bond rewards assigned to the configured character (Alear by default). This can be switched off independently. The native polishing entry remains available, including one-action individual cleaning and Polish All with a cleaner selected once.
-- **Quick Sommie interactions:** keep the original feeding and petting choices, shorten feeding waits, and automatically finish a petting round after its initial interaction. Keep native preferences, affection and reward eligibility.
-- **Quick arena training:** skip ordinary and paid Emblem-training battles. Keep native EXP, costs, growth and cleanup. Standard training defaults to ten uses per native activity reset, with a configurable quota or nondecreasing mode. Paid Emblem training is unchanged.
-- **Draconic Time Crystal uses:** choose a finite quota or nondecreasing uses, which is the default. Keep original unlocks and recorded rewind history.
-- **Battle saves:** allow saving during battle; enabled by default and independently switchable.
-- **Personal outfits:** use each character's original class clothing in ordinary battle and preparation models, even after reclassing. Enabled by default. Keep native hair, weapons, mounts, skeletons, animations and engaged forms; incompatible skeletons retain their native outfit. Changes apply when the model is rebuilt, not immediately to existing models.
-- **Quick relationship dialogues:** automatically skip messages in selected C/B/A support and Emblem bond conversations, including paid training. Keep native scripts, viewed records, rank advancement and callbacks. Story and Pact Ring conversations stay unchanged.
-- **Fishing controls:** independently switch nondecreasing fishing uses and faster bite/landing. Both default to on; native unlocks, fish records and rewards remain. If uses are already exhausted, nondecreasing mode supplies one available use on entering the Somniel or enabling the option.
-- **Ancient Well preview and reroll:** the original well menu includes Preview Results and Reroll Results for a pending exchange. Preview uses a private RNG and lists item quantities without claiming anything. Reroll changes only that exchange's seed; normal waiting, deposits and collection remain.
-- **Fast perfect strength training:** quickly finish push-ups, sit-ups, and squats with perfect results while keeping the original training allowance.
-- **Fast SSS Wyvern Ride:** after the opening, finish at the selected difficulty's SSS score threshold and continue through the original result and reward flow. Keep difficulty unlocks and reward eligibility unchanged.
-- **Cooking choices:** select a recruited chef and a native outcome in Plugin Settings. Shorten the preparation animation, cook multiple times between battles, and select food without the usual stock restriction. Default chef/outcome choices retain the original rotation and roll.
-- **Inventory-free ordinary gifts:** give normal gifts even at zero stock without consuming owned copies. Keep the original recipient preferences and support gains.
-- **Collect exploration rewards:** use the first entry in the original exploration menu to collect generated ground items, farm products, eligible animals, and available ordinary villager gifts in the Somniel or after battle. Keep native donation bonuses, adoption requirements and reward settlement. After dismissing the results, return to the same menu and selection.
-
-Preferences below can be changed independently in Plugin Settings. Menu labels follow the game's text language.
+- **Bond Ring creation:** retain Create One and Create Ten, with a configurable batch defaulting to 300. Keep normal costs, probabilities and acquisition records; skip the batch result animation.
+- **Bond Ring melding:** choose one copy or a batch of the selected kind and rank. Keep normal costs and equipped copies; confirmed batches skip their presentation.
+- **Polishing:** finish manual individual polishing with one action, or automatically polish eligible dirty rings and bracelets on Somniel arrival and exploration-menu opening. The cleaner is configurable, defaulting to Alear. Keep native bond caps and completion records, without an extra row in the original polishing list.
+- **Collection:** collect generated ground items, farm products, eligible animals and available ordinary villager gifts from the original exploration menu, in the Somniel or after battle. Keep donation/adoption requirements and return to the same menu after results.
+- **Facilities:** one outdoor entry opens Facilities / Activities / Shops, with 6 / 6 / 5 destinations. Preserve original facility unlocks. Manual polishing is available only through the actual Ring Chamber, not its outdoor shortcut.
+- **Relationships:** automatically complete ready ordinary C/B/A supports in the Somniel. Manually started support and Emblem bond conversations retain the original playback and skip controls. Story and Pact Ring events stay unchanged.
+- **Standard training:** choose 1–1000 uses or nondecreasing uses, defaulting to 10. Training battles use their original presentation.
+- **Shop stock:** independently enable unlimited unlocked armory, item-shop and flea-market stock. Keep prices and outfit/accessory ownership rules.
+- **Ordinary gifts:** give normal gifts at zero stock without consuming owned copies.
+- **Fishing:** independently enable faster fishing and nondecreasing fishing uses.
+- **Minigames:** quickly finish muscle training with perfect results and Wyvern Ride at the current difficulty's SSS threshold, retaining normal records and rewards.
+- **Cooking:** allow repeat cooking, select a recruited chef and a native outcome, and shorten preparation.
+- **Sommie:** shorten feeding and petting, and bypass food-list stock restrictions while retaining native preferences and reward rules.
 
 ## Installation
 
@@ -49,40 +40,16 @@ Fully restart the game after installation or an update.
 
 ## Settings
 
-Open **Settings → Plugin Settings** in the game. All options appear directly
-in one scrolling list, in the following order, without extra group menus.
-Use the original left/right controls. Preferences save automatically; resource
-amounts are previews until you press A to apply them once.
+Open **Settings → Plugin Settings**. The fourteen preferences appear in one flat list, with native left/right controls and no extra footer descriptions.
 
 | Option | Default | Choices |
 | --- | --- | --- |
-| EXP Multiplier | 1× | 1× / 2× / 3× / 5× / 10× / Max Level |
-| SP Multiplier | 1× | 1× / 2× / 3× / 5× / 10× |
-| SP Target | All | All / joined ally |
-| SP Amount | Current / Mixed | 0–9,999; step 100 |
-| Gold | Current | 0–9,999,999; step 100,000 |
-| Bond Fragments | Current | 0–9,999,999; step 100,000 |
-| Iron | Current | 0–9,999; step 100 |
-| Steel | Current | 0–9,999; step 100 |
-| Silver | Current | 0–9,999; step 100 |
-| Mt Crystal | Current | 0–999; step 10 |
-| Crit Crystal | Current | 0–999; step 10 |
-| Dex Crystal | Current | 0–999; step 10 |
-| Spd Crystal | Current | 0–999; step 10 |
-| Def Crystal | Current | 0–999; step 10 |
-| Res Crystal | Current | 0–999; step 10 |
-| Hit Crystal | Current | 0–999; step 10 |
-| Avo Crystal | Current | 0–999; step 10 |
-| Ddg Crystal | Current | 0–999; step 10 |
-| Battle Save | On | On / Off |
-| Personal Outfits | On | On / Off |
 | Automatic Supports | On | On / Off |
 | Auto Polish | On | On / Off |
 | Polishing Character | Alear | Joined ally |
-| Draconic Time Crystal Uses | Nondecreasing | Nondecreasing / 1–1000 |
 | Standard Training Uses | 10 | Nondecreasing / 1–1000 |
 | Nondecreasing Fishing Uses | On | On / Off |
-| Batch Ring Count | 300 | 2–1000 |
+| Batch Ring Count | 300 | 2–1000; step 10 |
 | Unlimited Shop Stock | On | On / Off |
 | Gifts Without Consumption | On | On / Off |
 | Fast Fishing | On | On / Off |
@@ -92,65 +59,11 @@ amounts are previews until you press A to apply them once.
 | Chef | Default | Default / recruited chef |
 | Cooking Outcome | Default | Default / chef's outcome branches |
 
-Resource rows read the current quantities on opening. Left/right adjusts a
-temporary target without rounding its existing tail; values stop at the limits.
-A applies only that row and keeps the menu open. Leaving without applying
-discards pending targets on reopening. Applied values are not locked or refilled;
-save normally in the game to retain them.
+Preferences save automatically in `sdmc:/fee-better-somniel.cfg`, independently of game-save variables. Without a valid file, defaults apply. Reopen the affected menu after changing a preference. A batch count of 10 does not add a duplicate ten-ring choice.
 
-SP Target selects all joined allies or one ally, including reserve allies.
-All applies the same absolute SP amount to each ally, not an increment.
-Different current SP amounts display **Mixed**; adjusting from Mixed starts a
-target at zero plus the selected step. Changing the target ally discards the
-previous unapplied SP target. Amounts and ally selection are never stored in
-the mod's settings file. These rows do not alter EXP/SP multiplier preferences.
+Standard training changes the total quota, not the remaining counter; nondecreasing mode retains native spent counters. Fishing can restore one available use if the session was already exhausted. Other conveniences retain their existing behavior without additional switches.
 
-Turning a feature off restores its original behavior on subsequent actions;
-it does not undo previously earned items, scores or progress. Reopen shop/activity
-menus to refresh availability after a change. Personal outfits refresh when
-models are rebuilt. Other conveniences, such as batch melding, all-ring cleaning,
-collection and shortened relationship dialogues, keep their existing behavior.
-
-EXP and SP choices apply to the next native EXP/SP reward, including ordinary
-arena training. The settings do not multiply each other: 20 EXP and 10 SP at
-2× EXP / 3× SP award 40 EXP and 30 SP. Max Level requires a positive EXP
-reward; it does not grant levels on zero-EXP actions or change SP on its own.
-Normal playback and manual skipping retain the same rewards; no animation is
-automatically skipped by these options.
-
-Rewind and standard training offer **Nondecreasing** or **1–1000** uses.
-Finite values are total quotas, not remaining-use refills. Native spent counters
-and reset timing remain in place. Nondecreasing training preserves the current
-spent counter and keeps normal training available even if it was exhausted.
-
-Batch Ring Count defaults to **300**,
-with a range of **2–1000**. Changes are saved automatically and apply when the
-ring-creation menu is opened again; no restart or manual file editing is needed.
-
-Original single-ring and ten-ring creation remain available. Setting the batch
-count to **10** does not add a duplicate ten-ring choice.
-
-Settings are stored independently at the SD card root:
-
-```text
-sdmc:/fee-better-somniel.cfg
-```
-
-The plugin does not add settings variables to game saves. Without a valid settings
-file, the default is used. If saving fails, the old value remains active and the
-native error sound plays.
-
-Chef and Cooking Outcome are **Default** initially. Specialty choices use that
-chef's existing taste definitions and retain native conditional variations;
-the bad branch keeps its original eligible-outcome roll. A selected chef who
-has not joined the current save falls back to the original rotation.
-Recipes and recipient conditions still apply normally.
-Automatic Supports defaults to **On**. Mod preferences are not stored in game
-saves; eligible support completion uses the game's native progression APIs.
-Auto Polish also defaults to **On**, with Alear selected. Polishing Character
-uses the ally's current in-game name and is stored independently by character ID.
-Automatic polishing retains native bond limits and completion records; it does
-not open a character selector, play rubbing animations or run after battle.
+Chef and Cooking Outcome default to the original rotation and roll. Recipe and recipient conditions remain unchanged. Turning automation off does not undo rewards or progress already obtained.
 
 ## Credits
 
@@ -159,8 +72,6 @@ not open a character selector, play rubbing animations or run after battle.
 - [engage-il2cpp](https://github.com/DivineDragonFanClub/engage-il2cpp) — native interface references.
 - [KaitoB](https://tekqart.com/thread-327061-1-1.html) — original activity and gift patch references.
 - [Triabolical / MyCodeMods](https://github.com/triabolicals/triabolical-code-mods) — collection, facility and relationship-convenience behavior references.
-- [DeathChaos / Battle Outfits and More Outfits](https://gamebanana.com/mods/424968) — appearance-system research reference; no BOAMO files are redistributed.
-- [FireEmblemEngageData](https://github.com/Xzonn/FireEmblemEngageData) — original outfit mappings and official game terminology references.
 
 Fire Emblem and related names are trademarks of Nintendo and Intelligent Systems.
 This unofficial fan project is not affiliated with or endorsed by them.

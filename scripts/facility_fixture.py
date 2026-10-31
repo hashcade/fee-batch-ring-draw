@@ -57,6 +57,8 @@ class FacilityFixture(CollectorFixture):
     elif pc == self.game + 0x0251F290:
       assert self.read_string(b) == "G_Fishing_PlayCount" and args[2] == 1
       self.fishing_remaining = 1
+    elif name == "RING_MENU": pass
+    elif name == "RING_ATTRIBUTE": result = self.ring_attribute
     elif name == "IS_COMPLETE":
       assert not self.read_string(a).startswith("AID_"), "chapter completion must never receive a facility ID"
       result = int(self.chapter_cleared)
@@ -116,7 +118,7 @@ class FacilityFixture(CollectorFixture):
   def c_read(self, pointer):
     return bytes(self.cpu.mem_read(pointer, 128)).split(b"\0", 1)[0]
 
-  def exercise(self, hook, stop, stack, profile):
+  def exercise(self, hook, ring_hook, stop, stack, profile):
     self.active = True
     self.reset(4)
     self.visible = {self.menu: True}
@@ -301,6 +303,39 @@ class FacilityFixture(CollectorFixture):
         shown(child)
         expected = [("bind", self.game + binds[index])] + [("close", menu) for menu in chain(quick)]
         assert self.events[-len(expected):] == expected
+        if index == 1:
+          self.ring_attribute = 1
+          cleaner_class = self.alloc(0x138 + 30 * 16)
+          self.qword(cleaner_class + 0x10, self.c_string("RingCleaningItem"))
+          self.write(cleaner_class + 0x126, struct.pack("<H", 30))
+          vtable(cleaner_class, 8, "RING_ATTRIBUTE")
+          original_cleaner_class = bytes(self.cpu.mem_read(cleaner_class, 0x138 + 30 * 16))
+          cleaner, ordinary, other = self.alloc(), self.alloc(), self.alloc()
+          other_class = self.alloc(0x138 + 30 * 16)
+          self.write(other_class, original_cleaner_class)
+          self.qword(other_class + 0x10, self.c_string("SkillInheritanceItem"))
+          self.qword(cleaner, cleaner_class)
+          self.qword(ordinary, cleaner_class)
+          self.qword(other, other_class)
+          top = self.alloc()
+          self.qword(top + 0x80, self.list([cleaner, other]))
+          self.qword(child + 0x38, top)
+          call(ring_hook, child, 0, 0)
+          assert call(method(cleaner, 8), cleaner) == 4, "hide polishing only in the outdoor shortcut"
+          assert self.pointer(other) == other_class and call(method(other, 8), other) == 1
+          assert bytes(self.cpu.mem_read(cleaner_class, len(original_cleaner_class))) == original_cleaner_class
+          # Native room entry remains unmodified, even after visiting the shortcut.
+          room_sequence, room_menu = self.alloc(), self.alloc()
+          self.qword(room_sequence + 0x30, self.hub)
+          self.qword(room_sequence + 0x38, room_menu)
+          self.qword(room_menu + 0x80, self.list([ordinary]))
+          for native_attribute in (1, 2):
+            self.ring_attribute = native_attribute
+            call(ring_hook, room_sequence, 0, 0)
+            assert self.pointer(ordinary) == cleaner_class
+            assert call(method(ordinary, 8), ordinary) == native_attribute
+          self.ring_attribute = 1
+          self.qword(child + 0x38, 0)
         method_info = self.pointer(self.pointer(child) + 0x138 + 10 * 16 + 8)
         call(method(child, 10), child, method_info)
         sidebars_visible(quick)

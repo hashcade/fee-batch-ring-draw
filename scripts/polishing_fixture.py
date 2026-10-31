@@ -28,10 +28,10 @@ class PolishingFixture(ConvenienceFixture):
     args = [self.cpu.reg_read(getattr(reg, f"UC_ARM64_REG_X{i}")) for i in range(4)]
     a, b = args[:2]
     result = None
-    if name == "GOD_LIST":
+    if name == "GOD_POOL":
       assert a == self.god_list_method
       self.scans += 1
-      result = self.rings
+      result = self.pool
     elif name == "UNIT_CAN_BOND":
       assert a in self.pids
       result = 1
@@ -108,8 +108,12 @@ class PolishingFixture(ConvenienceFixture):
     self.integer(self.pointer(gods[5] + 0x20) + 0x94, 7)
     self.write(gods[6] + 0x70, b"\1")
     self.rings = self.list(gods + [gods[0], 0])
-    actor_item = self.invoke(self.factories[34])
-    toggle = self.invoke(self.factories[33])
+    self.pool = self.alloc()
+    self.qword(self.pool + 0x28, self.rings)
+    # Pool is not a List: its list-header offsets intentionally remain zero.
+    assert self.pointer(self.pool + 0x10) == 0 and self.number(self.pool + 0x18) == 0
+    actor_item = self.invoke(self.factories[5])
+    toggle = self.invoke(self.factories[4])
     assert self.read_string(self.pointer(actor_item + 0x70)) == "Custom Alear"
     assert self.read_string(self.pointer(toggle + 0x70)) == "开启"
     assert not self.read_string(self.pointer(actor_item + 0x78))
@@ -148,7 +152,7 @@ class PolishingFixture(ConvenienceFixture):
     assert change(actor_item, 1) == 4096
     assert b"polish_actor=PID_" in self.files[self.paths[0]]
     assert self.read_string(self.pointer(actor_item + 0x70)) == "帕涅托涅"
-    assert self.read_string(self.pointer(self.invoke(self.factories[34]) + 0x70)) == "帕涅托涅"
+    assert self.read_string(self.pointer(self.invoke(self.factories[5]) + 0x70)) == "帕涅托涅"
     # Re-enter without opening a selector; the selected cleaner owns the reward.
     self.write(gods[0] + 0x4C, b"\5")
     self.invoke(hooks["HUB_INIT"], self.hub)

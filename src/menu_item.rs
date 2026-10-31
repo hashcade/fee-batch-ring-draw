@@ -54,22 +54,6 @@ pub(crate) unsafe fn named(pointer: *const c_char, expected: &[u8]) -> bool {
     }
 }
 
-pub(crate) unsafe fn create(
-  first: Object,
-  cache: &AtomicUsize,
-  callbacks: &[(usize, usize)],
-) -> Option<Object> {
-  // Help/flag/map-attribute slots belong to MapBasicMenuItem, not its
-  // 27-slot BasicMenuItem parent. Keep that native type for map entries.
-  let map_item = callbacks.iter().any(|(slot, _)| *slot >= 27);
-  let (expected, ctor_offset): (&[u8], usize) = if map_item {
-    (b"MapBasicMenuItem", crate::collector::profile::MAP_ITEM_CTOR)
-  } else {
-    (b"BasicMenuItem", crate::collector::profile::ITEM_CTOR)
-  };
-  unsafe { create_native(first, cache, callbacks, expected, ctor_offset) }
-}
-
 pub(crate) unsafe fn create_hub(
   first: Object,
   cache: &AtomicUsize,

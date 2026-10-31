@@ -20,9 +20,8 @@ const ITEM_NAMES: [&[u8]; OPTION_COUNT] = [
   b"SomnielChef\0",
   b"SomnielCookingOutcome\0",
   b"SomnielAutoSupport\0",
-  b"SomnielRewindCount\0",
-  b"SomnielBattleSave\0",
-  b"SomnielPersonalOutfits\0",
+  b"SomnielAutoPolish\0",
+  b"SomnielPolishActor\0",
   b"SomnielArenaCount\0",
   b"SomnielFishingUses\0",
   b"SomnielShopStock\0",
@@ -31,26 +30,6 @@ const ITEM_NAMES: [&[u8]; OPTION_COUNT] = [
   b"SomnielFastFishing\0",
   b"SomnielFastTraining\0",
   b"SomnielFastWyvern\0",
-  b"SomnielExpMultiplier\0",
-  b"SomnielSpMultiplier\0",
-  b"SomnielSpTarget\0",
-  b"SomnielSpAmount\0",
-  b"SomnielGold\0",
-  b"SomnielBondFragments\0",
-  b"SomnielIron\0",
-  b"SomnielSteel\0",
-  b"SomnielSilver\0",
-  b"SomnielMtCrystal\0",
-  b"SomnielCritCrystal\0",
-  b"SomnielDexCrystal\0",
-  b"SomnielSpdCrystal\0",
-  b"SomnielDefCrystal\0",
-  b"SomnielResCrystal\0",
-  b"SomnielHitCrystal\0",
-  b"SomnielAvoCrystal\0",
-  b"SomnielDdgCrystal\0",
-  b"SomnielAutoPolish\0",
-  b"SomnielPolishActor\0",
 ];
 
 extern "C" {
@@ -65,41 +44,20 @@ extern "C" {
 
 pub(crate) fn install() {
   let callbacks = [
-    create_draw,
-    create_chef,
-    create_outcome,
-    create_support,
-    create_rewind,
-    create_save,
-    create_outfits,
-    create_arena,
-    create_fishing_uses,
-    create_shop_stock,
-    create_gift_stock,
-    create_repeat_cooking,
-    create_fast_fishing,
-    create_fast_training,
-    create_fast_wyvern,
-    create_exp_multiplier,
-    create_sp_multiplier,
-    create_option::<17>,
-    create_option::<18>,
-    create_option::<19>,
-    create_option::<20>,
-    create_option::<21>,
-    create_option::<22>,
-    create_option::<23>,
-    create_option::<24>,
-    create_option::<25>,
-    create_option::<26>,
-    create_option::<27>,
-    create_option::<28>,
-    create_option::<29>,
-    create_option::<30>,
-    create_option::<31>,
-    create_option::<32>,
-    create_option::<33>,
-    create_option::<34>,
+    create_option::<0>,
+    create_option::<1>,
+    create_option::<2>,
+    create_option::<3>,
+    create_option::<4>,
+    create_option::<5>,
+    create_option::<6>,
+    create_option::<7>,
+    create_option::<8>,
+    create_option::<9>,
+    create_option::<10>,
+    create_option::<11>,
+    create_option::<12>,
+    create_option::<13>,
   ];
   for kind in MENU_ORDER {
     unsafe { cobapi_register_configmenuitem_cb(callbacks[kind]) };
@@ -140,11 +98,7 @@ unsafe fn private_class(class: Object, kind: usize) -> Option<usize> {
   Some(private as usize)
 }
 
-unsafe extern "C" fn enabled(item: Object, _: Method) -> i32 {
-  let kind = unsafe { kind(item) };
-  if crate::resources::is_setting(kind) {
-    return i32::from(unsafe { crate::resources::native::enabled(kind) });
-  }
+unsafe extern "C" fn enabled(_: Object, _: Method) -> i32 {
   1
 }
 
@@ -154,58 +108,6 @@ unsafe extern "C" fn no_action(_: Object, _: Method) -> i32 {
 
 unsafe extern "C" fn create_option<const KIND: usize>() -> Object {
   unsafe { create_kind(KIND) }
-}
-
-unsafe extern "C" fn create_draw() -> Object {
-  unsafe { create_kind(0) }
-}
-unsafe extern "C" fn create_chef() -> Object {
-  unsafe { create_kind(1) }
-}
-unsafe extern "C" fn create_outcome() -> Object {
-  unsafe { create_kind(2) }
-}
-unsafe extern "C" fn create_support() -> Object {
-  unsafe { create_kind(3) }
-}
-unsafe extern "C" fn create_rewind() -> Object {
-  unsafe { create_kind(4) }
-}
-unsafe extern "C" fn create_save() -> Object {
-  unsafe { create_kind(5) }
-}
-unsafe extern "C" fn create_outfits() -> Object {
-  unsafe { create_kind(6) }
-}
-unsafe extern "C" fn create_arena() -> Object {
-  unsafe { create_kind(7) }
-}
-unsafe extern "C" fn create_fishing_uses() -> Object {
-  unsafe { create_kind(8) }
-}
-unsafe extern "C" fn create_shop_stock() -> Object {
-  unsafe { create_kind(9) }
-}
-unsafe extern "C" fn create_gift_stock() -> Object {
-  unsafe { create_kind(10) }
-}
-unsafe extern "C" fn create_repeat_cooking() -> Object {
-  unsafe { create_kind(11) }
-}
-unsafe extern "C" fn create_fast_fishing() -> Object {
-  unsafe { create_kind(12) }
-}
-unsafe extern "C" fn create_fast_training() -> Object {
-  unsafe { create_kind(13) }
-}
-unsafe extern "C" fn create_fast_wyvern() -> Object {
-  unsafe { create_kind(14) }
-}
-unsafe extern "C" fn create_exp_multiplier() -> Object {
-  unsafe { create_kind(15) }
-}
-unsafe extern "C" fn create_sp_multiplier() -> Object {
-  unsafe { create_kind(16) }
 }
 
 unsafe fn kind(item: Object) -> usize {
@@ -218,9 +120,6 @@ unsafe fn kind(item: Object) -> usize {
 
 unsafe fn create_kind(kind: usize) -> Object {
   unsafe {
-    if kind == 15 {
-      crate::resources::native::reset();
-    }
     let class = lookup_class(b"\0", b"ConfigBasicMenuItem\0");
     if class.is_null() {
       return ptr::null_mut();
@@ -240,16 +139,8 @@ unsafe fn create_kind(kind: usize) -> Object {
     // Native OnSelect/OnDeselect own arrow visibility. Setting every row here
     // leaves arrows visible until each row has been selected and deselected.
     reference(item, 0x68, new_text(&localized_title(text_language(), kind)));
-    if crate::resources::is_setting(kind) {
-      crate::resources::native::attach(item, kind);
-    }
     command(item, NONE);
-    let hint = if crate::resources::is_value(kind) {
-      crate::resources::apply_hint(text_language())
-    } else {
-      ""
-    };
-    reference(item, 0x78, new_text(hint));
+    reference(item, 0x78, new_text(""));
     item
   }
 }
@@ -257,11 +148,10 @@ unsafe fn create_kind(kind: usize) -> Object {
 unsafe fn localized_title(language: i32, kind: usize) -> String {
   // Confirmed JP/EN/ZH labels stay compact. Other game languages supply their
   // own system nouns; only the generic uses suffix belongs to this plugin.
-  let key = match kind {
-    4 => "MID_MENU_REWIND",
-    7 => "MID_Hub_Arena_Start",
-    _ => return option_title(language, kind).to_owned(),
-  };
+  if kind != 6 {
+    return option_title(language, kind).to_owned();
+  }
+  let key = "MID_Hub_Arena_Start";
   if matches!(language, 0 | 1 | 4 | 9 | 10) {
     return option_title(language, kind).to_owned();
   }
@@ -304,10 +194,6 @@ pub(crate) unsafe fn lookup_class(namespace: &[u8], name: &[u8]) -> Object {
 unsafe extern "C" fn command(item: Object, _: Method) {
   unsafe {
     let kind = kind(item);
-    if crate::resources::is_setting(kind) {
-      reference(item, 0x70, new_text(&crate::resources::native::label(text_language(), kind)));
-      return;
-    }
     let settings = config::current();
     let language = text_language();
     let label = match kind {
@@ -320,20 +206,15 @@ unsafe extern "C" fn command(item: Object, _: Method) {
       2 => crate::cooking::native::outcome_name(settings.cooking_outcome)
         .unwrap_or_else(|| outcome_label(language, settings.cooking_outcome).to_owned()),
       3 => support_label(language, settings.auto_support).to_owned(),
-      33 => support_label(language, settings.auto_polish).to_owned(),
-      34 => crate::resources::native::roster()
+      4 => support_label(language, settings.auto_polish).to_owned(),
+      5 => crate::roster::joined()
         .into_iter()
         .find(|entry| entry.0 == settings.polish_actor)
         .map(|entry| entry.1)
         .unwrap_or_else(|| "—".to_owned()),
-      4 => count_label(language, settings.rewind_count),
-      5 => support_label(language, settings.battle_save).to_owned(),
-      6 => support_label(language, settings.personal_outfits).to_owned(),
-      7 => count_label(language, settings.arena_count),
-      15 => multiplier_label(language, settings.exp_multiplier),
-      16 => format!("{}×", settings.sp_multiplier),
-      kind @ 8..=14 => {
-        support_label(language, config::Feature::ALL[kind - 8].value(&settings)).to_owned()
+      6 => count_label(language, settings.arena_count),
+      kind @ 7..=13 => {
+        support_label(language, config::Feature::ALL[kind - 7].value(&settings)).to_owned()
       }
       _ => settings.draw_count.to_string(),
     };
@@ -343,23 +224,20 @@ unsafe extern "C" fn command(item: Object, _: Method) {
 
 unsafe extern "C" fn change(item: Object, _: Method) -> i32 {
   let kind = unsafe { kind(item) };
-  if crate::resources::is_setting(kind) {
-    return unsafe { crate::resources::native::change(item, kind) };
-  }
   let mut settings = config::current();
   let old = settings.clone();
   let change: unsafe extern "C" fn(i32, i32, i32, i32, Method) -> i32 =
     unsafe { core::mem::transmute(base() + CHANGE_NUMBER) };
   match kind {
-    3 | 33 => {
+    3 | 4 => {
       let value = if kind == 3 { &mut settings.auto_support } else { &mut settings.auto_polish };
       let next = unsafe { change(i32::from(*value), 0, 1, 1, NONE) };
       if (0..=1).contains(&next) {
         *value = next == 1;
       }
     }
-    34 => {
-      let actors = unsafe { crate::resources::native::roster() };
+    5 => {
+      let actors = unsafe { crate::roster::joined() };
       if actors.is_empty() {
         return 0;
       }
@@ -367,17 +245,6 @@ unsafe extern "C" fn change(item: Object, _: Method) -> i32 {
       let next = unsafe { change(index as i32, 0, actors.len() as i32 - 1, 1, NONE) };
       if let Some(actor) = actors.get(next as usize) {
         settings.polish_actor = actor.0.clone();
-      }
-    }
-    15 | 16 => {
-      let value =
-        if kind == 15 { &mut settings.exp_multiplier } else { &mut settings.sp_multiplier };
-      let choices: &[u32] =
-        if kind == 15 { &crate::gains::EXP_MULTIPLIERS } else { &crate::gains::MULTIPLIERS };
-      let index = choices.iter().position(|choice| choice == value).unwrap_or(0);
-      let next = unsafe { change(index as i32, 0, choices.len() as i32 - 1, 1, NONE) };
-      if let Some(choice) = choices.get(next as usize) {
-        *value = *choice;
       }
     }
     1 => {
@@ -395,31 +262,24 @@ unsafe extern "C" fn change(item: Object, _: Method) -> i32 {
         settings.cooking_outcome = next as u8;
       }
     }
-    4 | 7 => {
-      let value = if kind == 4 { &mut settings.rewind_count } else { &mut settings.arena_count };
+    6 => {
+      let value = &mut settings.arena_count;
       let next = unsafe { change(*value as i32, 0, config::MAX_USE_COUNT as i32, 1, NONE) };
       if (0..=config::MAX_USE_COUNT as i32).contains(&next) {
         *value = next as u32;
       }
     }
-    5 | 6 => {
-      let value =
-        if kind == 5 { &mut settings.battle_save } else { &mut settings.personal_outfits };
-      let next = unsafe { change(i32::from(*value), 0, 1, 1, NONE) };
-      if (0..=1).contains(&next) {
-        *value = next == 1;
-      }
-    }
-    kind @ 8..=14 => {
-      let feature = config::Feature::ALL[kind - 8];
+    kind @ 7..=13 => {
+      let feature = config::Feature::ALL[kind - 7];
       let next = unsafe { change(i32::from(feature.value(&settings)), 0, 1, 1, NONE) };
       if (0..=1).contains(&next) {
         feature.set(&mut settings, next == 1);
       }
     }
     _ => {
-      let next =
-        unsafe { change(settings.draw_count as i32, 2, config::MAX_DRAW_COUNT as i32, 1, NONE) };
+      let next = unsafe {
+        change(settings.draw_count as i32, 2, config::MAX_DRAW_COUNT as i32, DRAW_COUNT_STEP, NONE)
+      };
       if next >= 0 {
         settings.draw_count = next as u32;
       }

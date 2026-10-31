@@ -8,8 +8,8 @@ use crate::{
 use core::ptr;
 use std::collections::BTreeSet;
 
-pub const GOD_LIST: usize = 0x001FD360;
-pub const GOD_LIST_METHOD: usize = 0x0628DD48;
+pub const GOD_POOL: usize = 0x001FD360;
+pub const GOD_POOL_METHOD: usize = 0x0628DD48;
 pub const HAS_BOND: usize = 0x02340600;
 pub const ADD_BOND: usize = 0x02340700;
 pub const GOD_DATA: usize = 0x0233EB20;
@@ -26,15 +26,20 @@ macro_rules! native {
 
 pub(crate) unsafe fn settle() {
   unsafe {
-    let method = metadata(GOD_LIST_METHOD);
+    let method = metadata(GOD_POOL_METHOD);
     if method.is_null() {
       return;
     }
-    let rings = native!(GOD_LIST, unsafe extern "C" fn(Method) -> Object)(method);
+    let pool = native!(GOD_POOL, unsafe extern "C" fn(Method) -> Object)(method);
+    if pool.is_null() {
+      return;
+    }
+    // Native GodPool.GetEnumerator (0x03207830) enumerates the used list.
+    let rings: Object = field(pool, 0x28);
     let Some(count) = list_count(rings) else { return };
     let actor_pid = config::polish_actor();
     let Some((_, _, actor)) =
-      crate::resources::native::roster().into_iter().find(|entry| entry.0 == actor_pid)
+      crate::roster::joined().into_iter().find(|entry| entry.0 == actor_pid)
     else {
       return;
     };

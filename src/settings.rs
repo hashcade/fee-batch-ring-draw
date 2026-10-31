@@ -3,6 +3,7 @@
 pub const ITEM_CTOR: usize = 0x025379A0;
 pub const UPDATE_TEXT: usize = 0x02537000;
 pub const CHANGE_NUMBER: usize = 0x02537920;
+pub const DRAW_COUNT_STEP: i32 = 10;
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x025379A0, [0xA9BC7BFD, 0xF9000BF7, 0x910003FD, 0xA90257F6]),
   (0x02537000, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xB001EF14]),
@@ -33,23 +34,17 @@ pub fn title(language: i32) -> &'static str {
 pub(crate) mod native;
 
 pub fn option_title(language: i32, kind: usize) -> &'static str {
-  if kind == 33 || kind == 34 {
-    return crate::cleaning::option_title(language, kind == 34);
+  if kind == 4 || kind == 5 {
+    return crate::cleaning::option_title(language, kind == 5);
   }
-  if crate::resources::is_setting(kind) {
-    return crate::resources::title(language, kind);
-  }
-  if kind >= 15 {
-    return multiplier_title(language, kind == 16);
-  }
-  if kind >= 8 {
-    return feature_title(language, kind - 8);
+  if kind >= 7 {
+    return feature_title(language, kind - 7);
   }
   if kind == 0 {
     return title(language);
   }
-  if kind >= 4 {
-    return preference_title(language, kind);
+  if kind == 6 {
+    return training_title(language);
   }
   let labels = match language {
     0 => ["料理当番", "料理の出来", "支援会話を自動再生"],
@@ -112,44 +107,8 @@ pub fn outcome_label(language: i32, option: u8) -> &'static str {
   labels[usize::from(option.saturating_sub(1).min(4))]
 }
 
-pub const OPTION_COUNT: usize = 35;
-pub const MENU_ORDER: [usize; OPTION_COUNT] = [
-  15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 5, 6, 3, 33, 34, 4, 7, 8,
-  0, 9, 10, 12, 13, 14, 11, 1, 2,
-];
-
-fn multiplier_title(language: i32, sp: bool) -> &'static str {
-  let labels = match language {
-    0 => ["経験値倍率", "SP倍率"],
-    2 | 5 => ["Multiplicateur d’EXP", "Multiplicateur de SP"],
-    3 | 6 => ["Multiplicador de EXP", "Multiplicador de SP"],
-    7 => ["EP-Multiplikator", "SP-Multiplikator"],
-    8 => ["Moltiplicatore ESP", "Moltiplicatore SP"],
-    9 => ["經驗倍率", "SP倍率"],
-    10 => ["经验倍率", "SP倍率"],
-    11 => ["경험치 배율", "SP 배율"],
-    _ => ["EXP Multiplier", "SP Multiplier"],
-  };
-  labels[usize::from(sp)]
-}
-
-pub fn multiplier_label(language: i32, multiplier: u32) -> String {
-  if multiplier != 0 {
-    return format!("{multiplier}×");
-  }
-  match language {
-    0 => "レベル最大",
-    2 | 5 => "Niveau max.",
-    3 | 6 => "Nivel máximo",
-    7 => "Max. Level",
-    8 => "Livello massimo",
-    9 => "滿級",
-    10 => "满级",
-    11 => "최대 레벨",
-    _ => "Max Level",
-  }
-  .to_owned()
-}
+pub const OPTION_COUNT: usize = 14;
+pub const MENU_ORDER: [usize; OPTION_COUNT] = [3, 4, 5, 6, 7, 0, 8, 9, 11, 12, 13, 10, 1, 2];
 
 pub fn feature_title(language: i32, feature: usize) -> &'static str {
   let labels = match language {
@@ -238,38 +197,18 @@ pub fn feature_title(language: i32, feature: usize) -> &'static str {
   labels[feature]
 }
 
-fn preference_title(language: i32, kind: usize) -> &'static str {
-  let labels = match language {
-    0 => ["竜の時水晶の回数", "戦闘中のセーブ", "専用衣装", "通常鍛錬の回数"],
-    2 | 5 => [
-      "Nombre de Cristaux temporels",
-      "Sauvegarde en combat",
-      "Tenues personnelles",
-      "Nombre d'entraînements standard",
-    ],
-    3 | 6 => [
-      "Usos del cristal temporal",
-      "Guardado en combate",
-      "Atuendos personales",
-      "Entrenamientos estándar",
-    ],
-    7 => {
-      ["Zeitkristall-Nutzungen", "Speichern im Kampf", "Persönliche Kleidung", "Standardtrainings"]
-    }
-    8 => [
-      "Usi del cristallo temporale",
-      "Salvataggio in battaglia",
-      "Abiti personali",
-      "Allenamenti standard",
-    ],
-    9 => ["龍之時水晶次數", "戰鬥存檔", "專屬服裝", "一般鍛鍊次數"],
-    10 => ["龙之时水晶次数", "战斗存档", "专属服装", "一般锻炼次数"],
-    11 => ["용의 시수정 횟수", "전투 중 저장", "전용 의상", "일반 단련 횟수"],
-    _ => {
-      ["Draconic Time Crystal Uses", "Battle Save", "Personal Outfits", "Standard Training Uses"]
-    }
-  };
-  labels[kind - 4]
+fn training_title(language: i32) -> &'static str {
+  match language {
+    0 => "通常鍛錬の回数",
+    2 | 5 => "Nombre d'entraînements standard",
+    3 | 6 => "Entrenamientos estándar",
+    7 => "Standardtrainings",
+    8 => "Allenamenti standard",
+    9 => "一般鍛鍊次數",
+    10 => "一般锻炼次数",
+    11 => "일반 단련 횟수",
+    _ => "Standard Training Uses",
+  }
 }
 
 pub fn count_label(language: i32, count: u32) -> String {

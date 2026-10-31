@@ -15,9 +15,6 @@ static DRAW_COUNT: AtomicU32 = AtomicU32::new(DEFAULT_DRAW_COUNT);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
-  /// Zero selects Max Level; numeric multipliers use EXP_MULTIPLIERS.
-  pub exp_multiplier: u32,
-  pub sp_multiplier: u32,
   pub draw_count: u32,
   pub chef: String,
   pub cooking_outcome: u8,
@@ -25,9 +22,6 @@ pub struct Settings {
   pub auto_polish: bool,
   pub polish_actor: String,
   /// Zero means nondecreasing, not zero available uses.
-  pub rewind_count: u32,
-  pub battle_save: bool,
-  pub personal_outfits: bool,
   pub arena_count: u32,
   pub fishing_unlimited: bool,
   pub shop_stock: bool,
@@ -100,17 +94,12 @@ impl Feature {
 impl Default for Settings {
   fn default() -> Self {
     Self {
-      exp_multiplier: 1,
-      sp_multiplier: 1,
       draw_count: DEFAULT_DRAW_COUNT,
       chef: String::new(),
       cooking_outcome: 0,
       auto_support: true,
       auto_polish: true,
       polish_actor: DEFAULT_POLISHER.to_owned(),
-      rewind_count: 0,
-      battle_save: true,
-      personal_outfits: true,
       arena_count: 10,
       fishing_unlimited: true,
       shop_stock: true,
@@ -126,9 +115,6 @@ impl Default for Settings {
 impl Settings {
   pub fn valid(&self) -> bool {
     valid_count(self.draw_count)
-      && crate::gains::EXP_MULTIPLIERS.contains(&self.exp_multiplier)
-      && crate::gains::MULTIPLIERS.contains(&self.sp_multiplier)
-      && self.rewind_count <= MAX_USE_COUNT
       && self.arena_count <= MAX_USE_COUNT
       && self.cooking_outcome <= 5
       && self.polish_actor.starts_with("PID_")
@@ -157,17 +143,8 @@ impl Settings {
     if self.polish_actor != DEFAULT_POLISHER {
       result.push_str(&format!("polish_actor={}\n", self.polish_actor));
     }
-    for (key, value, default) in [
-      ("rewind_count", self.rewind_count, 0),
-      ("battle_save", u32::from(self.battle_save), 1),
-      ("personal_outfits", u32::from(self.personal_outfits), 1),
-      ("arena_count", self.arena_count, 10),
-      ("exp_multiplier", self.exp_multiplier, 1),
-      ("sp_multiplier", self.sp_multiplier, 1),
-    ] {
-      if value != default {
-        result.push_str(&format!("{key}={value}\n"));
-      }
+    if self.arena_count != 10 {
+      result.push_str(&format!("arena_count={}\n", self.arena_count));
     }
     for feature in Feature::ALL {
       if !feature.value(self) {
@@ -204,31 +181,13 @@ pub fn polish_actor() -> String {
 }
 
 #[cfg(target_os = "switch")]
-pub fn personal_outfits() -> bool {
-  SETTINGS.with(|value| value.borrow().personal_outfits)
-}
-
-#[cfg(target_os = "switch")]
 pub fn arena_count() -> u32 {
   SETTINGS.with(|value| value.borrow().arena_count)
 }
 
 #[cfg(target_os = "switch")]
-pub fn rewind_count() -> u32 {
-  SETTINGS.with(|value| value.borrow().rewind_count)
-}
-
-#[cfg(target_os = "switch")]
 pub fn enabled(feature: Feature) -> bool {
   SETTINGS.with(|value| feature.value(&value.borrow()))
-}
-
-#[cfg(target_os = "switch")]
-pub fn gain_multipliers() -> (u32, u32) {
-  SETTINGS.with(|value| {
-    let settings = value.borrow();
-    (settings.exp_multiplier, settings.sp_multiplier)
-  })
 }
 
 pub fn valid_count(count: u32) -> bool {
@@ -260,34 +219,15 @@ pub fn parse_settings(contents: &str) -> Result<Settings, &'static str> {
       return Err("duplicate configuration key");
     }
     match key {
-      "exp_multiplier" => {
-        settings.exp_multiplier = value.trim().parse().map_err(|_| "invalid exp_multiplier")?
-      }
-      "sp_multiplier" => {
-        settings.sp_multiplier = value.trim().parse().map_err(|_| "invalid sp_multiplier")?
-      }
+      // Removed preferences remain readable in existing independent files.
+      "exp_multiplier" | "sp_multiplier" | "rewind_count" | "battle_save" | "personal_outfits" => {}
       "draw_count" => {
         settings.draw_count = value.trim().parse().map_err(|_| "invalid draw_count")?
       }
       "chef" => settings.chef = value.trim().to_owned(),
       "polish_actor" => settings.polish_actor = value.trim().to_owned(),
-      "rewind_count" => {
-        settings.rewind_count = value.trim().parse().map_err(|_| "invalid rewind_count")?
-      }
       "arena_count" => {
         settings.arena_count = value.trim().parse().map_err(|_| "invalid arena_count")?
-      }
-      "battle_save" | "personal_outfits" => {
-        let enabled = match value.trim() {
-          "0" => false,
-          "1" => true,
-          _ => return Err("invalid switch value"),
-        };
-        if key == "battle_save" {
-          settings.battle_save = enabled;
-        } else {
-          settings.personal_outfits = enabled;
-        }
       }
       "cooking_outcome" => {
         settings.cooking_outcome = value.trim().parse().map_err(|_| "invalid cooking_outcome")?

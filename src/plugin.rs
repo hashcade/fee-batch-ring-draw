@@ -17,19 +17,14 @@ pub fn install() {
   config::load();
   crate::preferences::native::install();
   crate::fishing::native::install();
-  crate::gains::native::install();
-  crate::outfits::plugin::install();
   crate::settings::native::install();
   skyline::install_hooks!(count_menu, build_text, execute_gacha, draw, create_demo, unload);
   crate::meld::plugin::install();
   crate::wyvern::native::install();
   crate::collector::native::install();
-  crate::cleaning::native::install();
-  crate::arena::native::install();
-  crate::bond_talk::native::install();
-  crate::well::native::install();
   crate::cooking::native::install();
   crate::supports::native::install();
+  crate::facilities::native::install();
   crate::shops::native::install();
 }
 

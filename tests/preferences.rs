@@ -9,27 +9,13 @@ use std::collections::BTreeMap;
 #[test]
 fn defaults_legacy_files_and_every_preference_round_trip() {
   let defaults = Settings::default();
-  assert_eq!(defaults.rewind_count, 0);
   assert_eq!(defaults.arena_count, 10);
-  assert!(defaults.battle_save && defaults.personal_outfits);
   assert_eq!(parse_settings("draw_count=527\nchef=PID_a\n").unwrap().arena_count, 10);
   for count in [0, 1, 10, 1000] {
-    let settings = Settings {
-      rewind_count: count,
-      arena_count: count,
-      battle_save: false,
-      personal_outfits: false,
-      ..defaults.clone()
-    };
+    let settings = Settings { arena_count: count, ..defaults.clone() };
     assert_eq!(parse_settings(&settings.encode()), Ok(settings));
   }
-  for bad in [
-    "arena_count=1001",
-    "rewind_count=-1",
-    "battle_save=2",
-    "personal_outfits=yes",
-    "rewind_count=1\nrewind_count=0",
-  ] {
+  for bad in ["arena_count=1001", "arena_count=-1", "arena_count=1\narena_count=0"] {
     assert!(parse_settings(bad).is_err());
   }
 }
@@ -42,30 +28,9 @@ fn official_chinese_menu_names_and_order() {
   assert_eq!(
     settings::MENU_ORDER.map(|kind| settings::option_title(10, kind)),
     [
-      "经验倍率",
-      "SP倍率",
-      "SP对象",
-      "SP数量",
-      "金钱",
-      "牵绊碎片",
-      "铁晶石",
-      "钢晶石",
-      "银晶石",
-      "威力纹晶石",
-      "必杀纹晶石",
-      "技巧纹晶石",
-      "速度纹晶石",
-      "防守纹晶石",
-      "魔防纹晶石",
-      "命中纹晶石",
-      "回避纹晶石",
-      "必避纹晶石",
-      "战斗存档",
-      "专属服装",
       "自动完成支援对话",
       "自动研磨",
       "研磨角色",
-      "龙之时水晶次数",
       "一般锻炼次数",
       "钓鱼次数不减",
       "牵绊戒指精炼次数",
@@ -85,15 +50,13 @@ fn official_chinese_menu_names_and_order() {
 
 #[test]
 fn use_limits_preserve_spent_counts_and_native_resets() {
-  assert_eq!(rewind_limit(0), -1);
-  assert_eq!(rewind_limit(20), 20);
   assert_eq!(arena_limit(10, 3, 3) - 3, 7);
   assert_eq!(arena_limit(10, 10, 3) - 10, 0);
   assert_eq!(arena_limit(10, 0, 3), 10);
   for spent in [0, 3, 27] {
     assert_eq!(arena_limit(0, spent, 3) - spent, 3);
   }
-  assert_eq!(patches(&Settings { arena_count: 0, ..Settings::default() })[4].1, 0x2A1703F4);
+  assert_eq!(patches(&Settings { arena_count: 0, ..Settings::default() })[0].1, 0x2A1703F4);
 }
 
 struct Memory {
@@ -118,8 +81,7 @@ impl CodeMemory for Memory {
 #[test]
 fn patches_switch_both_ways_and_rollback_the_actual_previous_words() {
   let defaults = Settings::default();
-  let finite =
-    Settings { rewind_count: 25, battle_save: false, arena_count: 0, ..defaults.clone() };
+  let finite = Settings { arena_count: 0, ..defaults.clone() };
   let words = |settings: &Settings| {
     patches(settings)
       .into_iter()
@@ -132,7 +94,7 @@ fn patches_switch_both_ways_and_rollback_the_actual_previous_words() {
   assert!(apply(&mut memory, &defaults));
   let before = memory.words.clone();
   memory.writes = 0;
-  memory.fail = Some(3);
+  memory.fail = Some(1);
   assert!(!apply(&mut memory, &finite));
   assert_eq!(memory.words, before);
 }

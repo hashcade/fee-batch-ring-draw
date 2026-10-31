@@ -8,6 +8,7 @@ pub const PAGE_CONTENT: usize = 0x028B78C0;
 pub const SET_SUBMENU_TRANSFORM: usize = 0x0245E330;
 pub const SHOW_FOOTER: usize = 0x021EDE30;
 pub const SCENE_NAME: usize = 0x02A71860;
+pub const RING_MENU: usize = 0x023397D0;
 pub const VARIABLE_NUMBER: usize = 0x0251E9D0;
 pub const FACILITY_GET: usize = 0x00203E90;
 pub const FACILITY_COMPLETE: usize = 0x028A80D0;
@@ -33,6 +34,7 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x0205B740, [0xA9BC7BFD, 0xA9015FF8, 0x910003FD, 0xA90257F6]),
   (0x021EDE30, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xD0020954]),
   (0x02A71860, [0xD10103FF, 0xA9017BFD, 0x910043FD, 0xF90013F5]),
+  (0x023397D0, [0xA9BA7BFD, 0xA9016FFC, 0x910003FD, 0xA90267FA]),
   (0x01CA5330, [0xD10283FF, 0xA9047BFD, 0x910103FD, 0xA9056FFC]),
   (0x02D84750, [0xD10283FF, 0xA9047BFD, 0x910103FD, 0xA9056FFC]),
   (0x028B5E40, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
@@ -145,6 +147,7 @@ pub(crate) mod native {
   static GROUP_CLASSES: [AtomicUsize; GROUPS.len()] = [const { AtomicUsize::new(0) }; GROUPS.len()];
   static MENU_CLASS: AtomicUsize = AtomicUsize::new(0);
   static PAGE_CLASS: AtomicUsize = AtomicUsize::new(0);
+  static CLEANING_CLASS: AtomicUsize = AtomicUsize::new(0);
   static ITEM_CLASSES: [AtomicUsize; FACILITIES.len()] =
     [const { AtomicUsize::new(0) }; FACILITIES.len()];
   static SEQUENCE_CLASSES: [AtomicUsize; FACILITIES.len()] =
@@ -154,6 +157,43 @@ pub(crate) mod native {
     ($address:expr, $signature:ty) => {
       core::mem::transmute::<usize, $signature>(base() + $address)
     };
+  }
+
+  pub(crate) fn install() {
+    skyline::install_hooks!(ring_menu);
+  }
+
+  unsafe extern "C" fn hidden(_: Object, _: Method) -> i32 {
+    4
+  }
+
+  #[skyline::hook(offset = RING_MENU)]
+  fn ring_menu(parent: Object, selected: i32, handler: Object, method: Method) {
+    call_original!(parent, selected, handler, method);
+    if parent.is_null() {
+      return;
+    }
+    unsafe {
+      let quick: Object = field(parent, 0x30);
+      if quick.is_null() || field::<usize>(quick, 0) != PAGE_CLASS.load(Ordering::Relaxed) {
+        return;
+      }
+      let menu: Object = field(parent, 0x38);
+      if menu.is_null() {
+        return;
+      }
+      let list: Object = field(menu, 0x80);
+      let Some(count) = list_count(list) else { return };
+      for index in 0..count {
+        let Some(item) = object_at(list, index) else { continue };
+        let class: Object = field(item, 0);
+        if menu_item::named(field(class, 0x10), b"RingCleaningItem") {
+          // Only the outdoor shortcut hides this entry. The original room's
+          // menu and automatic polishing keep their existing behavior.
+          menu_item::override_class(item, &CLEANING_CLASS, &[(8, hidden as *const () as usize)]);
+        }
+      }
+    }
   }
 
   unsafe extern "C" fn cancel(_: Object, _: Method) -> i32 {

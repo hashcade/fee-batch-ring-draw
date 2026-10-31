@@ -18,18 +18,10 @@ from wyvern_fixture import WyvernFixture
 from collector_fixture import CollectorFixture
 from draw_menu_fixture import DrawMenuFixture
 from meld_dialog_fixture import MeldDialogFixture
-from cleaning_fixture import CleaningFixture
-from arena_fixture import ArenaFixture
-from bond_talk_fixture import BondTalkFixture
-from settings_fixture import SettingsFixture
 from convenience_fixture import ConvenienceFixture
 from facility_fixture import FacilityFixture
-from well_fixture import WellFixture
 from shop_fixture import ShopFixture
-from appearance_fixture import AppearanceFixture
-from gains_fixture import GainsFixture
 from support_fixture import SupportFixture
-from resource_fixture import ResourceFixture
 from polishing_fixture import PolishingFixture
 
 
@@ -71,19 +63,14 @@ def smoke(data: bytes, case: str) -> int:
   wyvern = (ROOT / "src/wyvern.rs").read_text(encoding="utf-8")
   collector = (ROOT / "src/collector/profile.rs").read_text(encoding="utf-8")
   cleaning = (ROOT / "src/cleaning.rs").read_text(encoding="utf-8") + (ROOT / "src/cleaning/automatic.rs").read_text(encoding="utf-8")
-  arena = (ROOT / "src/arena.rs").read_text(encoding="utf-8")
-  bond_talk = (ROOT / "src/bond_talk.rs").read_text(encoding="utf-8")
   settings_profile = (ROOT / "src/settings.rs").read_text(encoding="utf-8")
   fishing_profile = (ROOT / "src/fishing.rs").read_text(encoding="utf-8")
-  gains_profile = (ROOT / "src/gains.rs").read_text(encoding="utf-8")
-  well_profile = (ROOT / "src/well.rs").read_text(encoding="utf-8")
   cooking_profile = (ROOT / "src/cooking.rs").read_text(encoding="utf-8")
   support_profile = (ROOT / "src/supports.rs").read_text(encoding="utf-8")
   facility_profile = (ROOT / "src/facilities.rs").read_text(encoding="utf-8")
   shop_profile = (ROOT / "src/shops.rs").read_text(encoding="utf-8")
   preferences_profile = (ROOT / "src/preferences.rs").read_text(encoding="utf-8")
-  outfit_profile = (ROOT / "src/outfits/profile.rs").read_text(encoding="utf-8")
-  preference_patches = [(0x0270DB44, 0x11000508, 0x11000108), (0x02677284, 0xB9402808, 0x52800028), (0x01E40CF8, 0xB9402808, 0x52800028), (0x01E40E88, 0xB9402808, 0x52800028), (0x01CAA7A4, 0x1A9706D4, 0x1A9706D4)]
+  preference_patches = [(0x01CAA7A4, 0x1A9706D4, 0x1A9706D4)]
   patches = [(int(address, 16), int(original, 16), int(replacement, 16))
     for address, original, replacement in re.findall(
       r"\((0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+)\)", activities)]
@@ -98,7 +85,7 @@ def smoke(data: bytes, case: str) -> int:
 
   signatures = [(int(address, 16), b"".join(
     struct.pack("<I", int(word, 16)) for word in re.findall(r"0x[0-9A-Fa-f]+", words)
-  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings_profile + well_profile + cooking_profile + support_profile + facility_profile + shop_profile + preferences_profile + outfit_profile + fishing_profile + gains_profile)]
+  )) for address, words in re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + settings_profile + cooking_profile + support_profile + facility_profile + shop_profile + preferences_profile + fishing_profile)]
   expected_cooking_hooks = {int(value, 16) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cooking_profile)
     if name in ("CURRENT_CHEF", "GET_COOK_DATA", "COOK", "DETERMINE_TASTE", "ANIMATION_CREATE")}
@@ -108,11 +95,12 @@ def smoke(data: bytes, case: str) -> int:
     "COUNT_MENU", "BUILD_TEXT", "EXECUTE_GACHA", "UNLOAD", "DRAW", "CREATE_DEMO"
   )}
   expected_hooks.update(expected_cooking_hooks)
-  expected_hooks.update((0x02707DD0, offset("PARAMETER"), 0x02B0EA10, 0x01BB5ED0, 0x01BB6C50))
+  expected_hooks.add(offset("PARAMETER"))
   expected_hooks.add(0x026FFF90)
-  expected_hooks.update((0x024E8C20, 0x024E8370, 0x01A39D40, 0x01BE1260))
   expected_hooks.update(int(value, 16) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", shop_profile) if name != "LOOKUP")
+  ring_menu = int(re.search(r"pub const RING_MENU: usize = (0x[0-9A-Fa-f]+)", facility_profile).group(1), 16)
+  expected_hooks.add(ring_menu)
   expected_hooks.update(int(value, 16) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", support_profile)
     if name in ("HUB_INIT", "HUB_TICK"))
@@ -125,16 +113,6 @@ def smoke(data: bytes, case: str) -> int:
   collector_hooks = {int(re.search(rf"pub const {name}: usize = (0x[0-9A-Fa-f]+)", collector).group(1), 16)
     for name in ("CREATE_MENU",)}
   expected_hooks.update(collector_hooks)
-  cleaning_hooks = {int(value, 16) for name, value in re.findall(
-    r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cleaning)
-    if name in ("CREATE_MENU", "CREATE_CLEANING", "END_SEQUENCE", "ITEM_NAME")}
-  expected_hooks.update(cleaning_hooks)
-  arena_create = int(re.search(r"pub const CREATE_COMBAT: usize = (0x[0-9A-Fa-f]+)", arena).group(1), 16)
-  expected_hooks.add(arena_create)
-  talk_tick = int(re.search(r"pub const TALK_TICK: usize = (0x[0-9A-Fa-f]+)", bond_talk).group(1), 16)
-  expected_hooks.add(talk_tick)
-  well_menu = int(re.search(r"pub const CREATE_MENU: usize = (0x[0-9A-Fa-f]+)", well_profile).group(1), 16)
-  expected_hooks.add(well_menu)
   symbols, relocations = metadata(data)
   main = next(value for name, section, value in symbols if name == "main" and section)
   cpu = Uc(UC_ARCH_ARM64, UC_MODE_ARM)
@@ -198,22 +176,12 @@ def smoke(data: bytes, case: str) -> int:
   collector_game = CollectorFixture(cpu, GAME, write_game, collector, profile)
   draw_menu = DrawMenuFixture(cpu, GAME, write_game, offset)
   meld_dialog = MeldDialogFixture(cpu, GAME, write_game, meld_profile, profile)
-  cleaning_game = CleaningFixture(cpu, GAME, write_game, cleaning, profile)
-  cleaning_game.tls = meld_dialog.tls
-  arena_game = ArenaFixture(cpu, GAME, write_game, arena, profile)
-  bond_dialogue = BondTalkFixture(cpu, GAME, write_game, bond_talk, profile)
   settings_game = ConvenienceFixture(cpu, GAME, write_game, settings_profile + cooking_profile + support_profile + fishing_profile, profile)
-  well_game = WellFixture(cpu, GAME, write_game, well_profile + collector, profile)
   facility_game = FacilityFixture(cpu, GAME, write_game, facility_profile + collector + support_profile, profile)
   shop_game = ShopFixture(cpu, GAME, write_game, shop_profile, profile)
-  gains_game = GainsFixture(cpu, GAME, write_game, gains_profile, profile)
   support_game = SupportFixture(cpu, GAME, write_game, support_profile + collector + cooking_profile, profile)
-  resource_game = ResourceFixture(cpu, GAME, write_game, settings_profile, profile)
   polishing_game = PolishingFixture(cpu, GAME, write_game,
     settings_profile + cooking_profile + support_profile + cleaning + collector, profile)
-  outfit_offsets = dict((name, int(value, 16)) for name, value in re.findall(
-    r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", outfit_profile))
-  appearance = None
 
   def string_at(address: int) -> bytes:
     result = bytearray()
@@ -231,33 +199,19 @@ def smoke(data: bytes, case: str) -> int:
       return
     if polishing_game.handle(pc, names.get(pc)):
       return
-    if resource_game.handle(pc, names.get(pc)):
-      return
     if support_game.handle(pc, names.get(pc)):
-      return
-    if gains_game.handle(pc, names.get(pc)):
-      return
-    if appearance is not None and appearance.handle(pc, names.get(pc)):
       return
     if shop_game.handle(pc, names.get(pc)):
       return
     if wyvern_game.handle(pc):
       return
-    if arena_game.handle(pc, names.get(pc)):
-      return
-    if bond_dialogue.handle(pc, names.get(pc)):
-      return
     if settings_game.handle(pc, names.get(pc)):
       return
     if facility_game.handle(pc, names.get(pc)):
       return
-    if well_game.handle(pc, names.get(pc)):
-      return
     if collector_game.handle(pc, names.get(pc)):
       return
     if meld_dialog.handle(pc, names.get(pc)):
-      return
-    if cleaning_game.handle(pc, names.get(pc)):
       return
     if draw_menu.handle(pc):
       return
@@ -368,20 +322,17 @@ def smoke(data: bytes, case: str) -> int:
   if cpu.reg_read(registers.UC_ARM64_REG_PC) != STOP:
     raise AssertionError(f"{case}: initialization did not return")
   startup_patch_calls = patch_calls[:]
-  supported = case in ("supported", "polishing", "shops", "supports", "resources", "facilities", "convenience", "dialogue", "menus", "mount_failed", "resource_stock_patch", "wrong_activity_instruction", "patch_failed") or case in configs
+  supported = case in ("supported", "polishing", "shops", "supports", "facilities", "convenience", "menus", "mount_failed", "resource_stock_patch", "wrong_activity_instruction", "patch_failed") or case in configs
   expected = expected_hooks if supported else set()
   if set(hooks) != expected or len(hooks) != len(expected):
     raise AssertionError(f"{case}: incorrect hook registration: {hooks}")
-  assert 0x023397D0 not in hooks, "do not intercept the native ring-room menu to hide polishing"
   if supported:
-    assert len(settings_callbacks) == 35
-    appearance = AppearanceFixture(cpu, GAME, write_game, outfit_offsets.__getitem__, replacements, STOP, STACK + 0x20000 - 0x20)
-    settings_game.appearance = appearance
+    assert len(settings_callbacks) == 14
     assert fs_calls.count("mount") == 1
     assert fs_calls.count("unmount") == (case != "mount_failed")
     assert fs_calls.count("close") == (case in configs)
     expected_count = {"config_ten": 10, "config_low": 2, "config_custom": 600, "config_high": 1000}.get(case, 300)
-    if case not in ("polishing", "shops", "supports", "supports_off", "resources", "facilities", "convenience", "dialogue", "menus", "performance"):
+    if case not in ("polishing", "shops", "supports", "supports_off", "facilities", "convenience", "menus", "performance"):
       draw_menu.exercise(replacements[offset("COUNT_MENU")], STOP,
         STACK + 0x20000 - 0x20, expected_count)
     if case in ("supported", "shops"):
@@ -389,9 +340,6 @@ def smoke(data: bytes, case: str) -> int:
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", shop_profile) if int(value, 16) in replacements}
       shop_game.exercise(shop_replacements, STOP, STACK + 0x20000 - 0x20, shop_profile)
       print(f"{case}: compiled shop hooks retain unlock lookups, scope unlimited stock and leave saved counts unchanged")
-    if case == "resources":
-      resource_game.exercise_resources(settings_callbacks, STOP, STACK + 0x20000 - 0x20)
-      print(f"{case}: 35 flat settings rows; one-shot resources/SP use native setters, transient previews and no configuration writes")
     if case == "polishing":
       polishing_game.exercise(settings_callbacks, STOP, STACK + 0x20000 - 0x20)
       support_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
@@ -410,22 +358,11 @@ def smoke(data: bytes, case: str) -> int:
       text.exercise(replacements[offset("BUILD_TEXT")], STOP, STACK + 0x20000 - 0x20,
         expected_count)
       print(f"{case}: compiled row text uses exact k prices; original row geometry and single row unchanged")
-    if case in ("supported", "dialogue"):
-      bond_dialogue.exercise(replacements[talk_tick], STOP, STACK + 0x20000 - 0x20)
-      print(f"{case}: compiled dialogue hook retains native skip scoping; non-Main labels avoid metadata and classes initialize once")
     if case == "supported":
-      well_game.exercise(replacements[well_menu], STOP, STACK + 0x20000 - 0x20)
-      print("supported: compiled well entries preview grouped native results with private RNG; explicit reseed only, no grants or global class edits")
-      arena_game.exercise(replacements[arena_create], STOP, STACK + 0x20000 - 0x20)
-      print("supported: compiled arena hook keeps native growth/fades for ordinary/paid training without callback-address or descriptor-shape gates")
       meld_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", meld_profile) if int(value, 16) in replacements}
       meld_dialog.exercise(meld_replacements, STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled meld dialog separates single/batch choices, costs and presentation")
-      cleaning_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
-        r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cleaning) if int(value, 16) in replacements}
-      cleaning_game.exercise(cleaning_replacements, STOP, STACK + 0x20000 - 0x20)
-      print("supported: compiled clean-all menu preserves cleaner attribution, eligibility, deduplication, cancellation and selection restoration")
       wyvern_game.exercise(replacements[wyvern_main], STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled Wyvern hook uses native per-difficulty SSS borders directly; original tick and eligibility preserved")
       collector_game.exercise(replacements[next(iter(collector_hooks))], STOP, STACK + 0x20000 - 0x20)
@@ -434,17 +371,12 @@ def smoke(data: bytes, case: str) -> int:
       if case == "menus":
         draw_menu.exercise(replacements[offset("COUNT_MENU")], STOP,
           STACK + 0x20000 - 0x20, expected_count, extra=True)
-        arena_game.exercise(replacements[arena_create], STOP, STACK + 0x20000 - 0x20)
         wyvern_game.exercise(replacements[wyvern_main], STOP, STACK + 0x20000 - 0x20)
-      well_game.exercise(replacements[well_menu], STOP, STACK + 0x20000 - 0x20)
       collector_game.exercise(replacements[next(iter(collector_hooks))], STOP, STACK + 0x20000 - 0x20)
       meld_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", meld_profile) if int(value, 16) in replacements}
       meld_dialog.exercise(meld_replacements, STOP, STACK + 0x20000 - 0x20)
-      cleaning_replacements = {name: replacements[int(value, 16)] for name, value in re.findall(
-        r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cleaning) if int(value, 16) in replacements}
-      cleaning_game.exercise(cleaning_replacements, STOP, STACK + 0x20000 - 0x20)
-      print("menus: compiled well/collection entries use real 27-slot basic and 30-slot hub/map inheritance; repeated openings and callbacks passed")
+      print("menus: native collection and meld callback boundaries passed")
     if case in ("supported", "convenience", "menus", "resource_stock_patch"):
       settings_game.exercise(settings_callbacks, STOP, STACK + 0x20000 - 0x20)
       print("supported: compiled Plugin Settings adjusts counts, persists independent files, retains old values on failure and leaves original classes unchanged")
@@ -452,7 +384,7 @@ def smoke(data: bytes, case: str) -> int:
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", cooking_profile + support_profile)
         if int(value, 16) in replacements}
       settings_game.exercise_new([settings_game.factories[i] for i in (0, 1, 2, 3)], new_hooks, STOP, STACK + 0x20000 - 0x20)
-      settings_game.exercise_preferences([settings_game.factories[i] for i in (4, 5, 6, 7, 0, 3, 1, 2)], replacements, STOP, STACK + 0x20000 - 0x20)
+      settings_game.exercise_preferences(replacements)
       def check_disabled():
         for address, original, replacement in patches:
           assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == (original if address in switchable_addresses else replacement)
@@ -463,10 +395,9 @@ def smoke(data: bytes, case: str) -> int:
         wyvern_game.exercise(replacements[wyvern_main], STOP, STACK + 0x20000 - 0x20, enabled=False)
         settings_game.active = True
       settings_game.exercise_features(replacements, STOP, STACK + 0x20000 - 0x20, check_disabled)
-      gains_game.exercise(replacements, STOP, STACK + 0x20000 - 0x20, settings_game.configure_multipliers, gains_profile)
       print(f"{case}: compiled cooking choices preserve independent settings and context; automatic-support preferences persist independently")
     if case in ("supported", "facilities", "performance", "menus"):
-      facility_game.exercise(replacements[next(iter(collector_hooks))], STOP, STACK + 0x20000 - 0x20, facility_profile)
+      facility_game.exercise(replacements[next(iter(collector_hooks))], replacements[ring_menu], STOP, STACK + 0x20000 - 0x20, facility_profile)
       print(f"{case}: one outdoor hub entry, three 6/6/5 destination groups, allowances and cleanup passed modeled boundaries")
   else:
     assert not fs_calls, "unsupported executables must not read configuration"
@@ -497,7 +428,7 @@ def main() -> None:
   args = parser.parse_args()
   verify_nro(args.nro)
   for case in ("supported", "wrong_version", "wrong_build_id", "wrong_segment_layout",
-    "wrong_activity_instruction", "patch_failed", "menus", "resource_stock_patch", "supports_off", "resources", "polishing",
+    "wrong_activity_instruction", "patch_failed", "menus", "resource_stock_patch", "supports_off", "polishing",
     "mount_failed", "performance", "config_ten", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
     "config_large", "config_short", "config_empty", "config_switches_off"):
     count = smoke(args.nro.read_bytes(), case)
