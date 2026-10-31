@@ -33,7 +33,13 @@ jobs:
         with:
           node-version: lts/*
       - name: Generate release notes
-        run: npx changelogithub
+        run: |
+          previous_release=$(gh release list --exclude-drafts --exclude-pre-releases --json tagName --jq 'map(select(.tagName != env.GITHUB_REF_NAME)) | .[0].tagName // empty')
+          if [ -n "$previous_release" ]; then
+            npx changelogithub --from "$previous_release" --to "$GITHUB_REF_NAME"
+          else
+            npx changelogithub --to "$GITHUB_REF_NAME"
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish artifacts
