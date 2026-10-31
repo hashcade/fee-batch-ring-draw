@@ -1,6 +1,6 @@
 [package]
 name = "fee-better-somniel"
-version = "0.3.17"
+version = "0.3.18"
 edition = "2021"
 description = "Somniel quality-of-life improvements for Fire Emblem Engage."
 license = "MIT"
