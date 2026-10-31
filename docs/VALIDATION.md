@@ -40,18 +40,25 @@
   including retained native input outside the Somniel. Formatting and diff
   whitespace checks also pass; full regression remains CI-owned.
 
-## v0.3.14 cooking outcome names
+## Unreleased native cooking outcome names
 
-- Display TasteData.Name directly from the localized Cook table. Do not send
-  an already localized name through Mess.Get as though it were an MSBT key.
-  The same name reader serves both the selected option and its preview help.
-- The compiled settings fixture now returns empty text for non-message-key
-  lookups instead of echoing any input. Chinese, English and Japanese literal
-  names are checked across all three chef branches, including the selected
-  value and preview description. The previous build fails this regression.
-- Cooking settlement, selected branches, configuration, menu layout and
-  collection are unchanged. These are modeled callback checks; the actual
-  game UI still needs acceptance. No installation or user-save change was made.
+- The v0.3.14 assumption that raw TasteData.Name contained translated display
+  text was incorrect. The user's screenshot exposes `MID_FOODRANK_Woman`.
+  Read-only NSO inspection confirms that native `0x021DF0C0` loads the key
+  at +0x28 and tail-calls Mess.Get. Both option text and preview help now use
+  that native resolver rather than displaying the raw field.
+- The compiled fixture executes all 0x70 bytes of the original native resolver,
+  verified by seven offline signature windows. Its input names are message
+  keys, including the reported key; the message boundary returns distinct
+  Chinese, English and Japanese fixture translations for all three branches.
+  Neither the selected value nor preview may expose an untranslated key.
+- The downloaded v0.3.14 NRO fails this corrected regression. The locked build,
+  compiled cooking/menu callback checks and 359 offline instruction windows
+  pass. Cooking settlement, branches and configuration remain unchanged.
+- These are native-boundary tests, not Unity or actual-language-database tests.
+  Confirm the selected outcome and preview against the game's cooking results
+  in the installed game's text language. No installation or user-save change
+  was made.
 
 ## v0.3.14 destination pages and collection returns
 

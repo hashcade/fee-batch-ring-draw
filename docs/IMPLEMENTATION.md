@@ -175,7 +175,11 @@ Only joined units with CookData are offered. CurrentCookingPid and GetCookData
 are read overrides; Cook receives the selected existing Unit without changing
 the rotation's stored PID. A thread-local Cook owner scopes DetermineTaste to
 that transaction and keeps conditional variation/RNG native. Outside Cook,
-DetermineTaste is untouched. Outcome names come from TasteData/Mess without
+DetermineTaste is untouched. Outcome names use TasteData's native display-name
+resolver at `0x021DF0C0`, which reads the Name key at +0x28 and tail-calls
+Mess.Get in the current game language. The same resolver serves the selected
+value and preview help. Reading the raw Name field directly exposes keys such
+as `MID_FOODRANK_Woman`. The plugin uses this resolver without
 running a roll. Each independent settings edit preserves the other options;
 legacy count-only files remain valid.
 

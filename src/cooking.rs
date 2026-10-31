@@ -13,6 +13,7 @@ pub const ANIMATION_CREATE: usize = 0x02D82720;
 pub const ANIMATION_MOVE_NEXT: usize = 0x01CE3CF0;
 pub const STAT_NAME: usize = 0x025BCED0;
 pub const GRADE_NAME: usize = 0x021DF2E0;
+pub const TASTE_NAME: usize = 0x021DF0C0;
 pub const IS_CONDITIONAL: usize = 0x021DF130;
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x02A64450, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xD001C5B4]),
@@ -30,6 +31,13 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x025BCED0, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
   (0x021DF2E0, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0x900209D4]),
   (0x021DF130, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
+  (0x021DF0C0, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
+  (0x021DF0D0, [0x900209D5, 0xB0020534, 0x395A06A8, 0xF9435294]),
+  (0x021DF0E0, [0xAA0003F3, 0x370000C8, 0xB0020520, 0xF9435000]),
+  (0x021DF0F0, [0x978ACBDC, 0x52800028, 0x391A06A8, 0xF9400280]),
+  (0x021DF100, [0xF9401673, 0x3944CC08, 0x36080088, 0xB940E008]),
+  (0x021DF110, [0x35000048, 0x978ACC1B, 0xAA1303E0, 0xA9424FF4]),
+  (0x021DF120, [0xF9400BF5, 0xAA1F03E1, 0xA8C37BFD, 0x140FA845]),
 ];
 
 pub fn preview_labels(language: i32) -> [&'static str; 3] {
@@ -140,8 +148,10 @@ pub(crate) mod native {
   }
 
   unsafe fn taste_name(taste: Object) -> Option<String> {
-    // Cook's localized table already contains display text, not an MSBT key.
-    unsafe { text(field(taste, 0x28)) }
+    // The stored Name is a message key. Reuse the native display-name resolver.
+    unsafe {
+      text(native!(TASTE_NAME, unsafe extern "C" fn(Object, Method) -> Object)(taste, NONE))
+    }
   }
 
   pub(crate) unsafe fn outcome_detail(option: u8, language: i32) -> Option<String> {

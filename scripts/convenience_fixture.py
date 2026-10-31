@@ -46,10 +46,16 @@ class ConvenienceFixture(SettingsFixture):
     elif name == "CURRENT_CHEF": result = self.pids[self.unit_a]
     elif name == "GET_COOK_DATA": result = self.cooks["PID_a"]
     elif name == "TASTE_DATA": result = self.tastes.get(self.read_string(a), 0)
+    elif name == "TASTE_NAME": return False  # Execute the NSO-verified resolver below.
     elif name in ("MESS_GET", "MESSAGE"):
-      # Literal localized text is not a message key. The previous identity
-      # stand-in hid accidental second translations of TasteData.Name.
-      result = a if self.read_string(a).startswith("MID_") else self.string("")
+      key = self.read_string(a)
+      messages = getattr(self, "taste_messages", {})
+      if key in messages:
+        result = self.string(messages[key])
+      elif key.startswith("MID_"):
+        result = a
+      else:
+        result = self.string("")
     elif name == "GRADE_NAME": result = self.string("SS")
     elif name == "STAT_NAME": result = self.string(f"Stat{a}")
     elif name == "IS_CONDITIONAL": result = 1
@@ -222,6 +228,15 @@ class ConvenienceFixture(SettingsFixture):
     self.metadata(0x062840F0)
     self.metadata(0x0628E250)
     self.metadata(0x06292CE0)
+    self.metadata(0x062846A0)
+    self.write(self.game + 0x06317681, b"\0")
+    # TasteData's native display-name resolver, including its final Mess.Get
+    # tail call. All 0x70 bytes are checked against the supplied NSO offline.
+    self.write(self.game + 0x021DF0C0, bytes.fromhex(
+      "fd7bbda9f50b00f9fd030091f44f02a9d5090290340502b0a8065a39945243f9"
+      "f30300aac8000037200502b0005043f9dccb8a9728008052a8061a39800240f9"
+      "731640f908cc44398800083608e040b9480000351bcc8a97e00313aaf44f42a9"
+      "f50b40f9e1031faafd7bc3a845a80f14"))
     self.metadata(0x062B5868, self.string("ordinary"))
     self.unit_a, self.unit_b, invalid = (self.alloc() for _ in range(3))
     self.units = self.list([self.unit_a, self.unit_b, invalid, self.unit_a])
@@ -278,21 +293,23 @@ class ConvenienceFixture(SettingsFixture):
     assert call(hooks["CURRENT_CHEF"]) == self.pids[self.unit_a]
     self.units = self.list([self.unit_a, self.unit_b, invalid])
 
+    name_keys = ("MID_FOODRANK_Woman", "MID_FIXTURE_FOODRANK_2", "MID_FIXTURE_FOODRANK_3")
+    for index, key in enumerate(name_keys):
+      self.qword(self.tastes[f"taste{index}"] + 0x28, self.string(key))
     localized_names = (
       ("霸王的", "美味的", "入口即化的"),
       ("Savory", "Delicious", "Melting"),
       ("覇王の", "おいしい", "とろける"),
     )
     for names in localized_names:
-      for index, label in enumerate(names):
-        self.qword(self.tastes[f"taste{index}"] + 0x28, self.string(label))
+      self.taste_messages = dict(zip(name_keys, names))
       for option, label in enumerate(names, 1):
         assert change(outcome, option) == 4096
-        assert self.read_string(self.pointer(outcome + 0x70)) == label, "display localized TasteData.Name directly, without a second message lookup"
-        assert label in self.read_string(self.pointer(outcome + 0x78))
+        assert self.read_string(self.pointer(outcome + 0x70)) == label, "resolve the stored message key through the native name function"
+        detail = self.read_string(self.pointer(outcome + 0x78))
+        assert label in detail and "MID_" not in detail, "preview help must use the same localized name"
     assert change(outcome, 0) == 4096
-    for index, label in enumerate(localized_names[0]):
-      self.qword(self.tastes[f"taste{index}"] + 0x28, self.string(label))
+    self.taste_messages = dict(zip(name_keys, localized_names[0]))
     assert change(outcome, 3) == 4096
     detail = self.read_string(self.pointer(outcome + 0x78))
     for part in ("SS", "入口即化的", "Stat1 +3", "Stat2 -1", "料理基础能力 +2", "其他能力 +1", "依条件变化"):
