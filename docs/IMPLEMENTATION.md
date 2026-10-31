@@ -5,8 +5,8 @@
 Settings remain in the independent SD file. Existing files retain chef, outcome,
 draw count and support choices; missing new keys take defaults. Zero is the
 nondecreasing selector for rewind and standard training, never zero available uses.
-Seventeen Cobalt callbacks register the options in one flat list: EXP/SP
-multipliers, general preferences, counts, stock, minigames and cooking. There are no category headers
+Thirty-three Cobalt callbacks register one flat list: EXP/SP multipliers,
+one-shot resource amounts, general preferences, counts, stock, minigames and cooking. There are no category headers
 or extra submenus. Cobalt's original PluginSubmenu adds each returned item to the
 native ConfigMenu fullMenuItemList; it owns the menu's lifecycle and scrolling.
 This plugin does not change ConfigMenu's class, visible row count, prefab rows,
@@ -59,6 +59,45 @@ Models already instantiated refresh on the next native rebuild.
 
 The menu uses the game's Simplified Chinese nouns 龙之时水晶, 一般锻炼,
 牵绊戒指 and 支援对话; Chef is the user-requested concise 料理厨师 label.
+
+## One-shot resource amounts
+
+The sixteen new rows follow the two multipliers: SP Target/Amount, gold,
+bond fragments, iron/steel/silver and nine native crystal types. Original
+preference kinds keep their IDs and independent-file encoding. Draft amounts
+and selected PID are thread-local UI state, reset by the first factory on each
+page opening; neither is persisted. A target change resets only pending SP and
+refreshes the adjacent SP row. No managed Unit pointer is retained across calls.
+The native joined Player/Absent unit list is deduplicated by PID, without the
+chef list's CookData filter. All-SP is one absolute target for every selected
+ally; differing actual values display Mixed. Mixed has no implicit target until
+left/right establishes one, starting at zero. SP changes use the native setter,
+not AddSkillPoint, and therefore do not pass through multiplier settlement.
+
+Native ConfigMenu input reaches CustomCall (slot 26). As in Cobalt v1.31.0's
+own PluginSubmenu command, check Pad.IsTrigger(A) at 0x01F23010 there. Item ACall
+remains a no-op. Left/right repeats use ChangeKeyValue(1,0,2,1) for direction,
+then apply resource-specific clamped steps without rounding or wraparound.
+The target selector cycles All and joined allies. Without input, numeric-row
+callbacks return before unit scans, inventory reads, or allocations. No hooks,
+polling, custom submenus, row geometry changes or extra confirmation dialogs
+are added. Apply consumes only the row's draft, refreshes its text and returns
+SeDecide (128) without close/delete bits; B retains the original menu behavior.
+
+Gold uses GameUserData.get/set_Gold (0x0250E440/0x0250E450), and fragments use
+get/set_PieceOfBond (0x0250ECB0/0x0250ECC0). The native fragment setter also
+increments TotalPieceOfBond by a positive delta; lowering current fragments
+does not erase lifetime totals. ItemData.Get uses metadata 0x06287888, with an
+exact whitelist of three ingot and nine crystal IIDs. Get/SetInventory
+(0x027B1920/0x027B1A30) own ordinary game-variable storage and native caps.
+SP uses Unit.get/set_SkillPoint (0x01A54D50/0x01A0E090); its signed-short field
+is never written by custom pointer code. Saving these normal game values is
+left to the game's normal save operation. Future consumption is not overridden.
+
+The provided quantity catalog supplies localized item names. The resource
+amount helper text includes the maximum, step and A-to-apply action. Actual
+clamp values are 9,999,999 for gold/fragments, 9,999 for ingots/SP, and 999 for
+crystals; steps are 100,000, 100 and 10 respectively.
 
 ## EXP and SP settlement
 
@@ -474,7 +513,7 @@ must be checked in-game.
 
 ## Independent in-game settings
 
-Cobalt 1.31.0's `cobapi_register_configmenuitem_cb` registers all seventeen
+Cobalt 1.31.0's `cobapi_register_configmenuitem_cb` registers all thirty-three
 rows directly in Plugin Settings. Their class lookup uses Cobalt's exported IL2CPP
 forwarders. All four added imports were checked in the pinned release's
 `subsdk9` (SHA-256 recorded in `tools/cobalt-imports.json`). No new dependency,
@@ -486,7 +525,7 @@ and CustomCall (26) are replaced; command/help text use the original fields.
 Only the accessed slots must exist, with no arbitrary instance-size or maximum
 vtable-size requirement. Cobalt's Assembly::Load export returns an assembly;
 its image field is passed to class lookup. Distinct static class names identify
-all seventeen options after Cobalt clones their classes again.
+all thirty-three rows after Cobalt clones their classes again.
 Native `ChangeKeyValue(int,int,int,int)` handles the original
 left/right repeat. Labels follow the game's current text language. The count
 is changed in memory only after its independent file has been committed.

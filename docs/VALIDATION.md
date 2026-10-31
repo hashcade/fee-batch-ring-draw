@@ -1,5 +1,36 @@
 # Validation
 
+## Unreleased one-shot resource rows
+
+- Thirty-three callbacks retain the approved flat order and all original
+  preferences. Focused host tests cover that exact order, every resource's
+  maximum/step, non-round tails, upper/lower clamping, mixed SP and formatting.
+- The resource fixture enters through the compiled CustomCall, including a
+  separate native A trigger rather than pretending ordinary item ACall handles
+  settings confirmation. It checks all 33 native select/deselect callbacks
+  through the plugin and Cobalt class copies, including off-screen first visits,
+  reverse traversal and wraps. Original B and InitContent remain intact.
+- Pinned original gold/fragment/SP getters and setters execute in Unicorn;
+  their math callees and generic inventory APIs are modeled boundaries.
+  All twelve material rows are applied independently. Cases verify that
+  left/right does not write, A applies once and returns only SeDecide, positive
+  fragment deltas retain native lifetime accounting, and lowering quantities
+  does not subtract lifetime totals.
+- All-SP assigns rather than adds, includes a reserve ally, deduplicates roster
+  entries and displays Mixed accurately. Single-ally changes leave the other
+  ally untouched. Switching allies and reopening discard unapplied drafts.
+  Reopening reads the current game state, proving no lock/refill behavior.
+  Drafts never enter the settings file; unavailable save data disables edits.
+  Idle numeric callbacks do not enumerate units, read inventory or allocate.
+- The locked Switch release-profile build, eight focused host tests, compiled
+  resource and existing-convenience cases, formatting and whitespace checks
+  pass. Read-only NSO verification passes Build ID, segment checksums and 407
+  instruction windows. Full regression remains CI-owned.
+- Real Unity scrolling/rendering, held/repeated controller input, SD/device
+  behavior and save/reload still require an actual game test. These checks do
+  not establish runtime compatibility with inventory-overriding cheats. No
+  user save or installed mod is changed by these tests.
+
 ## Unreleased arena category
 
 - Move the arena shortcut from Activities to Facilities without changing its

@@ -51,12 +51,29 @@ Fully restart the game after installation or an update.
 
 Open **Settings → Plugin Settings** in the game. All options appear directly
 in one scrolling list, in the following order, without extra group menus.
-Use the original left/right controls; changes save automatically.
+Use the original left/right controls. Preferences save automatically; resource
+amounts are previews until you press A to apply them once.
 
 | Option | Default | Choices |
 | --- | --- | --- |
 | EXP Multiplier | 1× | 1× / 2× / 3× / 5× / 10× / Max Level |
 | SP Multiplier | 1× | 1× / 2× / 3× / 5× / 10× |
+| SP Target | All | All / joined ally |
+| SP Amount | Current / Mixed | 0–9,999; step 100 |
+| Gold | Current | 0–9,999,999; step 100,000 |
+| Bond Fragments | Current | 0–9,999,999; step 100,000 |
+| Iron | Current | 0–9,999; step 100 |
+| Steel | Current | 0–9,999; step 100 |
+| Silver | Current | 0–9,999; step 100 |
+| Mt Crystal | Current | 0–999; step 10 |
+| Crit Crystal | Current | 0–999; step 10 |
+| Dex Crystal | Current | 0–999; step 10 |
+| Spd Crystal | Current | 0–999; step 10 |
+| Def Crystal | Current | 0–999; step 10 |
+| Res Crystal | Current | 0–999; step 10 |
+| Hit Crystal | Current | 0–999; step 10 |
+| Avo Crystal | Current | 0–999; step 10 |
+| Ddg Crystal | Current | 0–999; step 10 |
 | Battle Save | On | On / Off |
 | Personal Outfits | On | On / Off |
 | Automatic Supports | On | On / Off |
@@ -72,6 +89,19 @@ Use the original left/right controls; changes save automatically.
 | Repeat Cooking | On | On / Off |
 | Chef | Native | Native / recruited chef |
 | Cooking Outcome | Native | Native / chef's native outcome branches |
+
+Resource rows read the current quantities on opening. Left/right adjusts a
+temporary target without rounding its existing tail; values stop at the limits.
+A applies only that row and keeps the menu open. Leaving without applying
+discards pending targets on reopening. Applied values are not locked or refilled;
+save normally in the game to retain them.
+
+SP Target selects all joined allies or one ally, including reserve allies.
+All applies the same absolute SP amount to each ally, not an increment.
+Different current SP amounts display **Mixed**; adjusting from Mixed starts a
+target at zero plus the selected step. Changing the target ally discards the
+previous unapplied SP target. Amounts and ally selection are never stored in
+the mod's settings file. These rows do not alter EXP/SP multiplier preferences.
 
 Turning a feature off restores its original behavior on subsequent actions;
 it does not undo previously earned items, scores or progress. Reopen shop/activity

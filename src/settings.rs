@@ -60,6 +60,9 @@ pub fn help(language: i32, failed: bool) -> &'static str {
 pub(crate) mod native;
 
 pub fn option_title(language: i32, kind: usize) -> &'static str {
+  if kind >= crate::resources::TARGET_KIND {
+    return crate::resources::title(language, kind);
+  }
   if kind >= 15 {
     return multiplier_title(language, kind == 16);
   }
@@ -214,9 +217,11 @@ pub fn option_help(language: i32, kind: usize) -> &'static str {
   })[kind.saturating_sub(1).min(2)]
 }
 
-pub const OPTION_COUNT: usize = 17;
-pub const MENU_ORDER: [usize; OPTION_COUNT] =
-  [15, 16, 5, 6, 3, 4, 7, 8, 0, 9, 10, 12, 13, 14, 11, 1, 2];
+pub const OPTION_COUNT: usize = 33;
+pub const MENU_ORDER: [usize; OPTION_COUNT] = [
+  15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 5, 6, 3, 4, 7, 8, 0, 9,
+  10, 12, 13, 14, 11, 1, 2,
+];
 
 fn multiplier_title(language: i32, sp: bool) -> &'static str {
   let labels = match language {

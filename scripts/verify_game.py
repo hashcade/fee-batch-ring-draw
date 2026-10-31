@@ -111,7 +111,8 @@ def verify_game(path: Path) -> int:
   shops = (ROOT / "src/shops.rs").read_text(encoding="utf-8")
   preferences = (ROOT / "src/preferences.rs").read_text(encoding="utf-8")
   outfits = (ROOT / "src/outfits/profile.rs").read_text(encoding="utf-8")
-  signatures = re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings + well + cooking + supports + facilities + shops + preferences + outfits + fishing + gains)
+  resources = (ROOT / "src/resources/profile.rs").read_text(encoding="utf-8")
+  signatures = re.findall(r"\((0x[0-9A-Fa-f]+),\s*\[([^\]]+)\]\)", profile + meld_profile + activities + wyvern + collector + cleaning + arena + bond_talk + settings + well + cooking + supports + facilities + shops + preferences + outfits + fishing + gains + resources)
   if not signatures:
     raise ValueError("no instruction signatures found")
   for address, values in signatures:

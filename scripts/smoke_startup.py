@@ -29,6 +29,7 @@ from shop_fixture import ShopFixture
 from appearance_fixture import AppearanceFixture
 from gains_fixture import GainsFixture
 from support_fixture import SupportFixture
+from resource_fixture import ResourceFixture
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -207,6 +208,7 @@ def smoke(data: bytes, case: str) -> int:
   shop_game = ShopFixture(cpu, GAME, write_game, shop_profile, profile)
   gains_game = GainsFixture(cpu, GAME, write_game, gains_profile, profile)
   support_game = SupportFixture(cpu, GAME, write_game, support_profile + collector + cooking_profile, profile)
+  resource_game = ResourceFixture(cpu, GAME, write_game, settings_profile, profile)
   outfit_offsets = dict((name, int(value, 16)) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", outfit_profile))
   appearance = None
@@ -224,6 +226,8 @@ def smoke(data: bytes, case: str) -> int:
     nonlocal patch_failed, allocation_cursor
     if pc == STOP:
       cpu.emu_stop()
+      return
+    if resource_game.handle(pc, names.get(pc)):
       return
     if support_game.handle(pc, names.get(pc)):
       return
@@ -360,19 +364,19 @@ def smoke(data: bytes, case: str) -> int:
   if cpu.reg_read(registers.UC_ARM64_REG_PC) != STOP:
     raise AssertionError(f"{case}: initialization did not return")
   startup_patch_calls = patch_calls[:]
-  supported = case in ("supported", "shops", "supports", "facilities", "convenience", "dialogue", "menus", "mount_failed", "resource_stock_patch", "wrong_activity_instruction", "patch_failed") or case in configs
+  supported = case in ("supported", "shops", "supports", "resources", "facilities", "convenience", "dialogue", "menus", "mount_failed", "resource_stock_patch", "wrong_activity_instruction", "patch_failed") or case in configs
   expected = expected_hooks if supported else set()
   if set(hooks) != expected or len(hooks) != len(expected):
     raise AssertionError(f"{case}: incorrect hook registration: {hooks}")
   if supported:
-    assert len(settings_callbacks) == 17
+    assert len(settings_callbacks) == 33
     appearance = AppearanceFixture(cpu, GAME, write_game, outfit_offsets.__getitem__, replacements, STOP, STACK + 0x20000 - 0x20)
     settings_game.appearance = appearance
     assert fs_calls.count("mount") == 1
     assert fs_calls.count("unmount") == (case != "mount_failed")
     assert fs_calls.count("close") == (case in configs)
     expected_count = {"config_ten": 10, "config_low": 2, "config_custom": 600, "config_high": 1000}.get(case, 300)
-    if case not in ("shops", "supports", "supports_off", "facilities", "convenience", "dialogue", "menus", "performance"):
+    if case not in ("shops", "supports", "supports_off", "resources", "facilities", "convenience", "dialogue", "menus", "performance"):
       draw_menu.exercise(replacements[offset("COUNT_MENU")], STOP,
         STACK + 0x20000 - 0x20, expected_count)
     if case in ("supported", "shops"):
@@ -380,6 +384,9 @@ def smoke(data: bytes, case: str) -> int:
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", shop_profile) if int(value, 16) in replacements}
       shop_game.exercise(shop_replacements, STOP, STACK + 0x20000 - 0x20, shop_profile)
       print(f"{case}: compiled shop hooks retain unlock lookups, scope unlimited stock and leave saved counts unchanged")
+    if case in ("supported", "resources"):
+      resource_game.exercise_resources(settings_callbacks, STOP, STACK + 0x20000 - 0x20)
+      print(f"{case}: 33 flat settings rows; one-shot resources/SP use native setters, transient previews and no configuration writes")
     if case in ("supported", "supports", "supports_off", "menus"):
       support_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", support_profile)

@@ -17,6 +17,7 @@ pub mod outfits;
 pub mod preferences;
 pub mod profile;
 pub mod random;
+pub mod resources;
 pub mod session;
 pub mod settings;
 pub mod shops;

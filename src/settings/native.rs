@@ -33,6 +33,22 @@ const ITEM_NAMES: [&[u8]; OPTION_COUNT] = [
   b"SomnielFastWyvern\0",
   b"SomnielExpMultiplier\0",
   b"SomnielSpMultiplier\0",
+  b"SomnielSpTarget\0",
+  b"SomnielSpAmount\0",
+  b"SomnielGold\0",
+  b"SomnielBondFragments\0",
+  b"SomnielIron\0",
+  b"SomnielSteel\0",
+  b"SomnielSilver\0",
+  b"SomnielMtCrystal\0",
+  b"SomnielCritCrystal\0",
+  b"SomnielDexCrystal\0",
+  b"SomnielSpdCrystal\0",
+  b"SomnielDefCrystal\0",
+  b"SomnielResCrystal\0",
+  b"SomnielHitCrystal\0",
+  b"SomnielAvoCrystal\0",
+  b"SomnielDdgCrystal\0",
 ];
 static SAVE_FAILED: AtomicBool = AtomicBool::new(false);
 
@@ -65,6 +81,22 @@ pub(crate) fn install() {
     create_fast_wyvern,
     create_exp_multiplier,
     create_sp_multiplier,
+    create_resource::<17>,
+    create_resource::<18>,
+    create_resource::<19>,
+    create_resource::<20>,
+    create_resource::<21>,
+    create_resource::<22>,
+    create_resource::<23>,
+    create_resource::<24>,
+    create_resource::<25>,
+    create_resource::<26>,
+    create_resource::<27>,
+    create_resource::<28>,
+    create_resource::<29>,
+    create_resource::<30>,
+    create_resource::<31>,
+    create_resource::<32>,
   ];
   for kind in MENU_ORDER {
     unsafe { cobapi_register_configmenuitem_cb(callbacks[kind]) };
@@ -105,12 +137,20 @@ unsafe fn private_class(class: Object, kind: usize) -> Option<usize> {
   Some(private as usize)
 }
 
-unsafe extern "C" fn enabled(_: Object, _: Method) -> i32 {
+unsafe extern "C" fn enabled(item: Object, _: Method) -> i32 {
+  let kind = unsafe { kind(item) };
+  if kind >= crate::resources::TARGET_KIND {
+    return i32::from(unsafe { crate::resources::native::enabled(kind) });
+  }
   1
 }
 
 unsafe extern "C" fn no_action(_: Object, _: Method) -> i32 {
   0
+}
+
+unsafe extern "C" fn create_resource<const KIND: usize>() -> Object {
+  unsafe { create_kind(KIND) }
 }
 
 unsafe extern "C" fn create_draw() -> Object {
@@ -175,6 +215,9 @@ unsafe fn kind(item: Object) -> usize {
 
 unsafe fn create_kind(kind: usize) -> Object {
   unsafe {
+    if kind == 15 {
+      crate::resources::native::reset();
+    }
     let class = lookup_class(b"\0", b"ConfigBasicMenuItem\0");
     if class.is_null() {
       return ptr::null_mut();
@@ -194,6 +237,9 @@ unsafe fn create_kind(kind: usize) -> Object {
     // Native OnSelect/OnDeselect own arrow visibility. Setting every row here
     // leaves arrows visible until each row has been selected and deselected.
     reference(item, 0x68, new_text(&localized_title(text_language(), kind)));
+    if kind >= crate::resources::TARGET_KIND {
+      crate::resources::native::attach(item, kind);
+    }
     command(item, NONE);
     description(item, NONE);
     item
@@ -249,9 +295,14 @@ pub(crate) unsafe fn lookup_class(namespace: &[u8], name: &[u8]) -> Object {
 
 unsafe extern "C" fn command(item: Object, _: Method) {
   unsafe {
+    let kind = kind(item);
+    if kind >= crate::resources::TARGET_KIND {
+      reference(item, 0x70, new_text(&crate::resources::native::label(text_language(), kind)));
+      return;
+    }
     let settings = config::current();
     let language = text_language();
-    let label = match kind(item) {
+    let label = match kind {
       1 if !settings.chef.is_empty() => crate::cooking::native::chefs()
         .into_iter()
         .find(|(pid, _)| *pid == settings.chef)
@@ -279,12 +330,18 @@ unsafe extern "C" fn command(item: Object, _: Method) {
 unsafe extern "C" fn description(item: Object, _: Method) {
   unsafe {
     let language = text_language();
+    let kind = kind(item);
+    if kind >= crate::resources::TARGET_KIND {
+      let index = kind.checked_sub(crate::resources::FIRST_VALUE_KIND);
+      reference(item, 0x78, new_text(&crate::resources::help(language, index)));
+      return;
+    }
     let label = if SAVE_FAILED.load(Ordering::Relaxed) {
       help(language, true)
     } else {
-      option_help(language, kind(item))
+      option_help(language, kind)
     };
-    let preview = if !SAVE_FAILED.load(Ordering::Relaxed) && kind(item) == 2 {
+    let preview = if !SAVE_FAILED.load(Ordering::Relaxed) && kind == 2 {
       crate::cooking::native::outcome_detail(config::current().cooking_outcome, language)
     } else {
       None
@@ -294,9 +351,12 @@ unsafe extern "C" fn description(item: Object, _: Method) {
 }
 
 unsafe extern "C" fn change(item: Object, _: Method) -> i32 {
+  let kind = unsafe { kind(item) };
+  if kind >= crate::resources::TARGET_KIND {
+    return unsafe { crate::resources::native::change(item, kind) };
+  }
   let mut settings = config::current();
   let old = settings.clone();
-  let kind = unsafe { kind(item) };
   let change: unsafe extern "C" fn(i32, i32, i32, i32, Method) -> i32 =
     unsafe { core::mem::transmute(base() + CHANGE_NUMBER) };
   match kind {
@@ -368,14 +428,20 @@ unsafe extern "C" fn change(item: Object, _: Method) -> i32 {
   let saved = config::set(settings).is_ok();
   SAVE_FAILED.store(!saved, Ordering::Relaxed);
   unsafe {
-    command(item, NONE);
-    description(item, NONE);
-    let refresh: unsafe extern "C" fn(Object, Method) = core::mem::transmute(base() + UPDATE_TEXT);
-    refresh(item, NONE);
+    refresh(item);
   }
   if saved {
     4096
   } else {
     2048
+  }
+}
+
+pub(crate) unsafe fn refresh(item: Object) {
+  unsafe {
+    command(item, NONE);
+    description(item, NONE);
+    let update: unsafe extern "C" fn(Object, Method) = core::mem::transmute(base() + UPDATE_TEXT);
+    update(item, NONE);
   }
 }
