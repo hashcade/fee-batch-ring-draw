@@ -50,7 +50,6 @@ class ResourceFixture(SettingsFixture):
       (0x032DF3E0, "MINIMUM"),
     ):
       self.functions[self.game + offset] = name
-      self.write(self.game + offset, struct.pack("<I", 0xD65F03C0))
 
   def handle(self, pc, import_name):
     if not self.active or not self.resource_ready:
@@ -90,6 +89,11 @@ class ResourceFixture(SettingsFixture):
     # Check all 33 titles/inherited callbacks and legacy configuration first.
     self.exercise(callbacks, stop, stack)
     self.active = self.resource_ready = True
+    # Only this scenario owns these native-boundary stubs. Inactive fixture
+    # construction must not overwrite another scenario's preinstalled patches.
+    for offset in (0x01F23010, 0x02393F60, 0x01A35BF0, 0x01A22770, 0x001EA710,
+      0x027B1920, 0x027B1A30, 0x032DFB20, 0x032DF3E0):
+      self.write(self.game + offset, struct.pack("<I", 0xD65F03C0))
     self.confirm, self.direction, self.target = False, 0, 0
     self.user = self.alloc()
     self.integer(self.user + 0x58, 327459)

@@ -7,6 +7,9 @@
   ConfigBasicMenuItem classes within one scenario conflicts with private-class
   caches and is not a real-game lifecycle. Keep the inheritance assertions
   intact and isolate these fixture contexts rather than weakening the checks.
+  Resource-boundary instruction stubs are installed only when that scenario
+  starts, never while constructing its inactive fixture, so preinstalled-code
+  compatibility scenarios retain their original instruction bytes.
 - Thirty-three callbacks retain the approved flat order and all original
   preferences. Focused host tests cover that exact order, every resource's
   maximum/step, non-round tails, upper/lower clamping, mixed SP and formatting.
