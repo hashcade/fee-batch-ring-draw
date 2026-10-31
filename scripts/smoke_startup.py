@@ -30,6 +30,7 @@ from appearance_fixture import AppearanceFixture
 from gains_fixture import GainsFixture
 from support_fixture import SupportFixture
 from resource_fixture import ResourceFixture
+from polishing_fixture import PolishingFixture
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -69,7 +70,7 @@ def smoke(data: bytes, case: str) -> int:
   activities = (ROOT / "src/activities.rs").read_text(encoding="utf-8")
   wyvern = (ROOT / "src/wyvern.rs").read_text(encoding="utf-8")
   collector = (ROOT / "src/collector/profile.rs").read_text(encoding="utf-8")
-  cleaning = (ROOT / "src/cleaning.rs").read_text(encoding="utf-8")
+  cleaning = (ROOT / "src/cleaning.rs").read_text(encoding="utf-8") + (ROOT / "src/cleaning/automatic.rs").read_text(encoding="utf-8")
   arena = (ROOT / "src/arena.rs").read_text(encoding="utf-8")
   bond_talk = (ROOT / "src/bond_talk.rs").read_text(encoding="utf-8")
   settings_profile = (ROOT / "src/settings.rs").read_text(encoding="utf-8")
@@ -112,8 +113,6 @@ def smoke(data: bytes, case: str) -> int:
   expected_hooks.update((0x024E8C20, 0x024E8370, 0x01A39D40, 0x01BE1260))
   expected_hooks.update(int(value, 16) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", shop_profile) if name != "LOOKUP")
-  ring_menu = int(re.search(r"pub const RING_MENU: usize = (0x[0-9A-Fa-f]+)", facility_profile).group(1), 16)
-  expected_hooks.add(ring_menu)
   expected_hooks.update(int(value, 16) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", support_profile)
     if name in ("HUB_INIT", "HUB_TICK"))
@@ -156,6 +155,7 @@ def smoke(data: bytes, case: str) -> int:
   for address, words in signatures:
     write_game(GAME + address, words)
   write_game(GAME + offset("BUILD_ID_OFFSET"), build_id if case != "wrong_build_id" else bytes(16))
+  write_game(GAME + 0x0628DD48, bytes(8))
   # Cobalt 1.31 hooks ProcInst.CreateBind before calling any plugin main.
   write_game(GAME + 0x0280A6B0, struct.pack("<I", 0x15186392))
   if case == "wrong_activity_instruction":
@@ -209,6 +209,8 @@ def smoke(data: bytes, case: str) -> int:
   gains_game = GainsFixture(cpu, GAME, write_game, gains_profile, profile)
   support_game = SupportFixture(cpu, GAME, write_game, support_profile + collector + cooking_profile, profile)
   resource_game = ResourceFixture(cpu, GAME, write_game, settings_profile, profile)
+  polishing_game = PolishingFixture(cpu, GAME, write_game,
+    settings_profile + cooking_profile + support_profile + cleaning + collector, profile)
   outfit_offsets = dict((name, int(value, 16)) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", outfit_profile))
   appearance = None
@@ -226,6 +228,8 @@ def smoke(data: bytes, case: str) -> int:
     nonlocal patch_failed, allocation_cursor
     if pc == STOP:
       cpu.emu_stop()
+      return
+    if polishing_game.handle(pc, names.get(pc)):
       return
     if resource_game.handle(pc, names.get(pc)):
       return
@@ -364,19 +368,20 @@ def smoke(data: bytes, case: str) -> int:
   if cpu.reg_read(registers.UC_ARM64_REG_PC) != STOP:
     raise AssertionError(f"{case}: initialization did not return")
   startup_patch_calls = patch_calls[:]
-  supported = case in ("supported", "shops", "supports", "resources", "facilities", "convenience", "dialogue", "menus", "mount_failed", "resource_stock_patch", "wrong_activity_instruction", "patch_failed") or case in configs
+  supported = case in ("supported", "polishing", "shops", "supports", "resources", "facilities", "convenience", "dialogue", "menus", "mount_failed", "resource_stock_patch", "wrong_activity_instruction", "patch_failed") or case in configs
   expected = expected_hooks if supported else set()
   if set(hooks) != expected or len(hooks) != len(expected):
     raise AssertionError(f"{case}: incorrect hook registration: {hooks}")
+  assert 0x023397D0 not in hooks, "do not intercept the native ring-room menu to hide polishing"
   if supported:
-    assert len(settings_callbacks) == 33
+    assert len(settings_callbacks) == 35
     appearance = AppearanceFixture(cpu, GAME, write_game, outfit_offsets.__getitem__, replacements, STOP, STACK + 0x20000 - 0x20)
     settings_game.appearance = appearance
     assert fs_calls.count("mount") == 1
     assert fs_calls.count("unmount") == (case != "mount_failed")
     assert fs_calls.count("close") == (case in configs)
     expected_count = {"config_ten": 10, "config_low": 2, "config_custom": 600, "config_high": 1000}.get(case, 300)
-    if case not in ("shops", "supports", "supports_off", "resources", "facilities", "convenience", "dialogue", "menus", "performance"):
+    if case not in ("polishing", "shops", "supports", "supports_off", "resources", "facilities", "convenience", "dialogue", "menus", "performance"):
       draw_menu.exercise(replacements[offset("COUNT_MENU")], STOP,
         STACK + 0x20000 - 0x20, expected_count)
     if case in ("supported", "shops"):
@@ -386,7 +391,14 @@ def smoke(data: bytes, case: str) -> int:
       print(f"{case}: compiled shop hooks retain unlock lookups, scope unlimited stock and leave saved counts unchanged")
     if case == "resources":
       resource_game.exercise_resources(settings_callbacks, STOP, STACK + 0x20000 - 0x20)
-      print(f"{case}: 33 flat settings rows; one-shot resources/SP use native setters, transient previews and no configuration writes")
+      print(f"{case}: 35 flat settings rows; one-shot resources/SP use native setters, transient previews and no configuration writes")
+    if case == "polishing":
+      polishing_game.exercise(settings_callbacks, STOP, STACK + 0x20000 - 0x20)
+      support_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
+        r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", support_profile)
+        if name in ("HUB_INIT", "HUB_TICK")}
+      polishing_game.exercise_polishing(support_hooks, replacements[next(iter(collector_hooks))])
+      print("polishing: configurable cleaner, native bond caps/records, once-only settlement and Somniel-only/off paths passed modeled boundaries")
     if case in ("supported", "supports", "supports_off", "menus"):
       support_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", support_profile)
@@ -454,7 +466,7 @@ def smoke(data: bytes, case: str) -> int:
       gains_game.exercise(replacements, STOP, STACK + 0x20000 - 0x20, settings_game.configure_multipliers, gains_profile)
       print(f"{case}: compiled cooking choices preserve independent settings and context; automatic-support preferences persist independently")
     if case in ("supported", "facilities", "performance", "menus"):
-      facility_game.exercise(replacements[next(iter(collector_hooks))], replacements[ring_menu], STOP, STACK + 0x20000 - 0x20, facility_profile)
+      facility_game.exercise(replacements[next(iter(collector_hooks))], STOP, STACK + 0x20000 - 0x20, facility_profile)
       print(f"{case}: one outdoor hub entry, three 6/6/5 destination groups, allowances and cleanup passed modeled boundaries")
   else:
     assert not fs_calls, "unsupported executables must not read configuration"
@@ -485,7 +497,7 @@ def main() -> None:
   args = parser.parse_args()
   verify_nro(args.nro)
   for case in ("supported", "wrong_version", "wrong_build_id", "wrong_segment_layout",
-    "wrong_activity_instruction", "patch_failed", "menus", "resource_stock_patch", "supports_off", "resources",
+    "wrong_activity_instruction", "patch_failed", "menus", "resource_stock_patch", "supports_off", "resources", "polishing",
     "mount_failed", "performance", "config_ten", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
     "config_large", "config_short", "config_empty", "config_switches_off"):
     count = smoke(args.nro.read_bytes(), case)

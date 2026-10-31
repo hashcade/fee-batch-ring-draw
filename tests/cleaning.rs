@@ -39,7 +39,12 @@ fn cancel_selection_change_and_wrong_owner_discard_the_plan() {
 fn every_game_language_has_a_clean_all_label() {
   for language in 0..12 {
     assert!(!label(language).is_empty());
+    for actor in [false, true] {
+      assert!(!fee_better_somniel::cleaning::option_title(language, actor).is_empty());
+    }
   }
+  assert_eq!(fee_better_somniel::cleaning::option_title(10, false), "自动研磨");
+  assert_eq!(fee_better_somniel::cleaning::option_title(10, true), "研磨角色");
   assert_eq!(label(10), "全部清洁");
   assert_eq!(label(-1), label(1));
 }

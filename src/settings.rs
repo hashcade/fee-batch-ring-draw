@@ -29,38 +29,14 @@ pub fn title(language: i32) -> &'static str {
   }
 }
 
-pub fn help(language: i32, failed: bool) -> &'static str {
-  if failed {
-    return match language {
-      0 => "設定を保存できません。SDカードを確認してください。設定は変更されていません。",
-      2 | 5 => "Échec de sauvegarde. Vérifiez la carte SD. Le réglage reste inchangé.",
-      3 | 6 => "No se pudo guardar. Comprueba la tarjeta SD. El ajuste no ha cambiado.",
-      7 => "Speichern fehlgeschlagen. SD-Karte prüfen. Einstellung unverändert.",
-      8 => "Salvataggio non riuscito. Controlla la scheda SD. Impostazione invariata.",
-      9 => "無法儲存設定，請檢查SD卡。原設定未改變。",
-      10 => "无法保存设置，请检查SD卡。原设置未改变。",
-      11 => "설정을 저장할 수 없습니다. SD 카드를 확인하세요. 기존 설정은 유지됩니다.",
-      _ => "Cannot save settings. Check the SD card. The previous value is unchanged.",
-    };
-  }
-  match language {
-    0 => "まとめて精製する回数を変更します。1回と10回の選択肢はそのままです。",
-    2 | 5 => "Nombre d'anneaux créés en lot. Les choix 1 et 10 sont conservés.",
-    3 | 6 => "Cantidad de anillos por lote. Se mantienen las opciones de 1 y 10.",
-    7 => "Ringanzahl pro Stapel. Die Optionen für 1 und 10 bleiben erhalten.",
-    8 => "Anelli creati per gruppo. Le opzioni da 1 e 10 rimangono disponibili.",
-    9 => "調整批量精煉次數。保留原版1次及10次選項。",
-    10 => "调整批量精炼次数。保留原版1次和10次选项。",
-    11 => "일괄 정제 횟수를 조정합니다. 기존 1회와 10회 선택지는 유지됩니다.",
-    _ => "Adjust batch ring creation. Original one-ring and ten-ring choices remain available.",
-  }
-}
-
 #[cfg(target_os = "switch")]
 pub(crate) mod native;
 
 pub fn option_title(language: i32, kind: usize) -> &'static str {
-  if kind >= crate::resources::TARGET_KIND {
+  if kind == 33 || kind == 34 {
+    return crate::cleaning::option_title(language, kind == 34);
+  }
+  if crate::resources::is_setting(kind) {
     return crate::resources::title(language, kind);
   }
   if kind >= 15 {
@@ -96,10 +72,10 @@ pub fn default_label(language: i32) -> &'static str {
     3 | 6 => "Normal",
     7 => "Original",
     8 => "Normale",
-    9 => "原版",
-    10 => "原版",
+    9 => "預設",
+    10 => "默认",
     11 => "기본",
-    _ => "Native",
+    _ => "Default",
   }
 }
 
@@ -123,104 +99,23 @@ pub fn outcome_label(language: i32, option: u8) -> &'static str {
     return default_label(language);
   }
   let labels = match language {
-    0 => ["得意料理1", "得意料理2", "得意料理3", "普通", "失敗（通常の抽選）"],
-    2 | 5 => ["Spécialité 1", "Spécialité 2", "Spécialité 3", "Ordinaire", "Échec (tirage normal)"],
-    3 | 6 => {
-      ["Especialidad 1", "Especialidad 2", "Especialidad 3", "Normal", "Fallo (sorteo normal)"]
-    }
-    7 => [
-      "Spezialität 1",
-      "Spezialität 2",
-      "Spezialität 3",
-      "Gewöhnlich",
-      "Misslungen (Originalauswahl)",
-    ],
-    8 => ["Specialità 1", "Specialità 2", "Specialità 3", "Comune", "Fallito (estrazione normale)"],
-    9 => ["廚師特色1", "廚師特色2", "廚師特色3", "普通", "失敗（原版抽選）"],
-    10 => ["厨师特色1", "厨师特色2", "厨师特色3", "普通", "失败（原版抽选）"],
-    11 => ["특기 요리 1", "특기 요리 2", "특기 요리 3", "보통", "실패 (기본 추첨)"],
-    _ => {
-      ["Chef Specialty 1", "Chef Specialty 2", "Chef Specialty 3", "Ordinary", "Bad (Native Roll)"]
-    }
+    0 => ["得意料理1", "得意料理2", "得意料理3", "普通", "失敗"],
+    2 | 5 => ["Spécialité 1", "Spécialité 2", "Spécialité 3", "Ordinaire", "Échec"],
+    3 | 6 => ["Especialidad 1", "Especialidad 2", "Especialidad 3", "Normal", "Fallo"],
+    7 => ["Spezialität 1", "Spezialität 2", "Spezialität 3", "Gewöhnlich", "Misslungen"],
+    8 => ["Specialità 1", "Specialità 2", "Specialità 3", "Comune", "Fallito"],
+    9 => ["廚師特色1", "廚師特色2", "廚師特色3", "普通", "失敗"],
+    10 => ["厨师特色1", "厨师特色2", "厨师特色3", "普通", "失败"],
+    11 => ["특기 요리 1", "특기 요리 2", "특기 요리 3", "보통", "실패"],
+    _ => ["Chef Specialty 1", "Chef Specialty 2", "Chef Specialty 3", "Ordinary", "Failure"],
   };
   labels[usize::from(option.saturating_sub(1).min(4))]
 }
 
-pub fn option_help(language: i32, kind: usize) -> &'static str {
-  if kind >= 15 {
-    return match (language, kind == 16) {
-      (9, false) => "調整經驗倍率，或在獲得經驗時升至目前職業滿級。",
-      (10, false) => "调整经验倍率，或在获得经验时升至本职业满级。",
-      (0, false) => "獲得経験値の倍率、または経験値獲得時に現在の兵種レベルを最大にします。",
-      (9, true) => "獨立調整獲得的SP倍率，不影響技能書。",
-      (10, true) => "独立调整获得的SP倍率，不影响技能书。",
-      (0, true) => "獲得SPの倍率。経験値倍率とは独立。スキルの書は対象外。",
-      (_, false) => "Multiply earned EXP, or reach the current class cap on gaining EXP.",
-      (_, true) => "Multiply earned SP independently of EXP. Skill books stay unchanged.",
-    };
-  }
-  if kind >= 8 {
-    return feature_help(language, kind - 8);
-  }
-  if kind == 0 {
-    return help(language, false);
-  }
-  if kind >= 4 {
-    return preference_help(language, kind);
-  }
-  (match language {
-    0 => [
-      "加入済みの料理当番を選択。通常で元に戻します。",
-      "料理当番の元の出来分岐を選択。食材や報酬は通常どおりです。",
-      "再生可能なC/B/A支援会話だけを順に処理します。",
-    ],
-    2 | 5 => [
-      "Choisir un chef recruté. Normal conserve le roulement du jeu.",
-      "Choisir une branche native du chef. Ingrédients et récompenses restent normaux.",
-      "Traiter uniquement les conversations C/B/A déjà disponibles, dans l'ordre.",
-    ],
-    3 | 6 => [
-      "Elige un cocinero reclutado. Normal conserva el turno original.",
-      "Elige una rama nativa del cocinero. Conserva ingredientes y recompensas.",
-      "Procesa por orden solo las conversaciones C/B/A ya disponibles.",
-    ],
-    7 => [
-      "Rekrutierten Koch wählen. Original behält die normale Rotation bei.",
-      "Originalen Ergebniszweig des Kochs wählen. Zutaten und Belohnungen bleiben normal.",
-      "Nur bereits verfügbare C/B/A-Gespräche nacheinander verarbeiten.",
-    ],
-    8 => [
-      "Scegli un cuoco reclutato. Normale mantiene il turno originale.",
-      "Scegli un ramo originale del cuoco. Ingredienti e ricompense rimangono normali.",
-      "Elabora in ordine solo le conversazioni C/B/A già disponibili.",
-    ],
-    9 => [
-      "選擇已加入的廚師。原版保留當前輪值。",
-      "選擇廚師原生料理分支，保留食材及獎勵處理。",
-      "依序處理已滿足條件的C/B/A支援對話。",
-    ],
-    10 => [
-      "选择已加入的厨师。原版保留当前轮值。",
-      "选择厨师原生料理分支，保留食材和奖励处理。",
-      "依次处理已满足条件的C/B/A支援对话。",
-    ],
-    11 => [
-      "영입한 요리사를 선택합니다. 기본값은 기존 당번을 유지합니다.",
-      "요리사의 기본 결과 분기를 선택합니다. 재료와 보상은 유지됩니다.",
-      "조건을 충족한 C/B/A 지원 회화만 순서대로 처리합니다.",
-    ],
-    _ => [
-      "Choose a joined chef. Native keeps the original rotation.",
-      "Choose the chef's native outcome branch. Keep ingredients and rewards.",
-      "Process only already eligible C/B/A support conversations in order.",
-    ],
-  })[kind.saturating_sub(1).min(2)]
-}
-
-pub const OPTION_COUNT: usize = 33;
+pub const OPTION_COUNT: usize = 35;
 pub const MENU_ORDER: [usize; OPTION_COUNT] = [
-  15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 5, 6, 3, 4, 7, 8, 0, 9,
-  10, 12, 13, 14, 11, 1, 2,
+  15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 5, 6, 3, 33, 34, 4, 7, 8,
+  0, 9, 10, 12, 13, 14, 11, 1, 2,
 ];
 
 fn multiplier_title(language: i32, sp: bool) -> &'static str {
@@ -309,8 +204,8 @@ pub fn feature_title(language: i32, feature: usize) -> &'static str {
       "贈送禮物不消耗",
       "重複料理",
       "快速釣魚",
-      "力量訓練快速滿分",
-      "飛龍小遊戲快速SSS",
+      "肌肉體操快速滿分",
+      "飛龍射手快速SSS",
     ],
     10 => [
       "钓鱼次数不减",
@@ -318,8 +213,8 @@ pub fn feature_title(language: i32, feature: usize) -> &'static str {
       "赠送礼物不消耗",
       "重复料理",
       "快速钓鱼",
-      "力量训练快速满分",
-      "飞龙小游戏快速SSS",
+      "肌肉体操快速满分",
+      "飞龙射手快速SSS",
     ],
     11 => [
       "낚시 횟수 감소 없음",
@@ -338,39 +233,6 @@ pub fn feature_title(language: i32, feature: usize) -> &'static str {
       "Fast Fishing",
       "Fast Perfect Strength Training",
       "Fast SSS Wyvern Ride",
-    ],
-  };
-  labels[feature]
-}
-
-fn feature_help(language: i32, feature: usize) -> &'static str {
-  let labels = match language {
-    10 => [
-      "不扣除钓鱼次数。次数已用完时提供一次可用次数。",
-      "武器店、道具店及跳蚤市场库存无限，价格和解锁条件不变。",
-      "普通礼物不消耗库存，也可在零库存时赠送。",
-      "允许在两场战斗之间重复料理。",
-      "缩短等待并简化钓起过程，不改变次数设置。",
-      "快速完成力量训练并获得满分，不增加训练次数。",
-      "快速按当前难度的SSS门槛结算，不增加游玩次数。",
-    ],
-    9 => [
-      "不扣除釣魚次數。次數已用完時提供一次可用次數。",
-      "武器店、道具店及跳蚤市場庫存無限，價格與解鎖條件不變。",
-      "普通禮物不消耗庫存，也可在零庫存時贈送。",
-      "允許在兩場戰鬥之間重複料理。",
-      "縮短等待並簡化釣起過程，不改變次數設定。",
-      "快速完成力量訓練並獲得滿分，不增加訓練次數。",
-      "快速按目前難度的SSS門檻結算，不增加遊玩次數。",
-    ],
-    _ => [
-      "Do not spend fishing uses. An exhausted session receives one available use.",
-      "Unlimited armory, item-shop and flea-market stock; keep prices and unlocks.",
-      "Give ordinary gifts without consuming copies, including at zero stock.",
-      "Allow repeated cooking between battles.",
-      "Shorten bite waits and simplify landing, independently of use limits.",
-      "Finish strength training quickly with a perfect result; keep its allowance.",
-      "Finish at the difficulty's SSS threshold; keep its native allowance.",
     ],
   };
   labels[feature]
@@ -426,33 +288,4 @@ pub fn count_label(language: i32, count: u32) -> String {
     _ => "Nondecreasing",
   }
   .to_owned()
-}
-
-fn preference_help(language: i32, kind: usize) -> &'static str {
-  match language {
-    9 => match kind {
-      4 => "選擇使用次數或不減。保留原版解鎖條件及可回溯紀錄。",
-      5 => "允許在戰鬥中儲存。",
-      6 => "戰鬥及整備時使用角色初始職業服裝。重新建立模型時生效。",
-      _ => "每輪一般鍛鍊的總次數，或不減。不改變特別指名鍛鍊。",
-    },
-    10 => match kind {
-      4 => "选择使用次数或不减。保留原版解锁条件及可回溯记录。",
-      5 => "允许在战斗中保存。",
-      6 => "战斗及整备时使用角色初始职业服装。重新建立模型时生效。",
-      _ => "每轮一般锻炼的总次数，或不减。不改变特别指名锻炼。",
-    },
-    0 => match kind {
-      4 => "使用回数または減らない設定。解禁条件と巻き戻せる記録はそのまま。",
-      5 => "戦闘中のセーブを許可します。",
-      6 => "戦闘・準備画面で初期兵種の衣装を使用。モデル再生成時に反映。",
-      _ => "通常鍛錬の合計回数、または減らない設定。特別指名鍛錬は変更しません。",
-    },
-    _ => match kind {
-      4 => "Choose a use limit or Nondecreasing. Keep native unlocks and recorded history.",
-      5 => "Allow saving during battle.",
-      6 => "Use original character battle clothing in battle and preparation. Applies on model rebuild.",
-      _ => "Total standard training uses per native reset, or Nondecreasing. Emblem training is unchanged.",
-    },
-  }
 }

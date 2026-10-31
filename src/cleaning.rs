@@ -62,6 +62,24 @@ pub fn label(language: i32) -> &'static str {
   }
 }
 
+pub fn option_title(language: i32, actor: bool) -> &'static str {
+  let labels = match language {
+    0 => ["自動研磨", "研磨する仲間"],
+    2 | 5 => ["Polissage automatique", "Personnage du polissage"],
+    3 | 6 => ["Pulido automático", "Personaje del pulido"],
+    7 => ["Automatisch polieren", "Polierender Charakter"],
+    8 => ["Lucidatura automatica", "Personaggio lucidatura"],
+    9 => ["自動研磨", "研磨角色"],
+    10 => ["自动研磨", "研磨角色"],
+    11 => ["자동 연마", "연마 캐릭터"],
+    _ => ["Auto Polish", "Polishing Character"],
+  };
+  labels[usize::from(actor)]
+}
+
+#[cfg(target_os = "switch")]
+pub(crate) mod automatic;
+
 pub const CREATE_MENU: usize = 0x0241A430;
 pub const CREATE_CLEANING: usize = 0x0241AF90;
 pub const END_SEQUENCE: usize = 0x0241C110;
@@ -79,6 +97,15 @@ pub const GET_UNIT: usize = 0x0241CA10;
 pub const ADD_BOND_EXP: usize = 0x0241FB10;
 
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
+  (0x001FD360, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xF9400C14]),
+  (0x02340600, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xAA0103F3]),
+  (0x02340700, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xF9401C00]),
+  (0x0233EB20, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
+  (0x027CA680, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xF001DA73]),
+  (0x027CCA60, [0xD10183FF, 0xA9017BFD, 0x910043FD, 0xF90013F9]),
+  (0x0241FB60, [0x7200029F, 0x52800068, 0x1A9F1108, 0x7100027F]),
+  (0x0241FA2C, [0xAA1F03E0, 0x940EAB14, 0x9400010B, 0xA9424FF4]),
+  (0x0241FA3C, [0xAA1F03E1, 0xA94157F6, 0xA8C37BFD, 0x140EB406]),
   (0x0241A430, [0xA9BC7BFD, 0xF9000BF7, 0x910003FD, 0xA90257F6]),
   (0x0241AF90, [0xD10203FF, 0xA9027BFD, 0x910083FD, 0xF9001BFB]),
   (0x0241C110, [0xA9BB7BFD, 0xF9000BF9, 0x910003FD, 0xA9025FF8]),

@@ -4,6 +4,28 @@ pub const TARGET_KIND: usize = 17;
 pub const FIRST_VALUE_KIND: usize = 18;
 pub const VALUE_COUNT: usize = 15;
 
+pub fn is_setting(kind: usize) -> bool {
+  (TARGET_KIND..FIRST_VALUE_KIND + VALUE_COUNT).contains(&kind)
+}
+
+pub fn is_value(kind: usize) -> bool {
+  (FIRST_VALUE_KIND..FIRST_VALUE_KIND + VALUE_COUNT).contains(&kind)
+}
+
+pub fn apply_hint(language: i32) -> &'static str {
+  match language {
+    0 => "Aボタンで適用",
+    2 | 5 => "A pour appliquer",
+    3 | 6 => "Pulsa A para aplicar",
+    7 => "Mit A anwenden",
+    8 => "Premi A per applicare",
+    9 => "按 A 鍵套用",
+    10 => "按 A 键应用",
+    11 => "A로 적용",
+    _ => "Press A to apply",
+  }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct Resource {
   pub maximum: i32,
@@ -76,26 +98,6 @@ pub fn mixed_label(language: i32) -> &'static str {
     9 | 10 => "不一致",
     11 => "서로 다름",
     _ => "Mixed",
-  }
-}
-
-pub fn help(language: i32, index: Option<usize>) -> String {
-  let Some(index) = index else {
-    return match language {
-      0 => "全員または加入済みの仲間を選択。数値は次の行で変更します。",
-      9 => "選擇全員或已加入角色，在下一行調整SP。",
-      10 => "选择全员或已加入角色，在下一行调整SP。",
-      _ => "Choose all joined allies or one ally; adjust SP on the next row.",
-    }
-    .to_owned();
-  };
-  let resource = RESOURCES[index];
-  let (maximum, step) = (number(resource.maximum), number(resource.step));
-  match language {
-    0 => format!("上限{maximum}・刻み{step}。左右で調整、Aで適用。固定しません。"),
-    9 => format!("上限{maximum}・步長{step}。左右調整，A套用一次，不鎖定。"),
-    10 => format!("上限{maximum}・步长{step}。左右调整，A应用一次，不锁定。"),
-    _ => format!("Max {maximum} · Step {step}. Left/right: adjust. A: apply once, not lock."),
   }
 }
 

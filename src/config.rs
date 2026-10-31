@@ -10,6 +10,7 @@ pub const DEFAULT_DRAW_COUNT: u32 = 300;
 pub const MAX_DRAW_COUNT: u32 = 1000;
 pub const MAX_USE_COUNT: u32 = 1000;
 pub const MAX_CONFIG_BYTES: usize = 4096;
+pub const DEFAULT_POLISHER: &str = "PID_リュール";
 static DRAW_COUNT: AtomicU32 = AtomicU32::new(DEFAULT_DRAW_COUNT);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -21,6 +22,8 @@ pub struct Settings {
   pub chef: String,
   pub cooking_outcome: u8,
   pub auto_support: bool,
+  pub auto_polish: bool,
+  pub polish_actor: String,
   /// Zero means nondecreasing, not zero available uses.
   pub rewind_count: u32,
   pub battle_save: bool,
@@ -103,6 +106,8 @@ impl Default for Settings {
       chef: String::new(),
       cooking_outcome: 0,
       auto_support: true,
+      auto_polish: true,
+      polish_actor: DEFAULT_POLISHER.to_owned(),
       rewind_count: 0,
       battle_save: true,
       personal_outfits: true,
@@ -126,6 +131,9 @@ impl Settings {
       && self.rewind_count <= MAX_USE_COUNT
       && self.arena_count <= MAX_USE_COUNT
       && self.cooking_outcome <= 5
+      && self.polish_actor.starts_with("PID_")
+      && self.polish_actor.len() <= 128
+      && !self.polish_actor.chars().any(|c| c.is_control() || matches!(c, '=' | '#' | ' '))
       && (self.chef.is_empty()
         || self.chef.starts_with("PID_")
           && self.chef.len() <= 128
@@ -142,6 +150,12 @@ impl Settings {
     }
     if !self.auto_support {
       result.push_str("auto_support=0\n");
+    }
+    if !self.auto_polish {
+      result.push_str("auto_polish=0\n");
+    }
+    if self.polish_actor != DEFAULT_POLISHER {
+      result.push_str(&format!("polish_actor={}\n", self.polish_actor));
     }
     for (key, value, default) in [
       ("rewind_count", self.rewind_count, 0),
@@ -177,6 +191,16 @@ pub fn current() -> Settings {
 #[cfg(target_os = "switch")]
 pub fn auto_support() -> bool {
   SETTINGS.with(|value| value.borrow().auto_support)
+}
+
+#[cfg(target_os = "switch")]
+pub fn auto_polish() -> bool {
+  SETTINGS.with(|value| value.borrow().auto_polish)
+}
+
+#[cfg(target_os = "switch")]
+pub fn polish_actor() -> String {
+  SETTINGS.with(|value| value.borrow().polish_actor.clone())
 }
 
 #[cfg(target_os = "switch")]
@@ -246,6 +270,7 @@ pub fn parse_settings(contents: &str) -> Result<Settings, &'static str> {
         settings.draw_count = value.trim().parse().map_err(|_| "invalid draw_count")?
       }
       "chef" => settings.chef = value.trim().to_owned(),
+      "polish_actor" => settings.polish_actor = value.trim().to_owned(),
       "rewind_count" => {
         settings.rewind_count = value.trim().parse().map_err(|_| "invalid rewind_count")?
       }
@@ -267,11 +292,16 @@ pub fn parse_settings(contents: &str) -> Result<Settings, &'static str> {
       "cooking_outcome" => {
         settings.cooking_outcome = value.trim().parse().map_err(|_| "invalid cooking_outcome")?
       }
-      "auto_support" => {
-        settings.auto_support = match value.trim() {
+      "auto_support" | "auto_polish" => {
+        let enabled = match value.trim() {
           "0" => false,
           "1" => true,
-          _ => return Err("invalid auto_support"),
+          _ => return Err("invalid automatic action switch"),
+        };
+        if key == "auto_support" {
+          settings.auto_support = enabled;
+        } else {
+          settings.auto_polish = enabled;
         }
       }
       _ => {

@@ -44,7 +44,7 @@ pub(crate) fn attach(item: Object, kind: usize) {
   }
 }
 
-unsafe fn roster() -> Vec<(String, String, Object)> {
+pub(crate) unsafe fn roster() -> Vec<(String, String, Object)> {
   unsafe {
     if crate::native::user_data().is_null() {
       return Vec::new();

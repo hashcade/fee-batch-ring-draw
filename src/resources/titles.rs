@@ -42,7 +42,7 @@ pub fn title(language: i32, kind: usize) -> &'static str {
       "SP对象",
       "SP数量",
       "金钱",
-      "羁绊碎片",
+      "牵绊碎片",
       "铁晶石",
       "钢晶石",
       "银晶石",

@@ -86,7 +86,7 @@ class ResourceFixture(SettingsFixture):
     return True
 
   def exercise_resources(self, callbacks, stop, stack):
-    # Check all 33 titles/inherited callbacks and legacy configuration first.
+    # Check all settings titles/inherited callbacks and legacy configuration first.
     self.exercise(callbacks, stop, stack)
     self.active = self.resource_ready = True
     # Only this scenario owns these native-boundary stubs. Inactive fixture

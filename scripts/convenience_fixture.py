@@ -47,8 +47,18 @@ class ConvenienceFixture(SettingsFixture):
     elif name == "GET_COOK_DATA": result = self.cooks["PID_a"]
     elif name == "TASTE_DATA": result = self.tastes.get(self.read_string(a), 0)
     elif name == "TASTE_NAME": return False  # Execute the NSO-verified resolver below.
+    elif name == "LOAD_TEXT":
+      assert self.read_string(a) == "Cook"
+      self.cook_text_refs = getattr(self, "cook_text_refs", 0) + 1
+      result = 1
+    elif name == "FREE_TEXT":
+      assert self.read_string(a) == "Cook" and self.cook_text_refs > 0
+      self.cook_text_refs -= 1
+      result = 1
     elif name in ("MESS_GET", "MESSAGE"):
       key = self.read_string(a)
+      if "FOODRANK" in key:
+        assert getattr(self, "cook_text_refs", 0) > 0, "load Cook messages before resolving dish names"
       messages = getattr(self, "taste_messages", {})
       if key in messages:
         result = self.string(messages[key])
@@ -56,9 +66,6 @@ class ConvenienceFixture(SettingsFixture):
         result = a
       else:
         result = self.string("")
-    elif name == "GRADE_NAME": result = self.string("SS")
-    elif name == "STAT_NAME": result = self.string(f"Stat{a}")
-    elif name == "IS_CONDITIONAL": result = 1
     elif name == "ANIMATION_CREATE":
       self.animation_calls += 1
       result = self.iterator
@@ -278,27 +285,38 @@ class ConvenienceFixture(SettingsFixture):
     assert call(hooks["CURRENT_CHEF"]) == self.pids[self.unit_a]
     self.units = self.list([self.unit_a, self.unit_b, invalid])
 
-    name_keys = ("MID_FOODRANK_Woman", "MID_FIXTURE_FOODRANK_2", "MID_FIXTURE_FOODRANK_3")
+    name_keys = ("MID_FOODRANK_Woman", "MID_FOODRANK_Delicious", "MID_FOODRANK_Melt")
     for index, key in enumerate(name_keys):
       self.qword(self.tastes[f"taste{index}"] + 0x28, self.string(key))
+    # Real entries from Xzonn/FireEmblemEngageData/messages, not invented
+    # translations. The Cook file starts unloaded in this scenario.
     localized_names = (
-      ("霸王的", "美味的", "入口即化的"),
-      ("Savory", "Delicious", "Melting"),
-      ("覇王の", "おいしい", "とろける"),
+      ("大胆的", "美味的", "入口即化的"),
+      ("Audacious ", "Delicious ", "Mouthwatering "),
+      ("大胆な", "おいしい", "とろける"),
     )
     for names in localized_names:
       self.taste_messages = dict(zip(name_keys, names))
       for option, label in enumerate(names, 1):
         assert change(outcome, option) == 4096
         assert self.read_string(self.pointer(outcome + 0x70)) == label, "resolve the stored message key through the native name function"
-        detail = self.read_string(self.pointer(outcome + 0x78))
-        assert label in detail and "MID_" not in detail, "preview help must use the same localized name"
+        assert self.read_string(self.pointer(outcome + 0x78)) == ""
+        assert self.cook_text_refs == 0, "reading a name must not leak a message-file reference"
     assert change(outcome, 0) == 4096
+    for missing in ("", " ", name_keys[0]):
+      self.taste_messages = {name_keys[0]: missing}
+      assert change(outcome, 1) == 4096
+      assert self.read_string(self.pointer(outcome + 0x70)) == "厨师特色1"
+      assert self.cook_text_refs == 0
+      assert change(outcome, 0) == 4096
+    self.taste_messages = {"MID_FOODRANK_DefinitelySuffer": "令人窒息的"}
+    assert change(outcome, 5) == 4096
+    assert self.read_string(self.pointer(outcome + 0x70)) == "令人窒息的"
+    assert self.cook_text_refs == 0
     self.taste_messages = dict(zip(name_keys, localized_names[0]))
     assert change(outcome, 3) == 4096
-    detail = self.read_string(self.pointer(outcome + 0x78))
-    for part in ("SS", "入口即化的", "Stat1 +3", "Stat2 -1", "料理基础能力 +2", "其他能力 +1", "依条件变化"):
-      assert part in detail, detail
+    assert self.read_string(self.pointer(outcome + 0x70)) == "入口即化的"
+    assert self.read_string(self.pointer(outcome + 0x78)) == ""
     assert b"chef=PID_b\n" in self.files[self.paths[0]] and b"cooking_outcome=3\n" in self.files[self.paths[0]]
     call(hooks["DETERMINE_TASTE"], self.unit_b, 4)
     assert self.qualities[-1] == (self.unit_b, 4), "outside cooking must remain native"

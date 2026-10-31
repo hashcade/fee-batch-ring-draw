@@ -88,7 +88,7 @@ pub(crate) mod native {
     call_original!(hub, method);
     if hub.is_null()
       || ENTERED.with(|entered| entered.get() == hub as usize)
-      || !config::auto_support()
+      || (!config::auto_support() && !config::auto_polish())
     {
       return;
     }
@@ -100,7 +100,7 @@ pub(crate) mod native {
         return;
       }
       ENTERED.with(|entered| entered.set(hub as usize));
-      settle_ready();
+      settle_automatic();
     }
   }
 
@@ -112,12 +112,26 @@ pub(crate) mod native {
   }
 
   pub(crate) unsafe fn on_hub_menu(parent: Object) {
-    if parent.is_null() || !config::auto_support() || !unsafe { in_somniel() } {
+    if parent.is_null()
+      || (!config::auto_support() && !config::auto_polish())
+      || !unsafe { in_somniel() }
+    {
       return;
     }
     unsafe {
       let menu: Object = field(parent, 0x38);
       if !menu.is_null() && field::<Object>(menu, 0x38).is_null() {
+        settle_automatic();
+      }
+    }
+  }
+
+  unsafe fn settle_automatic() {
+    unsafe {
+      if config::auto_polish() {
+        crate::cleaning::automatic::settle();
+      }
+      if config::auto_support() {
         settle_ready();
       }
     }

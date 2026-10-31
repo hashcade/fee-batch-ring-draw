@@ -94,8 +94,9 @@ SP uses Unit.get/set_SkillPoint (0x01A54D50/0x01A0E090); its signed-short field
 is never written by custom pointer code. Saving these normal game values is
 left to the game's normal save operation. Future consumption is not overridden.
 
-The provided quantity catalog supplies localized item names. The resource
-amount helper text includes the maximum, step and A-to-apply action. Actual
+The provided quantity catalog supplies localized item names. Plugin Settings
+shows only a localized "Press A to apply" footer hint on one-shot SP/resource
+value rows; every other footer is empty. Actual
 clamp values are 9,999,999 for gold/fragments, 9,999 for ingots/SP, and 999 for
 crystals; steps are 100,000, 100 and 10 respectively.
 
@@ -174,8 +175,9 @@ DeleteAll (32). Each B press closes only the current submenu. Hub entry,
 category, destination and collection help callbacks share an empty-text callback
 rather than repeating their names or borrowing unrelated text beside the selected
 row; native selection/deselection stays intact.
-Only Hub_Solanel sequence 4 is accepted. Remote ring rubbing is hidden because
-it requires the original ring-room scene; normal ring cleaning is unchanged.
+Only Hub_Solanel sequence 4 is accepted. The shortcut leaves the native ring-room
+menu untouched, including the polishing entry and its original availability rules.
+There is no scene-assumption hook hiding RingCleaningItem.
 Activity shortcuts bind the complete original facility sequences, including
 resource loading, actors and scene setup. They do not use reference-mod fake
 fish, fabricated results, extra allowances or hand-written arena settlement.
@@ -225,16 +227,16 @@ the rotation's stored PID. A thread-local Cook owner scopes DetermineTaste to
 that transaction and keeps conditional variation/RNG native. Outside Cook,
 DetermineTaste is untouched. Outcome names use TasteData's native display-name
 resolver at `0x021DF0C0`, which reads the Name key at +0x28 and tail-calls
-Mess.Get in the current game language. The same resolver serves the selected
-value and preview help. Reading the raw Name field directly exposes keys such
-as `MID_FOODRANK_Woman`. The plugin uses this resolver without
-running a roll. Each independent settings edit preserves the other options;
-legacy count-only files remain valid.
-
-Outcome help reads the native grade, signed recipe/other-stat modifiers and
-CapabilitySbyte array. Grade/stat names use game text; conditional templates are
-marked rather than presented as a guaranteed recipient-specific result. No
-Dish constructor, reward API or RNG is invoked for a preview.
+Mess.Get in the current game language. Load the native Cook message file
+(`0x025D3E40`) before reading names: entering settings does not load it.
+Copy the resolved string before balancing that read's reference through
+Mess.Free (`0x025D5D80`); do not accumulate references on every left/right input.
+Reading the raw Name field directly exposes keys such as `MID_FOODRANK_Woman`.
+Empty, whitespace-only and unresolved-key results use the localized option label.
+The bad-result branch uses the native MID_FOODRANK_DefinitelySuffer message.
+No recipe/stat preview or footer description is added. The resolver does not
+run a roll. Each settings edit preserves other options; legacy count-only files
+remain valid.
 
 The preparation shortcut hooks DoCooking's iterator factory, not ExecuteCooking
 or the outer sequence. Only a fresh iterator with its current owner and a settled
@@ -340,6 +342,34 @@ and return-label path is not bypassed; normal individual cleaning is unchanged.
 The helper is verified not to dereference a cleaning controller receiver; it
 does use static selection and native bond-level notification code. Unity menu,
 notification and outer-state-machine behavior still require in-game checks.
+
+Automatic polishing is separate from the manual selection flow. Auto Polish
+defaults on; Polishing Character defaults to `PID_リュール`, follows current
+joined-unit names and persists only the PID in the independent config file.
+Both settings follow Automatic Supports in the flat settings list and have no
+footer help. The existing idle-arrival and exploration-menu callbacks run this
+scan only in Somniel sequence 4, independently of the support toggle. The
+arrival scan runs once; subsequent idle ticks do not enumerate or allocate.
+
+GodPool's list getter (`0x001FD360`, MethodInfo slot `0x0628DD48`) supplies the
+actual GodUnits. Deduplicate shared DLC ring objects; use native state 0/3,
+reserved/escaping flags and dirty state as in the normal selection flow. Set
+dirt to zero once, then use HasBond (`0x02340600`) and AddBondExp (`0x02340700`)
+for the normal three-point finish reward. The native setter retains bond caps.
+CompleteCleaning's global (`0x027CA680`) and per-Emblem (`0x027CCA60`)
+achievement calls run for each completed polishing, even if bond gain is capped.
+GetData (`0x0233EB20`) supplies the Emblem's native GID, without changing static
+selected-ring/cleaner fields. Do not call the outer reward notification or 3D
+controller. A cleaner absent from the current joined roster earns nothing and
+does not consume dirt. No custom save variable, scene child or selector is used.
+
+The compiled polishing fixture executes NSO-verified HasBond, AddBondExp,
+GetData, GetState and the global completion wrapper. It models their lower-level
+dictionary/record boundaries and tests native cap handling, cleaner selection,
+repeated entries, settings persistence, independent toggles and post-battle
+exclusion. This is not a Unity, emulator or Switch runtime test; actual scene
+transitions, manual polishing from shortcuts and saved record updates remain
+in-game verification items.
 
 ## Sommie and existing activity effects
 
@@ -513,7 +543,7 @@ must be checked in-game.
 
 ## Independent in-game settings
 
-Cobalt 1.31.0's `cobapi_register_configmenuitem_cb` registers all thirty-three
+Cobalt 1.31.0's `cobapi_register_configmenuitem_cb` registers all thirty-five
 rows directly in Plugin Settings. Their class lookup uses Cobalt's exported IL2CPP
 forwarders. All four added imports were checked in the pinned release's
 `subsdk9` (SHA-256 recorded in `tools/cobalt-imports.json`). No new dependency,
@@ -521,11 +551,12 @@ game-setting hook, custom save key or global class/vtable edit is required.
 
 The callback constructs ConfigBasicMenuItem using the native constructor and
 gives it a process-lifetime private class. Only BuildAttribute (8), ACall (18)
-and CustomCall (26) are replaced; command/help text use the original fields.
+and CustomCall (26) are replaced; command text uses the original field and
+help text contains only the apply hint on one-shot value rows and is otherwise empty.
 Only the accessed slots must exist, with no arbitrary instance-size or maximum
 vtable-size requirement. Cobalt's Assembly::Load export returns an assembly;
 its image field is passed to class lookup. Distinct static class names identify
-all thirty-three rows after Cobalt clones their classes again.
+all thirty-five rows after Cobalt clones their classes again.
 Native `ChangeKeyValue(int,int,int,int)` handles the original
 left/right repeat. Labels follow the game's current text language. The count
 is changed in memory only after its independent file has been committed.
@@ -538,7 +569,7 @@ commit restores the old name where possible; the reader can also recover the
 previous file after interruption. Successful commits remove the recovery file;
 there is no backup history. All handles and mounts are scoped and released.
 Failures keep the active count unchanged and return the native error sound
-with a localized help message. Unchanged input does not write the SD card.
+without adding footer text. Unchanged input does not write the SD card.
 
 ## Remaining checks after runtime restriction cleanup
 

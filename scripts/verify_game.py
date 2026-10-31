@@ -98,7 +98,7 @@ def verify_game(path: Path) -> int:
   activities = (ROOT / "src/activities.rs").read_text(encoding="utf-8")
   wyvern = (ROOT / "src/wyvern.rs").read_text(encoding="utf-8")
   collector = (ROOT / "src/collector/profile.rs").read_text(encoding="utf-8")
-  cleaning = (ROOT / "src/cleaning.rs").read_text(encoding="utf-8")
+  cleaning = (ROOT / "src/cleaning.rs").read_text(encoding="utf-8") + (ROOT / "src/cleaning/automatic.rs").read_text(encoding="utf-8")
   arena = (ROOT / "src/arena.rs").read_text(encoding="utf-8")
   bond_talk = (ROOT / "src/bond_talk.rs").read_text(encoding="utf-8")
   settings = (ROOT / "src/settings.rs").read_text(encoding="utf-8")
@@ -120,6 +120,12 @@ def verify_game(path: Path) -> int:
     offset = int(address, 16)
     if text[offset:offset + len(expected)] != expected:
       raise ValueError(f"instruction mismatch at {address}")
+  polishing_fixture = (ROOT / "scripts/polishing_fixture.py").read_text(encoding="utf-8")
+  for address, body in re.findall(r'\((0x[0-9A-Fa-f]+), "([0-9a-f]+)"\)', polishing_fixture):
+    expected = bytes.fromhex(body)
+    offset = int(address, 16)
+    if text[offset:offset + len(expected)] != expected:
+      raise ValueError(f"polishing fixture native body mismatch at {address}")
   return len(signatures)
 
 

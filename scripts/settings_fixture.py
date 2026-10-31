@@ -162,17 +162,19 @@ class SettingsFixture(CollectorFixture):
 
     self.invoke = call
 
-    order = [15, 16, *range(17, 33), 5, 6, 3, 4, 7, 8, 0, 9, 10, 12, 13, 14, 11, 1, 2]
-    assert len(callbacks) == 33
-    self.factories = [callbacks[order.index(kind)] for kind in range(33)]
+    order = [15, 16, *range(17, 33), 5, 6, 3, 33, 34, 4, 7, 8, 0, 9, 10, 12, 13, 14, 11, 1, 2]
+    assert len(callbacks) == 35
+    self.factories = [callbacks[order.index(kind)] for kind in range(35)]
     items = [call(callback) for callback in callbacks]
     assert [self.read_string(self.pointer(item + 0x68)) for item in items] == [
-      "经验倍率", "SP倍率", "SP对象", "SP数量", "金钱", "羁绊碎片", "铁晶石", "钢晶石", "银晶石",
+      "经验倍率", "SP倍率", "SP对象", "SP数量", "金钱", "牵绊碎片", "铁晶石", "钢晶石", "银晶石",
       "威力纹晶石", "必杀纹晶石", "技巧纹晶石", "速度纹晶石", "防守纹晶石", "魔防纹晶石", "命中纹晶石", "回避纹晶石", "必避纹晶石",
-      "战斗存档", "专属服装", "自动完成支援对话", "龙之时水晶次数", "一般锻炼次数",
+      "战斗存档", "专属服装", "自动完成支援对话", "自动研磨", "研磨角色", "龙之时水晶次数", "一般锻炼次数",
       "钓鱼次数不减", "牵绊戒指精炼次数", "商店库存无限", "赠送礼物不消耗", "快速钓鱼",
-      "力量训练快速满分", "飞龙小游戏快速SSS", "重复料理", "料理厨师", "料理结果"]
-    for item in items:
+      "肌肉体操快速满分", "飞龙射手快速SSS", "重复料理", "料理厨师", "料理结果"]
+    for kind, item in zip(order, items):
+      hint = "按 A 键应用" if 18 <= kind < 33 else ""
+      assert self.read_string(self.pointer(item + 0x78)) == hint, "only one-shot values show the apply hint"
       copy = self.alloc(self.VTABLE_BYTES)
       self.write(copy, bytes(self.cpu.mem_read(self.pointer(item), self.VTABLE_BYTES)))
       self.qword(item, copy)
@@ -183,14 +185,14 @@ class SettingsFixture(CollectorFixture):
     def arrows():
       return [self.cpu.mem_read(item + 0x80, 1)[0] for item in items]
     assert not any(arrows())
-    # Invoke the pinned native callbacks across all thirty-three rows, including
+    # Invoke the pinned native callbacks across all thirty-five rows, including
     # first visits beyond the initial viewport, reverse traversal and wraps.
     saved = dict(self.files)
-    for index in [*range(33), *range(32, -1, -1), 32, 0]:
+    for index in [*range(35), *range(34, -1, -1), 34, 0]:
       item = items[index]
       cls = self.pointer(item)
       call(self.pointer(cls + 0x138 + 12 * 16), item)
-      assert arrows() == [int(i == index) for i in range(33)]
+      assert arrows() == [int(i == index) for i in range(35)]
       call(self.pointer(cls + 0x138 + 13 * 16), item)
       assert not any(arrows())
     assert self.files == saved
@@ -222,7 +224,7 @@ class SettingsFixture(CollectorFixture):
       assert call(change, item, 0) == 2048
       assert self.files[self.paths[0]] == b"draw_count=1000\n"
       assert self.read_string(self.pointer(item + 0x70)) == "1000"
-      assert "无法保存" in self.read_string(self.pointer(item + 0x78))
+      assert self.read_string(self.pointer(item + 0x78)) == ""
     self.failure, self.next_count = "", 300
     assert call(change, item, 0) == 4096
     assert self.files == {self.paths[0]: b"draw_count=300\n"}

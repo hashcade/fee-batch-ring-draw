@@ -40,6 +40,8 @@ fn extended_settings_round_trip_without_save_variables() {
     chef: "PID_パネトネ".to_owned(),
     cooking_outcome: 3,
     auto_support: false,
+    auto_polish: false,
+    polish_actor: "PID_パネトネ".to_owned(),
     ..Settings::default()
   };
   assert_eq!(parse_settings(&settings.encode()), Ok(settings));
@@ -51,9 +53,23 @@ fn extended_settings_round_trip_without_save_variables() {
     "cooking_outcome=6",
     "auto_support=2",
     "auto_support=1\nauto_support=0",
+    "auto_polish=2",
+    "auto_polish=0\nauto_polish=1",
+    "polish_actor=",
+    "polish_actor=IID_Food",
+    "polish_actor=PID_a=b",
   ] {
     assert!(parse_settings(value).is_err(), "{value}");
   }
+}
+
+#[test]
+fn automatic_polishing_defaults_to_alear_and_keeps_legacy_files() {
+  use fee_better_somniel::config::{parse_settings, DEFAULT_POLISHER};
+  let settings = parse_settings("draw_count=300\n").unwrap();
+  assert!(settings.auto_polish);
+  assert_eq!(settings.polish_actor, DEFAULT_POLISHER);
+  assert_eq!(settings.encode(), "draw_count=300\n");
 }
 
 #[test]
@@ -87,11 +103,14 @@ fn rejects_ambiguous_unknown_or_out_of_range_values() {
 fn settings_labels_follow_all_supported_game_languages() {
   for language in 0..=11 {
     assert!(!fee_better_somniel::settings::title(language).is_empty());
-    assert!(!fee_better_somniel::settings::help(language, false).is_empty());
-    assert!(!fee_better_somniel::settings::help(language, true).is_empty());
-    assert_ne!(
-      fee_better_somniel::settings::help(language, false),
-      fee_better_somniel::settings::help(language, true)
-    );
+    for kind in 0..fee_better_somniel::settings::OPTION_COUNT {
+      assert!(!fee_better_somniel::settings::option_title(language, kind).is_empty());
+    }
+    for option in 0..=5 {
+      let label = fee_better_somniel::settings::outcome_label(language, option);
+      assert!(!label.contains(['(', '（']), "choice labels must not include implementation notes");
+    }
   }
+  assert_eq!(fee_better_somniel::settings::default_label(10), "默认");
+  assert_eq!(fee_better_somniel::settings::outcome_label(10, 5), "失败");
 }

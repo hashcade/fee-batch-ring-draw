@@ -11,10 +11,9 @@ pub const UNIT_PID: usize = 0x01A35BF0;
 pub const UNIT_NAME: usize = 0x01A22770;
 pub const ANIMATION_CREATE: usize = 0x02D82720;
 pub const ANIMATION_MOVE_NEXT: usize = 0x01CE3CF0;
-pub const STAT_NAME: usize = 0x025BCED0;
-pub const GRADE_NAME: usize = 0x021DF2E0;
 pub const TASTE_NAME: usize = 0x021DF0C0;
-pub const IS_CONDITIONAL: usize = 0x021DF130;
+pub const LOAD_TEXT: usize = 0x025D3E40;
+pub const FREE_TEXT: usize = 0x025D5D80;
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x02A64450, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0xD001C5B4]),
   (0x02D86CE0, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
@@ -32,6 +31,8 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x021DF2E0, [0xA9BE7BFD, 0xA9014FF4, 0x910003FD, 0x900209D4]),
   (0x021DF130, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
   (0x021DF0C0, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
+  (0x025D3E40, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
+  (0x025D5D80, [0xA9BD7BFD, 0xF9000BF5, 0x910003FD, 0xA9024FF4]),
   (0x021DF0D0, [0x900209D5, 0xB0020534, 0x395A06A8, 0xF9435294]),
   (0x021DF0E0, [0xAA0003F3, 0x370000C8, 0xB0020520, 0xF9435000]),
   (0x021DF0F0, [0x978ACBDC, 0x52800028, 0x391A06A8, 0xF9400280]),
@@ -39,20 +40,6 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x021DF110, [0x35000048, 0x978ACC1B, 0xAA1303E0, 0xA9424FF4]),
   (0x021DF120, [0xF9400BF5, 0xAA1F03E1, 0xA8C37BFD, 0x140FA845]),
 ];
-
-pub fn preview_labels(language: i32) -> [&'static str; 3] {
-  match language {
-    0 => ["料理の基本能力", "その他の能力", "条件で変化"],
-    2 | 5 => ["Stats du plat", "Autres stats", "Selon conditions"],
-    3 | 6 => ["Atributos del plato", "Otros atributos", "Según condiciones"],
-    7 => ["Gerichtswerte", "Andere Werte", "Bedingungsabhängig"],
-    8 => ["Statistiche del piatto", "Altre statistiche", "Secondo condizioni"],
-    9 => ["料理基礎能力", "其他能力", "依條件變化"],
-    10 => ["料理基础能力", "其他能力", "依条件变化"],
-    11 => ["요리 기본 능력치", "기타 능력치", "조건에 따라 변경"],
-    _ => ["Recipe stats", "Other stats", "Conditional variants"],
-  }
-}
 
 #[cfg(target_os = "switch")]
 pub(crate) mod native {
@@ -144,50 +131,26 @@ pub(crate) mod native {
   }
 
   pub(crate) unsafe fn outcome_name(option: u8) -> Option<String> {
-    unsafe { taste_name(preview_taste(option)?) }
-  }
-
-  unsafe fn taste_name(taste: Object) -> Option<String> {
-    // The stored Name is a message key. Reuse the native display-name resolver.
-    unsafe {
-      text(native!(TASTE_NAME, unsafe extern "C" fn(Object, Method) -> Object)(taste, NONE))
+    if option == 0 {
+      return None;
     }
-  }
-
-  pub(crate) unsafe fn outcome_detail(option: u8, language: i32) -> Option<String> {
     unsafe {
-      let taste = preview_taste(option)?;
-      let labels = preview_labels(language);
-      let grade = native!(GRADE_NAME, unsafe extern "C" fn(Object, Method) -> Object)(taste, NONE);
-      let mut parts = vec![format!("{} · {}", text(grade)?, taste_name(taste)?)];
-      for (offset, label) in [(0x34, labels[0]), (0x35, labels[1])] {
-        let value: i8 = field(taste, offset);
-        if value != 0 {
-          parts.push(format!("{label} {value:+}"));
-        }
-      }
-      let capability: Object = field(taste, 0x38);
-      if !capability.is_null() {
-        let array: Object = field(capability, 0x10);
-        if !array.is_null() {
-          for index in 0..field::<usize>(array, 0x18).min(11) {
-            let value: i8 = field(array, 0x20 + index);
-            if value != 0 {
-              let name =
-                native!(STAT_NAME, unsafe extern "C" fn(i32, Method) -> Object)(index as i32, NONE);
-              if let Some(name) = text(name) {
-                parts.push(format!("{name} {value:+}"));
-              }
-            }
-          }
-        }
-      }
-      // The taste has native derived/conditional definitions. Do not claim
-      // that a template preview is the final recipe/recipient-specific total.
-      if native!(IS_CONDITIONAL, unsafe extern "C" fn(Object, Method) -> bool)(taste, NONE) {
-        parts.push(labels[2].to_owned());
-      }
-      Some(parts.join(" · "))
+      // Cooking messages are not loaded just by entering Plugin Settings.
+      let file = crate::meld::native::new_text("Cook");
+      native!(LOAD_TEXT, unsafe extern "C" fn(Object, Method) -> bool)(file, NONE);
+      let name = if option == 5 {
+        text(native!(
+          crate::meld::profile::MESS_GET,
+          unsafe extern "C" fn(Object, Method) -> Object
+        )(crate::meld::native::new_text("MID_FOODRANK_DefinitelySuffer"), NONE))
+      } else {
+        preview_taste(option).and_then(|taste| {
+          text(native!(TASTE_NAME, unsafe extern "C" fn(Object, Method) -> Object)(taste, NONE))
+        })
+      };
+      // Copy the localized value before releasing this read's text reference.
+      native!(FREE_TEXT, unsafe extern "C" fn(Object, Method) -> bool)(file, NONE);
+      name.filter(|name| !name.trim().is_empty() && !name.starts_with("MID_"))
     }
   }
 
