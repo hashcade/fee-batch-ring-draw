@@ -384,7 +384,7 @@ def smoke(data: bytes, case: str) -> int:
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", shop_profile) if int(value, 16) in replacements}
       shop_game.exercise(shop_replacements, STOP, STACK + 0x20000 - 0x20, shop_profile)
       print(f"{case}: compiled shop hooks retain unlock lookups, scope unlimited stock and leave saved counts unchanged")
-    if case in ("supported", "resources"):
+    if case == "resources":
       resource_game.exercise_resources(settings_callbacks, STOP, STACK + 0x20000 - 0x20)
       print(f"{case}: 33 flat settings rows; one-shot resources/SP use native setters, transient previews and no configuration writes")
     if case in ("supported", "supports", "supports_off", "menus"):
@@ -485,7 +485,7 @@ def main() -> None:
   args = parser.parse_args()
   verify_nro(args.nro)
   for case in ("supported", "wrong_version", "wrong_build_id", "wrong_segment_layout",
-    "wrong_activity_instruction", "patch_failed", "menus", "resource_stock_patch", "supports_off",
+    "wrong_activity_instruction", "patch_failed", "menus", "resource_stock_patch", "supports_off", "resources",
     "mount_failed", "performance", "config_ten", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
     "config_large", "config_short", "config_empty", "config_switches_off"):
     count = smoke(args.nro.read_bytes(), case)
