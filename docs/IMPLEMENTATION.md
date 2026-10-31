@@ -204,6 +204,10 @@ bridge passes the enclosing MethodInfo (`x19 - 0x18`) to an allowlisted read
 override, calls native TryGetValue once and replaces only its returned integer.
 This includes sold-out goods without bypassing chapter/additional-stock checks.
 Other shop types, clothing ownership, keys and saved values stay native.
+FleaMarketData.SetupContentList loads its shared-body MethodInfo through
+`0x062B8228`, not the adjacent RegistImpl slot `0x062B8220`. Its native GOT load
+and argument load are verified offline, and compiled fixtures seed the concrete
+wrapper metadata independently of the plugin allowlists.
 
 The bridge uses Cobalt's existing A64HookFunction export. It replays the four
 post-call instructions, preserving AAPCS64 callee-saved registers and the native

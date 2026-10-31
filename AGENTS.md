@@ -18,6 +18,7 @@
 - Do not add arbitrary instance-size, vtable-size, list-length, ancestry-depth, or selection-count limits, nor original callback-address equality gates. Keep actual null/index bounds, feature context, native eligibility and the requested normal transaction rules. Do not add collector inventory/capacity budgets.
 - Run transactions synchronously on the original game menu thread.
 - Preserve native prices, probabilities, acquisition records, achievements, and equipped rings. Unlimited shop stock applies to the armory, item shop and flea market, including sold-out unlocked goods; retain chapter/unlock checks, prices, inventory limits and one-time ownership rules for outfits/accessories. Override stock reads/decrements, not saved inventory or unrelated variables.
+- Pin shop fixture MethodInfo arguments independently from the plugin allowlists and verify concrete native wrapper loads. FleaMarketData.SetupContentList uses metadata slot 0x062B8228; adjacent 0x062B8220 is RegistImpl and must not match the content-list override.
 - Keep the game's original level display. Do not add internal or cumulative level information to the UI.
 - Preview only a copy of RNG state; never advance or restore the live RNG to skip a full result.
 - Stop before an unaffordable or unrecordable result. Never retry after an attempted transaction.

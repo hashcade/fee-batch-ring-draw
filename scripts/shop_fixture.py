@@ -1,6 +1,5 @@
 """Execute the shop-local call-site bridge and modeled native stock boundaries."""
 
-import re
 import struct
 from unicorn import arm64_const as reg
 from collector_fixture import CollectorFixture
@@ -65,10 +64,22 @@ class ShopFixture(CollectorFixture):
     self.active, self.stop, self.stack = True, stop, stack - 0x100
     self.key, self.dictionary = [self.alloc() for _ in range(2)]
     self.value = self.stack + 0x28
-    methods = {}
-    for kind, values in re.findall(r"pub const (\w+_METHODS): \[usize; 3\] = \[([^\]]+)\]", profile):
-      methods[kind] = [self.metadata(int(value, 16)) for value in re.findall(r"0x[0-9A-Fa-f]+", values)]
-    other = self.alloc()
+    # These come from the concrete native wrappers, independently of the
+    # plugin allowlists. Deriving both from the plugin hid the flea-list bug.
+    native_slots = {
+      "CONTENT_METHODS": (0x062A7898, 0x062A2FB8, 0x062B8228),
+      "STOCK_METHODS": (0x062A7A00, 0x062A3120, 0x062B8240),
+      "INFINITY_METHODS": (0x062A7A08, 0x062A3128, 0x062B8248),
+      "PURCHASE_METHODS": (0x062A79F8, 0x062A3118, 0x062B8238),
+    }
+    methods = {kind: [self.metadata(slot) for slot in slots] for kind, slots in native_slots.items()}
+    other = self.metadata(0x062B8220)  # Adjacent RegistImpl is not content-list generation.
+    # Execute the NSO-verified ADRP/LDR and argument load in
+    # FleaMarketData.SetupContentList, not a fabricated MethodInfo argument.
+    self.cpu.emu_start(self.game + 0x0260E884, self.game + 0x0260E88C, count=2)
+    assert self.cpu.reg_read(reg.UC_ARM64_REG_X26) == self.pointer(self.game + 0x062B8228)
+    self.cpu.emu_start(self.game + 0x0260E8DC, self.game + 0x0260E8E0, count=1)
+    assert self.cpu.reg_read(reg.UC_ARM64_REG_X2) == methods["CONTENT_METHODS"][2]
     self.count, self.reads, self.calls = 0, 0, []
     assert set(replacements) == {"LIST_LOOKUP", "STOCK", "INFINITY", "PURCHASE"}
     site = self.game + 0x031FD608

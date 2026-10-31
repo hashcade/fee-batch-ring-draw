@@ -8,12 +8,14 @@ pub const LOOKUP: usize = 0x03C742D0;
 
 // Closed generic MethodInfo slots: armory, item shop, flea market. Other
 // ShopDataBase instantiations must retain their original behavior.
-pub const CONTENT_METHODS: [usize; 3] = [0x062A7898, 0x062A2FB8, 0x062B8220];
+pub const CONTENT_METHODS: [usize; 3] = [0x062A7898, 0x062A2FB8, 0x062B8228];
 pub const STOCK_METHODS: [usize; 3] = [0x062A7A00, 0x062A3120, 0x062B8240];
 pub const INFINITY_METHODS: [usize; 3] = [0x062A7A08, 0x062A3128, 0x062B8248];
 pub const PURCHASE_METHODS: [usize; 3] = [0x062A79F8, 0x062A3118, 0x062B8238];
 
 pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
+  (0x0260E884, [0xD001E55A, 0xF941175A, 0xF9400260, 0x977A0E58]),
+  (0x0260E8DC, [0xF9400342, 0xAA1303E0, 0xAA1403E1, 0xA9444FF4]),
   (0x031FC8E0, [0xD10443FF, 0xA90B7BFD, 0x9102C3FD, 0xA90C6FFC]),
   (0x031FE610, [0xD10143FF, 0xA9017BFD, 0x910043FD, 0xA9025FF8]),
   (0x031FE750, [0xD10143FF, 0xA9017BFD, 0x910043FD, 0xA9025FF8]),

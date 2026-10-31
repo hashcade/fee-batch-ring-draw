@@ -1,5 +1,22 @@
 # Validation
 
+## Unreleased flea-market stock list
+
+- The supplied NSO's FleaMarketData.SetupContentList loads metadata slot
+  `0x062B8228` and passes its MethodInfo to the shared content-list body.
+  The previous plugin allowlist incorrectly used adjacent RegistImpl slot
+  `0x062B8220`, so flea-market content generation retained finite stock.
+- The fixture now seeds concrete wrapper metadata independently of the plugin
+  allowlists and executes the verified native GOT/argument-load instructions.
+  Adjacent RegistImpl and unrelated dictionary reads must retain native behavior.
+  Missing/sold-out, finite and infinite stock cases still cover all three shops.
+- The downloaded v0.3.14 NRO fails the corrected flea-list regression. The new
+  locked build passes the compiled shop checks. Read-only verification passes
+  352 instruction windows, including the flea-market wrapper loads.
+- These are compiled native-boundary checks, not an in-game purchase test.
+  Reopen the flea-market purchase menu after changing its stock setting and
+  verify displayed stock, sold-out entries, repeated purchases and normal prices.
+
 ## Unreleased Somniel-only automatic supports
 
 - Read-only inspection of the supplied NSO confirms that the native support
