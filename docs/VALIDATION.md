@@ -1,5 +1,28 @@
 # Validation
 
+## Unreleased Somniel-only automatic supports
+
+- Read-only inspection of the supplied NSO confirms that the native support
+  item's ACall rejects post-battle sequence 5 at `0x020994E0` and opens the
+  location-restriction message at `0x02099540`. The automatic entry previously
+  included that rejected context.
+- The scene-arrival fixture now forbids relation scans and allocations on
+  repeated idle post-battle ticks. Neither scene arrival nor exploration-menu
+  creation may bind a support sequence or change its native mode flags there.
+  Somniel arrival still exercises busy/loading deferral, successful dispatch,
+  original cleanup and once-per-visit behavior.
+- Compiled private unit/partner menu callbacks fall back to original KeyCall
+  in sequences 2, 3, 5 and 6 without synthesizing A/B input. This includes
+  instances already cloned in the Somniel. No native scene restriction is
+  patched out, and support advancement/achievement/dialogue logic is unchanged.
+- These checks model native boundaries, not actual Unity/controller behavior.
+  Verify the reported freeze no longer occurs after a battle and that ready
+  conversations still finish on returning to the Somniel.
+- The downloaded v0.3.14 NRO fails the new post-battle exclusion regression.
+  The corrected locked release-profile build passes the compiled menu checks,
+  including retained native input outside the Somniel. Formatting and diff
+  whitespace checks also pass; full regression remains CI-owned.
+
 ## v0.3.14 cooking outcome names
 
 - Display TasteData.Name directly from the localized Cook table. Do not send
@@ -250,9 +273,9 @@ in the meld dialog remains in place. Plain 27-slot items do not receive a map
 help slot. Plugin Settings keeps its separate bottom help text and native
 selection/initialization callbacks through both class copies. Automatic support
 menus still dispatch the original A/B results rather than synthetic close bits.
-The scene-arrival fixture covers Somniel and post-battle exploration, busy/non-Main
-deferral, once-per-visit dispatch and restoration without invoking menu virtuals
-on HubSequence. Activity shortcuts reject exhausted allowances.
+The scene-arrival fixture covers Somniel-only dispatch, post-battle exclusion,
+busy/non-Main deferral, once-per-visit dispatch and restoration without invoking
+menu virtuals on HubSequence. Activity shortcuts reject exhausted allowances.
 
 Focused compiled cooking checks cover signed preview modifiers, grade/stat text,
 conditional labels and context-scoped outcome selection. The animation factory
@@ -339,7 +362,7 @@ Use a temporary test save or the user's explicitly chosen test environment. Do n
 - Fish with different rods/fish; confirm quick bite/landing, catch inventory, records, rewards, and unchanged allowance.
 - Run each exercise at available difficulties; confirm quick/perfect result, native reward, and unchanged allowance.
 - Use paid Emblem training below and across bond-conversation thresholds. Confirm exact fragment costs, correct bond/skill growth, conversation completion, equipment/HP restoration, consecutive visits and return to the menu without a fight. Check ordinary training skips its fight but retains EXP, support and allowance use. These require real-game verification; the fixture does not prove settlement or Unity scene completion.
-- At training bond thresholds, confirm automatic message skipping returns to the menu, updates native viewed records and allows subsequent eligible bond levels. Check repeated and DLC Emblems, C/B/A support and selected/replayed bond conversations outside training. Story and Pact Ring events must still play normally. Native Lua events, rewards and callback execution are not emulated by the fixture. Also verify ready ordinary supports dispatch once after Somniel/post-battle scene entry without interrupting entry scripts.
+- At training bond thresholds, confirm automatic message skipping returns to the menu, updates native viewed records and allows subsequent eligible bond levels. Check repeated and DLC Emblems, C/B/A support and selected/replayed bond conversations outside training. Story and Pact Ring events must still play normally. Native Lua events, rewards and callback execution are not emulated by the fixture. Also verify ready ordinary supports dispatch once after Somniel scene entry without interrupting entry scripts, while post-battle exploration never opens their selector automatically.
 - Run Wyvern Ride on each unlocked difficulty, with and without Sommie. Confirm opening, quick ending, SSS score/rank, correct rewards and unchanged eligibility, higher existing records, consecutive visits, cancellation/retirement, and return to the hub. Hit statistics are not fabricated; confirm the original result screen remains usable. These Unity/state-machine checks require in-game verification and are not proven by the modeled fixture.
 - Repeat cooking with different companions/recipes; inspect ingredient handling, support results, meal effects, and packed-lunch behavior.
 - Open the food list at zero and positive stock; inspect Sommie feeding, native inventory handling, and the normal return flow.

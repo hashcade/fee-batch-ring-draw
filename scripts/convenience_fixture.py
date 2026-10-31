@@ -382,6 +382,13 @@ class ConvenienceFixture(SettingsFixture):
     snapshot = bytes(self.cpu.mem_read(relation, 0x40))
     assert call(pair_key, pairs, pair_method) == 128 and self.actions[-1] == (pairs, "A", 2)
     assert bytes(self.cpu.mem_read(relation, 0x40)) == snapshot, "dispatch must not write ranks or EXP"
+    for sequence in (2, 3, 5, 6):
+      self.integer(self.user + 0x28, sequence)
+      before_actions = len(self.actions)
+      assert call(pair_key, pairs, pair_method) == 99, "outside the Somniel keep native partner-menu input"
+      assert call(root_key, root, root_method) == 99, "outside the Somniel keep native unit-menu input"
+      assert len(self.actions) == before_actions, "never synthesize A/B while native input owns the menu"
+    self.integer(self.user + 0x28, 4)
     assert call(pair_key, pairs, pair_method) == 33 and self.actions[-1][1] == "B", "never retry a dispatched pair"
     assert call(root_key, root, root_method) == 33
     self.ready_only = False

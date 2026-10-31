@@ -54,7 +54,9 @@ class FacilityFixture(CollectorFixture):
       self.anchors[a] = (b, item, self.number(b + 0xA0))
       self.events.append(("anchor", a, b, item))
     elif name == "EMPTY_UNIT_LIST": result = self.ready_units if self.ready_units else self.list()
-    elif name == "RELATION": result = self.relation
+    elif name == "RELATION":
+      assert self.number(self.user + 0x28) == 4, "automatic supports must not scan post-battle pairs"
+      result = self.relation
     elif name == "CAN_ADVANCE": result = 1
     elif name in ("HUB_INIT", "HUB_TICK"): self.events.append((name, a))
     elif name == "HUB_IS_MAIN": result = self.is_main
@@ -404,7 +406,7 @@ class FacilityFixture(CollectorFixture):
     assert self.events[-3:] == [("dispose", support), ("open", self.menu), ("footer", self.title)]
     if support_hooks:
       hub = self.alloc()
-      for sequence in (4, 5):
+      for sequence in (5, 4):
         self.integer(self.user + 0x28, sequence)
         self.fishing_remaining = 0
         call(support_hooks["HUB_INIT"], hub)
@@ -420,6 +422,17 @@ class FacilityFixture(CollectorFixture):
         call(support_hooks["HUB_TICK"], hub)
         assert self.pointer(hub + 0x38) == busy
         self.qword(hub + 0x38, 0)
+        if sequence == 5:
+          before_events = len(self.events)
+          self.forbid_allocations = True
+          for _ in range(16): call(support_hooks["HUB_TICK"], hub)
+          self.forbid_allocations = False
+          assert self.pointer(hub + 0x38) == 0, "post-battle exploration must never open the support selector"
+          assert self.mode == [True, False], "leave native support-view flags unchanged"
+          assert all(event[0] == "HUB_TICK" for event in self.events[before_events:])
+          call(hook, self.parent)
+          assert self.pointer(self.menu + 0x38) == 0, "post-battle menu creation must not start support automation"
+          continue
         call(support_hooks["HUB_TICK"], hub)
         child = self.pointer(hub + 0x38)
         assert child and self.mode == [False, True]

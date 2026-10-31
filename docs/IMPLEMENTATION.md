@@ -144,7 +144,7 @@ Fishing, strength training and Wyvern Ride also check their remaining allowance
 before dispatch. Private sequence classes may have fewer virtual slots than a
 BasicMenuItem; callback validation uses the requested slot, not a menu-only minimum.
 
-After HubSequence.Init, the first idle Main tick in sequence 4 or 5 checks ready
+After HubSequence.Init, the first idle Main tick in sequence 4 checks ready
 ordinary supports. Loading, script children and interactions take precedence;
 the check runs once per visit and resets even when a managed address is reused.
 HubMenu opening also checks newly ready pairs. Both entry points bind the complete native
@@ -157,6 +157,11 @@ existing narrow skip branch. Lua, rank advancement, completion callbacks and
 cleanup remain native. No rank/EXP/viewed write API is used by the dispatcher.
 Gallery and Pact Ring calls are excluded. Temporary menu mode flags are restored
 on disposal, independently of settings.
+Post-battle exploration (sequence 5) never starts automation: the original
+support item's ACall rejects sequences 2, 3 and 5 with the location-restriction
+message (`0x020994E0`, `0x0209950C`, `0x02099538`). The plugin retains those
+native rules. Outside sequence 4, private menu KeyCall wrappers return to the
+original input handler rather than sending automatic A/B actions.
 Only menu-origin dispatch reopens a BasicMenu; scene-origin dispatch must not
 call menu virtual slots on HubSequence. Original OnDispose runs in both cases.
 Idle support ticks read only the boolean preference, not a cloned Settings/chef

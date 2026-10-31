@@ -93,7 +93,7 @@ pub(crate) mod native {
     unsafe {
       let user = crate::native::user_data();
       if user.is_null()
-        || !matches!(field::<i32>(user, 0x28), 4 | 5)
+        || field::<i32>(user, 0x28) != 4
         || !field::<Object>(hub, 0x38).is_null()
         || !native!(HUB_IS_MAIN, unsafe extern "C" fn(Object, Method) -> bool)(hub, NONE)
       {
@@ -207,9 +207,16 @@ pub(crate) mod native {
   }
 
   unsafe fn active() -> bool {
-    config::auto_support()
-      && !unsafe { native!(IS_BOND, unsafe extern "C" fn(Method) -> bool)(NONE) }
-      && unsafe { native!(READY_ONLY, unsafe extern "C" fn(Method) -> bool)(NONE) }
+    if !config::auto_support() {
+      return false;
+    }
+    unsafe {
+      let user = crate::native::user_data();
+      !user.is_null()
+        && field::<i32>(user, 0x28) == 4
+        && !native!(IS_BOND, unsafe extern "C" fn(Method) -> bool)(NONE)
+        && native!(READY_ONLY, unsafe extern "C" fn(Method) -> bool)(NONE)
+    }
   }
 
   unsafe fn key(item: Object) -> Option<(usize, usize)> {
