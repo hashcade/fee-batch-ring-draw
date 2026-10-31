@@ -1,4 +1,4 @@
-"""Compiled settings, cooking-context and native support-action boundary checks."""
+"""Compiled settings and cooking-context boundary checks."""
 
 import struct
 from unicorn import arm64_const as reg
@@ -66,20 +66,6 @@ class ConvenienceFixture(SettingsFixture):
       self.qualities.append((a, b))
       result = self.taste_result
     elif name == "COOK": return False  # Execute the modeled native call below.
-    elif name == "IS_BOND": result = self.bond
-    elif name == "READY_ONLY": result = self.ready_only
-    elif name == "RELATION": result = self.relations.get(tuple(sorted((a, b))), 0)
-    elif name == "CAN_ADVANCE": result = int(tuple(sorted((a, b))) in self.relations)
-    elif name == "PAIR_LIST": result = self.pair_list
-    elif name in ("CREATE_SEQUENCE", "CREATE_UNIT_MENU", "CREATE_PAIR_MENU"): pass
-    elif name == "SELECT": self.selection[a] = b
-    elif name == "A_CALL":
-      self.actions.append((a, "A", self.selection[a]))
-      result = 128
-    elif name == "B_CALL":
-      self.actions.append((a, "B", -1))
-      result = 33
-    elif name == "ORIGINAL_KEY": result = 99
     elif name == "CHANGE_NUMBER":
       assert args[2] >= self.next_count >= args[1] and args[3] == 1
       result = self.next_count
@@ -256,8 +242,7 @@ class ConvenienceFixture(SettingsFixture):
         self.qword(values + 0x18, 11)
         self.write(values + 0x20, struct.pack("<11b", 0, 3, -1, 0, 0, 0, 0, 0, 0, 0, 0))
         self.write(taste + 0x34, bytes([2, 1]))
-    self.bond, self.qualities, self.actions, self.selection = False, [], [], {}
-    self.ready_only = True
+    self.qualities = []
     self.taste_result = self.alloc()
 
     def call(address, *args):
@@ -354,69 +339,7 @@ class ConvenienceFixture(SettingsFixture):
     assert self.animation_calls == 5
     self.integer(self.user + 0x28, 4)
 
-    def stub(name, slot):
-      address = self.game + 0x03D00000 + slot * 16
-      self.write(address, struct.pack("<I", 0xD65F03C0))
-      self.functions[address] = name
-      return address
-
-    def menu(parent, items):
-      result, cls = self.alloc(), self.alloc(0x138 + 64 * 16)
-      self.write(cls + 0x126, struct.pack("<H", 64))
-      for slot, name in ((34, "SELECT"), (49, "ORIGINAL_KEY"), (50, "A_CALL"), (51, "B_CALL")):
-        method = self.alloc()
-        self.qword(method, stub(name, slot))
-        self.qword(cls + 0x138 + slot * 16, self.pointer(method))
-        self.qword(cls + 0x138 + slot * 16 + 8, method)
-      self.qword(result, cls)
-      self.qword(result + 0x80, self.list(items))
-      self.qword(result + 0x30, parent)
-      self.qword(parent + 0x38, result)
-      return result
-
-    unit_item, good, pact, bond, unavailable = [self.alloc() for _ in range(5)]
-    self.qword(unit_item + 0x68, self.unit_a)
-    for item in (good, pact, bond, unavailable):
-      self.qword(item + 0x68, self.unit_a)
-      self.qword(item + 0x70, self.unit_b)
-      self.write(item + 0x81, b"\x01")
-    self.qword(bond + 0x78, self.alloc())
-    self.write(unavailable + 0x81, b"\0")
-    self.pair_list = self.list([good])
-    relation = self.alloc()
-    self.integer(relation + 0x18, 1)
-    self.relations = {tuple(sorted((self.unit_a, self.unit_b))): relation}
-    parent = self.alloc()
-    root = menu(parent, [unit_item])
-    call(hooks["CREATE_UNIT_MENU"], parent)
-    root_key = self.pointer(self.pointer(root) + 0x138 + 49 * 16)
-    root_method = self.pointer(self.pointer(root) + 0x138 + 49 * 16 + 8)
-    assert call(root_key, root, root_method) == 128 and self.actions[-1] == (root, "A", 0)
-    pairs = menu(root, [bond, unavailable, good])
-    call(hooks["CREATE_PAIR_MENU"], root, self.unit_a)
-    pair_key = self.pointer(self.pointer(pairs) + 0x138 + 49 * 16)
-    pair_method = self.pointer(self.pointer(pairs) + 0x138 + 49 * 16 + 8)
-    snapshot = bytes(self.cpu.mem_read(relation, 0x40))
-    assert call(pair_key, pairs, pair_method) == 128 and self.actions[-1] == (pairs, "A", 2)
-    assert bytes(self.cpu.mem_read(relation, 0x40)) == snapshot, "dispatch must not write ranks or EXP"
-    for sequence in (2, 3, 5, 6):
-      self.integer(self.user + 0x28, sequence)
-      before_actions = len(self.actions)
-      assert call(pair_key, pairs, pair_method) == 99, "outside the Somniel keep native partner-menu input"
-      assert call(root_key, root, root_method) == 99, "outside the Somniel keep native unit-menu input"
-      assert len(self.actions) == before_actions, "never synthesize A/B while native input owns the menu"
-    self.integer(self.user + 0x28, 4)
-    assert call(pair_key, pairs, pair_method) == 33 and self.actions[-1][1] == "B", "never retry a dispatched pair"
-    assert call(root_key, root, root_method) == 33
-    self.ready_only = False
-    assert call(root_key, root, root_method) == 99, "leave the recall gallery alone"
-    self.ready_only, self.bond = True, True
-    assert call(root_key, root, root_method) == 99
-    self.bond = False
-    call(hooks["CREATE_SEQUENCE"], parent)
-    assert call(root_key, root, root_method) == 128, "a new opening resets attempts even when addresses are reused"
     assert change(support, 0) == 4096 and b"auto_support=0\n" in self.files[self.paths[0]]
-    assert call(root_key, root, root_method) == 99
     assert change(support, 1) == 4096
     assert change(chef, 0) == 4096
     assert self.files == {self.paths[0]: b"draw_count=300\n"}

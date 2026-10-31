@@ -27,28 +27,35 @@
   Reopen the flea-market purchase menu after changing its stock setting and
   verify displayed stock, sold-out entries, repeated purchases and normal prices.
 
-## Unreleased Somniel-only automatic supports
+## Unreleased direct ordinary supports
 
-- Read-only inspection of the supplied NSO confirms that the native support
-  item's ACall rejects post-battle sequence 5 at `0x020994E0` and opens the
-  location-restriction message at `0x02099540`. The automatic entry previously
-  included that rejected context.
-- The scene-arrival fixture now forbids relation scans and allocations on
-  repeated idle post-battle ticks. Neither scene arrival nor exploration-menu
-  creation may bind a support sequence or change its native mode flags there.
-  Somniel arrival still exercises busy/loading deferral, successful dispatch,
-  original cleanup and once-per-visit behavior.
-- Compiled private unit/partner menu callbacks fall back to original KeyCall
-  in sequences 2, 3, 5 and 6 without synthesizing A/B input. This includes
-  instances already cloned in the Somniel. No native scene restriction is
-  patched out, and support advancement/achievement/dialogue logic is unchanged.
-- These checks model native boundaries, not actual Unity/controller behavior.
-  Verify the reported freeze no longer occurs after a battle and that ready
-  conversations still finish on returning to the Somniel.
-- The downloaded v0.3.14 NRO fails the new post-battle exclusion regression.
-  The corrected locked release-profile build passes the compiled menu checks,
-  including retained native input outside the Somniel. Formatting and diff
-  whitespace checks also pass; full regression remains CI-owned.
+- The previous selector/KeyCall automation is removed, including its mode flags,
+  private menu clones and automatic A/B input. Both scene arrival and menu
+  opening now call native progression only for ready ordinary C/B/A relations
+  in Somniel sequence 4. Native manual support/bond menus are not intercepted.
+- The dedicated compiled fixture executes the original Unit LevelUp wrapper,
+  Person LevelUp body and UpdateAchive body, independently pinned against the
+  supplied NSO. Dictionary lookup, native eligibility, linked-Emblem settlement
+  and achievement/friend-list callees remain modeled boundaries. The native
+  relation's EXP byte at +0x1C is not mislabeled as a viewed flag.
+- Cases cover C/B/A advancement, protagonist-specific achievement counts,
+  non-protagonist pairs, duplicate/reversed unit-list entries, null units,
+  unready/A-capped/special relations, failed native lookup, once-per-visit idle
+  behavior, busy/loading deferral, newly ready pairs on menu opening and the
+  disabled independent-file preference. No selector may be created. Menu
+  instance/class/vtable/selection and parent links must remain unchanged.
+- Sequences 2, 3, 5 and 6 cannot scan or settle supports. This retains the
+  previously fixed post-battle exclusion; native ACall rejects that context
+  with the reported location-restriction message.
+- The locked release-profile build, focused supports/supports_off, facilities
+  and convenience compiled checks pass. Read-only Build ID/segment checksum
+  verification passes all 389 current instruction windows. Formatting and
+  whitespace checks pass; full regression remains CI-owned.
+- These are compiled native-boundary checks, not an actual game/save test.
+  On a temporary save, verify ready ranks, achievement totals, support replay
+  availability, reload behavior and that post-battle exploration never opens
+  the selector or restriction dialog automatically. Conversation scripts and
+  actual gallery records are not independently validated by this fixture.
 
 ## Unreleased native cooking outcome names
 
@@ -239,7 +246,7 @@ menu failure by itself.
 | Facility shortcuts | Cross-checked signatures and arguments for all 17 native entry points. Compiled callbacks cover activation, child disposal, original cleanup, parent reopening and footer restoration. The accessory entry uses the full accessory-room sequence. | First-use scene/resource dependencies of each facility, cancellation and repeated returns. |
 | Rings | Compiled draw/meld/cleaning checks cover original and batch selections, settlement boundaries and cancellation. Read-only disassembly confirms AddBondExp uses static ring/unit selection rather than dereferencing the passed controller. | Actual ring-room presentation, native rewards/notifications, consecutive operations. |
 | Well | Checked instance receiver, level and private RNG arguments against the native calculation interface; preview/reroll and grouped result callbacks execute in the fixture. | Real message rendering, pending-to-ready transition and preview versus collected results. |
-| Cooking/support/activities | The combined compiled boundary case covers cooking preferences, support dispatch, ordinary/paid arena, Wyvern difficulty thresholds and activity hooks. | Unity/Lua execution, models, animation transitions, native settlement and saved viewed records. |
+| Cooking/support/activities | Compiled boundary cases cover cooking preferences, direct ready-support settlement, ordinary/paid arena, Wyvern difficulty thresholds and activity hooks. | Unity/Lua execution, models, animation transitions, downstream native callees and actual saved/gallery records. |
 
 The combined `supported` compiled-NRO case passed with 40 registered hooks.
 Offline verification matched all 303 pinned instruction windows. These checks
@@ -274,9 +281,9 @@ These tests model loader/native boundaries. They do not run Unity, render the ga
 The added compiled convenience fixture exercises all four Plugin Settings rows,
 stable-PID chef selection, missing-join fallback, native cooking-branch scoping,
 missing-taste fallback, preservation of other preferences and independent files.
-Support dispatch returns native A/B results, excludes unready/special pairs,
-does not retry dispatched pairs and never writes relation ranks/EXP. Bond and
-gallery modes fall back to original input. The facility fixture binds all seventeen
+The dedicated support fixture now covers native direct settlement instead of
+the retired A/B dispatcher, as detailed above. Manual bond/gallery menus are
+unchanged. The facility fixture binds all seventeen
 menu entry points, tests native cleanup before reopening the parent/footer,
 checks unlock/Somniel gates and keeps the original classes unchanged. Remote
 ring rubbing is hidden on the private shortcut only.
@@ -293,7 +300,8 @@ The facility fixture checks distinct native content and row counts, with
 SetTransformAsSubMenu applied only to categories and their selected outdoor
 entry. Native suspension counters, retained selection and visible/input-owning
 panels are checked through repeated category visits, B returns, reopening,
-all seventeen facility returns and automatic support return. The previous
+all seventeen facility returns. Direct support settlement needs no menu return.
+The previous
 three-column layout was not validated by the user's in-game reports and has
 been replaced by destination pages as described above. Actual Unity placement,
 animations and screen-edge behavior still require game acceptance.
@@ -305,11 +313,10 @@ Compiled fixtures verify that meld, cleaning, well and settings class copies
 retain their inherited B and selection callbacks; the original cancel choice
 in the meld dialog remains in place. Plain 27-slot items do not receive a map
 help slot. Plugin Settings keeps its separate bottom help text and native
-selection/initialization callbacks through both class copies. Automatic support
-menus still dispatch the original A/B results rather than synthetic close bits.
-The scene-arrival fixture covers Somniel-only dispatch, post-battle exclusion,
-busy/non-Main deferral, once-per-visit dispatch and restoration without invoking
-menu virtuals on HubSequence. Activity shortcuts reject exhausted allowances.
+selection/initialization callbacks through both class copies. The dedicated
+support fixture covers Somniel-only native settlement, post-battle exclusion,
+busy/non-Main deferral and once-per-visit scanning without binding any UI or
+invoking menu virtuals on HubSequence. Activity shortcuts reject exhausted allowances.
 
 Focused compiled cooking checks cover signed preview modifiers, grade/stat text,
 conditional labels and context-scoped outcome selection. The animation factory
@@ -345,12 +352,12 @@ checks, not evidence that the real game UI has been displayed.
 The shop fixture does not execute native purchase settlement. Verify actual
 prices, capacity refusal, sold-out unlocked goods and locked chapters in game.
 Activity resource transitions, menu restoration after repeated/cancelled use,
-the meal animation/result flow and scene-arrival support events also need game
+the meal animation/result flow and scene-arrival support settlement also need game
 testing; compiled boundary checks are not a substitute for Unity execution.
 
 Still requiring real-game validation: actual facility menus/resources and their
-header/footer appearance, end-to-end queued Lua support completion and viewed
-records, chef models/names through cooking and reload, and condition-specific
+header/footer appearance, direct support progression and replay availability
+after reload, chef models/names through cooking and condition-specific
 taste variations. The boundary fixtures are not evidence that these Unity flows
 have been played successfully. No user save or installed mod was changed.
 
@@ -396,7 +403,7 @@ Use a temporary test save or the user's explicitly chosen test environment. Do n
 - Fish with different rods/fish; confirm quick bite/landing, catch inventory, records, rewards, and unchanged allowance.
 - Run each exercise at available difficulties; confirm quick/perfect result, native reward, and unchanged allowance.
 - Use paid Emblem training below and across bond-conversation thresholds. Confirm exact fragment costs, correct bond/skill growth, conversation completion, equipment/HP restoration, consecutive visits and return to the menu without a fight. Check ordinary training skips its fight but retains EXP, support and allowance use. These require real-game verification; the fixture does not prove settlement or Unity scene completion.
-- At training bond thresholds, confirm automatic message skipping returns to the menu, updates native viewed records and allows subsequent eligible bond levels. Check repeated and DLC Emblems, C/B/A support and selected/replayed bond conversations outside training. Story and Pact Ring events must still play normally. Native Lua events, rewards and callback execution are not emulated by the fixture. Also verify ready ordinary supports dispatch once after Somniel scene entry without interrupting entry scripts, while post-battle exploration never opens their selector automatically.
+- At training bond thresholds, confirm automatic message skipping returns to the menu, updates native viewed records and allows subsequent eligible bond levels. Check repeated and DLC Emblems, manually selected/replayed C/B/A support and bond conversations outside training. Story and Pact Ring events must still play normally. Native Lua events, rewards and callback execution are not emulated by the fixture. Separately verify direct ready-support settlement after Somniel arrival and menu opening: native ranks/achievement counts/replay availability persist after reload, no selector opens and post-battle exploration remains untouched.
 - Run Wyvern Ride on each unlocked difficulty, with and without Sommie. Confirm opening, quick ending, SSS score/rank, correct rewards and unchanged eligibility, higher existing records, consecutive visits, cancellation/retirement, and return to the hub. Hit statistics are not fabricated; confirm the original result screen remains usable. These Unity/state-machine checks require in-game verification and are not proven by the modeled fixture.
 - Repeat cooking with different companions/recipes; inspect ingredient handling, support results, meal effects, and packed-lunch behavior.
 - Open the food list at zero and positive stock; inspect Sommie feeding, native inventory handling, and the normal return flow.

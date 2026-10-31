@@ -147,24 +147,33 @@ BasicMenuItem; callback validation uses the requested slot, not a menu-only mini
 After HubSequence.Init, the first idle Main tick in sequence 4 checks ready
 ordinary supports. Loading, script children and interactions take precedence;
 the check runs once per visit and resets even when a managed address is reused.
-HubMenu opening also checks newly ready pairs. Both entry points bind the complete native
-MyRoomRelianceSequence as a child. Private KeyCall overrides on its unit/pair
-menus return native ACall/BCall results to TickInput; they do not replace the
-dialogue sequence. Native IsLevelUpOnly/IsGodReliance gates, IsTalk,
-UnitReliance.TryGet and CanLevelUp must permit an ordinary C/B/A pair.
-One unordered pair is attempted once per owning sequence. Messages use the
-existing narrow skip branch. Lua, rank advancement, completion callbacks and
-cleanup remain native. No rank/EXP/viewed write API is used by the dispatcher.
-Gallery and Pact Ring calls are excluded. Temporary menu mode flags are restored
-on disposal, independently of settings.
+HubMenu opening also checks newly ready pairs. Both entry points directly settle
+eligible ordinary C/B/A steps, following the reference mod's native-progression
+approach instead of opening and driving MyRoomRelianceSequence menus.
+The native unit list (`0x02393F60`) supplies joined Player/Absent units. Each
+unordered pair is considered once per scan. UnitReliance.TryGet (`0x01C5A040`)
+must return a relation at level 0..2, and CanLevelUp (`0x01C5A930`) must permit
+the next step. No support points, arbitrary ranks or custom viewed flags are
+written by the plugin. Pact Ring/special levels are excluded.
+
+UnitReliance.LevelUp (`0x01C5ABF0`) delegates to the Person overload
+(`0x01C5A950`), which looks up the real relation, advances its level/EXP and
+updates linked Emblems. After observing exactly one native rank advance, invoke
+MyRoomRelianceCallSequence.UpdateAchive (`0x02098500`). Its full pinned native
+body never reads its receiver, so no fake sequence is allocated. This preserves
+vanilla protagonist-specific A/B achievement counts, clear-reliance records and
+friend-list updates rather than duplicating the reference's manual counters.
+The plugin does not run conversation Lua or create any selection/message UI for
+this direct settlement. Manual support/bond conversations retain their existing
+narrow message-skipping behavior described below. No global CanLevelUp mutation
+hook or support-menu/KeyCall overrides are installed.
+
 Post-battle exploration (sequence 5) never starts automation: the original
-support item's ACall rejects sequences 2, 3 and 5 with the location-restriction
-message (`0x020994E0`, `0x0209950C`, `0x02099538`). The plugin retains those
-native rules. Outside sequence 4, private menu KeyCall wrappers return to the
-original input handler rather than sending automatic A/B actions.
-Only menu-origin dispatch reopens a BasicMenu; scene-origin dispatch must not
-call menu virtual slots on HubSequence. Original OnDispose runs in both cases.
-Idle support ticks read only the boolean preference, not a cloned Settings/chef
+support item's ACall rejects sequences 2, 3 and 5 with a location-restriction
+message. Both automatic entry points require Somniel sequence 4. Menu-origin
+settlement retains the existing menu, class, selection and parent chain; scene
+arrival creates no child sequence and needs no disposal/return choreography.
+Deferred support ticks read only the boolean preference, not a cloned Settings/chef
 string. The already-checked visit gate precedes preference access. Dialogue
 skipping checks Main before inspecting ancestors and caches only process-lifetime
 IL2CPP class metadata; live dialogue pointers and eligibility are never cached.

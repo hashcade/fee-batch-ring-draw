@@ -7,7 +7,7 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 - **EXP and SP rewards:** independently choose 1×, 2×, 3×, 5× or 10× rewards. EXP also offers Max Level: the next positive EXP reward reaches the current class level cap. Keep normal experience/level-up animations, native growth and level/SP caps. No automatic reclassing or stat maximization; skill books stay unchanged.
 - **Unlimited shop stock:** keep unlocked armory, item-shop and flea-market goods available, including sold-out goods. Keep native prices, chapter requirements and inventory limits. Outfit/accessory ownership rules stay unchanged.
 - **Somniel facility shortcuts:** one outdoor menu entry opens Facilities / Activities / Shops beside the main menu. Selecting a category hides both panels and opens a native destination page; B restores the previous menus and selection. Facilities contains the notice board, Ring Chamber, Ancient Well, animal management, jukebox and arena; Activities contains cooking, Sommie, strength training, fishing, Wyvern Ride and recreation; Shops contains the armory, item shop, smithy, boutique and flea market. Each list fits without scrolling. Keep native unlocks, activity allowances, scene setup and cleanup; return to the destination page on facility exit. Ring cleaning remains at its original facility.
-- **Automatic ready supports:** on entering the Somniel, process eligible C/B/A support conversations through their original menus and events once the scene is ready. Opening the Somniel exploration menu also checks newly available pairs. Post-battle exploration does not trigger automation. Do not add support points or force ranks; leave Pact Ring events and the conversation gallery unchanged.
+- **Automatic ready supports:** directly complete eligible ordinary C/B/A supports in the Somniel using native progression and achievement handling, without opening or clicking through the support list. Check on scene arrival and exploration-menu opening. Keep native eligibility; do not add support points or complete Pact Ring events. Post-battle exploration does not trigger automation.
 - **Batch Bond Ring creation:** keep Create One and Create Ten, and add a configurable batch, defaulting to **300**. Batch creation keeps normal costs and probabilities, skips the result animation, and leaves acquired rings in the original ring list.
 - **Single or batch Bond Ring melding:** choose one copy or as many copies of the selected kind and current rank as materials, fragments, and capacity allow, in the original confirmation. Keep normal costs and equipped copies; batch melding automatically skips the result animation.
 - **Single or all-ring cleaning:** keep one-action individual cleaning, or select Polish All at the original facility and choose a cleaner once. Clean eligible dirty rings and bracelets without individual rubbing, keeping native bond rewards for that cleaner.
@@ -115,7 +115,7 @@ has not joined the current save falls back to the original rotation.
 Previewed modifiers describe the taste template, not the final dish's total;
 recipes and recipient conditions still apply normally.
 Automatic Supports defaults to **On**. Mod preferences are not stored in game
-saves; completing a support uses the game's normal progress and viewed records.
+saves; eligible support completion uses the game's native progression APIs.
 
 ## Credits
 

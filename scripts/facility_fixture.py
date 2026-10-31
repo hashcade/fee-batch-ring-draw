@@ -14,8 +14,6 @@ class FacilityFixture(CollectorFixture):
   def handle(self, pc, import_name):
     if not self.active: return False
     name = self.functions.get(pc, import_name)
-    if self.forbid_allocations:
-      assert name not in ("malloc", "calloc", "ALLOCATE_OBJECT"), "idle support ticks must not allocate"
     args = [self.cpu.reg_read(getattr(reg, f"UC_ARM64_REG_X{i}")) for i in range(6)]
     a, b = args[:2]
     result = None
@@ -53,30 +51,12 @@ class FacilityFixture(CollectorFixture):
       assert self.class_name(self.pointer(self.pointer(a + 0x70))) == b"SortieSubMenuContent", "only categories open beside the outdoor menu"
       self.anchors[a] = (b, item, self.number(b + 0xA0))
       self.events.append(("anchor", a, b, item))
-    elif name == "EMPTY_UNIT_LIST": result = self.ready_units if self.ready_units else self.list()
-    elif name == "RELATION":
-      assert self.number(self.user + 0x28) == 4, "automatic supports must not scan post-battle pairs"
-      result = self.relation
-    elif name == "CAN_ADVANCE": result = 1
-    elif name in ("HUB_INIT", "HUB_TICK"): self.events.append((name, a))
-    elif name == "HUB_IS_MAIN": result = self.is_main
+    elif name == "EMPTY_UNIT_LIST": result = self.list()
     elif name == "VARIABLE_NUMBER":
       result = self.fishing_remaining if self.read_string(b) == "G_Fishing_PlayCount" else self.activity_used
     elif pc == self.game + 0x0251F290:
       assert self.read_string(b) == "G_Fishing_PlayCount" and args[2] == 1
       self.fishing_remaining = 1
-    elif name == "IS_BOND": result = self.mode[0]
-    elif name == "READY_ONLY": result = self.mode[1]
-    elif name == "SET_BOND": self.mode[0] = bool(a)
-    elif name == "SET_READY_ONLY": self.mode[1] = bool(a)
-    elif name == "CREATE_SEQUENCE":
-      child = self.alloc()
-      self.qword(child, self.sequence_class)
-      self.qword(child + 0x30, a)
-      self.qword(a + 0x38, child)
-      if a in self.visible:
-        self.visible[child] = True
-      self.events.append(("supports", a))
     elif name == "RING_MENU": pass
     elif name == "ENABLED": result = 1
     elif name == "IS_COMPLETE":
@@ -138,13 +118,11 @@ class FacilityFixture(CollectorFixture):
   def c_read(self, pointer):
     return bytes(self.cpu.mem_read(pointer, 128)).split(b"\0", 1)[0]
 
-  def exercise(self, hook, ring_hook, stop, stack, profile, support_hooks=None):
+  def exercise(self, hook, ring_hook, stop, stack, profile):
     self.active = True
-    self.forbid_allocations = False
     self.reset(4)
     self.visible = {self.menu: True}
     self.anchors, self.suspensions = {}, {}
-    self.ready_units = 0
     self.unlocked = True
     self.chapter_cleared = True
     self.locked_facilities = set()
@@ -156,7 +134,7 @@ class FacilityFixture(CollectorFixture):
     self.qword(self.game + 0x06290F98, cell)
     self.functions[self.game + 0x00203E90] = "FACILITY_GET"
     self.functions[self.game + 0x028A80D0] = "FACILITY_COMPLETE"
-    self.activity_used, self.is_main = 0, True
+    self.activity_used = 0
     self.fishing_remaining = 3
     self.qword(self.user + 0x50, self.alloc())
     self.image, self.title, self.title_class, fields = (self.alloc() for _ in range(4))
@@ -388,61 +366,4 @@ class FacilityFixture(CollectorFixture):
       self.qword(item + 0x10, reopened)
     back(reopened_entries[0])
     assert self.pointer(self.menu + 0x38) == 0
-    self.ready_units = self.list([self.alloc(), self.alloc()])
-    self.relation = self.alloc()
-    self.integer(self.relation + 0x18, 1)
-    self.mode = [True, False]
-    before = bytes(self.cpu.mem_read(self.relation, 0x40))
-    call(hook, self.parent)
-    support = self.pointer(self.menu + 0x38)
-    shown(support)
-    assert support and self.mode == [False, True]
-    assert self.events[-2:] == [("supports", self.menu), ("close", self.menu)]
-    method_info = self.pointer(self.pointer(support) + 0x138 + 10 * 16 + 8)
-    call(method(support, 10), support, method_info)
-    shown(self.menu)
-    assert self.mode == [True, False] and self.pointer(self.menu + 0x38) == 0
-    assert bytes(self.cpu.mem_read(self.relation, 0x40)) == before
-    assert self.events[-3:] == [("dispose", support), ("open", self.menu), ("footer", self.title)]
-    if support_hooks:
-      hub = self.alloc()
-      for sequence in (5, 4):
-        self.integer(self.user + 0x28, sequence)
-        self.fishing_remaining = 0
-        call(support_hooks["HUB_INIT"], hub)
-        assert self.fishing_remaining == int(sequence == 4), "recover exhausted fishing only in the Somniel"
-        self.is_main = False
-        self.forbid_allocations = True
-        call(support_hooks["HUB_TICK"], hub)
-        assert self.pointer(hub + 0x38) == 0
-        self.forbid_allocations = False
-        self.is_main = True
-        busy = self.alloc()
-        self.qword(hub + 0x38, busy)
-        call(support_hooks["HUB_TICK"], hub)
-        assert self.pointer(hub + 0x38) == busy
-        self.qword(hub + 0x38, 0)
-        if sequence == 5:
-          before_events = len(self.events)
-          self.forbid_allocations = True
-          for _ in range(16): call(support_hooks["HUB_TICK"], hub)
-          self.forbid_allocations = False
-          assert self.pointer(hub + 0x38) == 0, "post-battle exploration must never open the support selector"
-          assert self.mode == [True, False], "leave native support-view flags unchanged"
-          assert all(event[0] == "HUB_TICK" for event in self.events[before_events:])
-          call(hook, self.parent)
-          assert self.pointer(self.menu + 0x38) == 0, "post-battle menu creation must not start support automation"
-          continue
-        call(support_hooks["HUB_TICK"], hub)
-        child = self.pointer(hub + 0x38)
-        assert child and self.mode == [False, True]
-        method_info = self.pointer(self.pointer(child) + 0x138 + 10 * 16 + 8)
-        before_events = len(self.events)
-        call(method(child, 10), child, method_info)
-        assert self.events[before_events:] == [("dispose", child)], "HubSequence is not a BasicMenu"
-        assert self.mode == [True, False]
-        self.forbid_allocations = True
-        for _ in range(16): call(support_hooks["HUB_TICK"], hub)
-        self.forbid_allocations = False
-        assert self.pointer(hub + 0x38) == 0, "scan only once per scene visit"
     self.active = False

@@ -28,6 +28,7 @@ from well_fixture import WellFixture
 from shop_fixture import ShopFixture
 from appearance_fixture import AppearanceFixture
 from gains_fixture import GainsFixture
+from support_fixture import SupportFixture
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -114,7 +115,7 @@ def smoke(data: bytes, case: str) -> int:
   expected_hooks.add(ring_menu)
   expected_hooks.update(int(value, 16) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", support_profile)
-    if name in ("CREATE_SEQUENCE", "CREATE_UNIT_MENU", "CREATE_PAIR_MENU", "HUB_INIT", "HUB_TICK"))
+    if name in ("HUB_INIT", "HUB_TICK"))
   expected_hooks.update(int(re.search(
     rf"pub const {name}: usize = (0x[0-9A-Fa-f]+)", meld_profile).group(1), 16)
     for name in ("ON_SELECT", "ON_DECIDE", "ON_YES", "ON_CANCEL", "DESTROY_MENU",
@@ -188,6 +189,7 @@ def smoke(data: bytes, case: str) -> int:
     "config_high": b"draw_count=1000\n", "config_invalid": b"draw_count=1001\n",
     "config_utf8": b"\xff", "config_large": b" " * 4097,
     "config_short": b"draw_count=600\n", "config_empty": b"",
+    "supports_off": b"auto_support=0\n",
     "performance": b"draw_count=300\nchef=PID_performance\n",
     "config_switches_off": b"fishing_unlimited=0\nshop_stock=0\ngift_stock=0\nrepeat_cooking=0\nfast_fishing=0\nfast_training=0\nfast_wyvern=0\n"}
   text = TextFixture(cpu, GAME, STUB + 0xE000, write_game, offset)
@@ -204,6 +206,7 @@ def smoke(data: bytes, case: str) -> int:
   facility_game = FacilityFixture(cpu, GAME, write_game, facility_profile + collector + support_profile, profile)
   shop_game = ShopFixture(cpu, GAME, write_game, shop_profile, profile)
   gains_game = GainsFixture(cpu, GAME, write_game, gains_profile, profile)
+  support_game = SupportFixture(cpu, GAME, write_game, support_profile + collector + cooking_profile, profile)
   outfit_offsets = dict((name, int(value, 16)) for name, value in re.findall(
     r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", outfit_profile))
   appearance = None
@@ -221,6 +224,8 @@ def smoke(data: bytes, case: str) -> int:
     nonlocal patch_failed, allocation_cursor
     if pc == STOP:
       cpu.emu_stop()
+      return
+    if support_game.handle(pc, names.get(pc)):
       return
     if gains_game.handle(pc, names.get(pc)):
       return
@@ -355,7 +360,7 @@ def smoke(data: bytes, case: str) -> int:
   if cpu.reg_read(registers.UC_ARM64_REG_PC) != STOP:
     raise AssertionError(f"{case}: initialization did not return")
   startup_patch_calls = patch_calls[:]
-  supported = case in ("supported", "shops", "facilities", "convenience", "dialogue", "menus", "mount_failed", "resource_stock_patch", "wrong_activity_instruction", "patch_failed") or case in configs
+  supported = case in ("supported", "shops", "supports", "facilities", "convenience", "dialogue", "menus", "mount_failed", "resource_stock_patch", "wrong_activity_instruction", "patch_failed") or case in configs
   expected = expected_hooks if supported else set()
   if set(hooks) != expected or len(hooks) != len(expected):
     raise AssertionError(f"{case}: incorrect hook registration: {hooks}")
@@ -367,7 +372,7 @@ def smoke(data: bytes, case: str) -> int:
     assert fs_calls.count("unmount") == (case != "mount_failed")
     assert fs_calls.count("close") == (case in configs)
     expected_count = {"config_ten": 10, "config_low": 2, "config_custom": 600, "config_high": 1000}.get(case, 300)
-    if case not in ("shops", "facilities", "convenience", "dialogue", "menus", "performance"):
+    if case not in ("shops", "supports", "supports_off", "facilities", "convenience", "dialogue", "menus", "performance"):
       draw_menu.exercise(replacements[offset("COUNT_MENU")], STOP,
         STACK + 0x20000 - 0x20, expected_count)
     if case in ("supported", "shops"):
@@ -375,6 +380,13 @@ def smoke(data: bytes, case: str) -> int:
         r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", shop_profile) if int(value, 16) in replacements}
       shop_game.exercise(shop_replacements, STOP, STACK + 0x20000 - 0x20, shop_profile)
       print(f"{case}: compiled shop hooks retain unlock lookups, scope unlimited stock and leave saved counts unchanged")
+    if case in ("supported", "supports", "supports_off", "menus"):
+      support_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
+        r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", support_profile)
+        if name in ("HUB_INIT", "HUB_TICK")}
+      support_game.exercise(support_hooks, replacements[next(iter(collector_hooks))],
+        STOP, STACK + 0x20000 - 0x20, enabled=case != "supports_off")
+      print(f"{case}: direct supports use native level-up and achievement bodies without menus; Somniel-only and disabled paths passed")
     if case in ("supported", "config_low", "config_custom", "config_high"):
       text.exercise(replacements[offset("BUILD_TEXT")], STOP, STACK + 0x20000 - 0x20,
         expected_count)
@@ -433,12 +445,10 @@ def smoke(data: bytes, case: str) -> int:
         settings_game.active = True
       settings_game.exercise_features(replacements, STOP, STACK + 0x20000 - 0x20, check_disabled)
       gains_game.exercise(replacements, STOP, STACK + 0x20000 - 0x20, settings_game.configure_multipliers, gains_profile)
-      print("supported: compiled cooking choices preserve independent settings and context; support dispatch uses native A/B actions, excludes special/unready pairs and never writes ranks")
+      print(f"{case}: compiled cooking choices preserve independent settings and context; automatic-support preferences persist independently")
     if case in ("supported", "facilities", "performance", "menus"):
-      support_hooks = {name: replacements[int(value, 16)] for name, value in re.findall(
-        r"pub const (\w+): usize = (0x[0-9A-Fa-f]+)", support_profile) if int(value, 16) in replacements}
-      facility_game.exercise(replacements[next(iter(collector_hooks))], replacements[ring_menu], STOP, STACK + 0x20000 - 0x20, facility_profile, support_hooks)
-      print(f"{case}: one outdoor hub entry, three 6/6/5 destination groups, allowances, cleanup and scene-ready support dispatch passed modeled boundaries")
+      facility_game.exercise(replacements[next(iter(collector_hooks))], replacements[ring_menu], STOP, STACK + 0x20000 - 0x20, facility_profile)
+      print(f"{case}: one outdoor hub entry, three 6/6/5 destination groups, allowances and cleanup passed modeled boundaries")
   else:
     assert not fs_calls, "unsupported executables must not read configuration"
     assert not settings_callbacks, "unsupported executables must not register settings"
@@ -468,7 +478,7 @@ def main() -> None:
   args = parser.parse_args()
   verify_nro(args.nro)
   for case in ("supported", "wrong_version", "wrong_build_id", "wrong_segment_layout",
-    "wrong_activity_instruction", "patch_failed", "menus", "resource_stock_patch",
+    "wrong_activity_instruction", "patch_failed", "menus", "resource_stock_patch", "supports_off",
     "mount_failed", "performance", "config_ten", "config_low", "config_custom", "config_high", "config_invalid", "config_utf8",
     "config_large", "config_short", "config_empty", "config_switches_off"):
     count = smoke(args.nro.read_bytes(), case)
