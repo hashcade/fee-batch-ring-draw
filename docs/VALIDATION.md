@@ -1,5 +1,15 @@
 # Validation
 
+## Unreleased arena category
+
+- Move the arena shortcut from Activities to Facilities without changing its
+  original name key, unlock checks, native facility binding or training quota.
+  The three categories now contain six, six and five destinations.
+- Both focused host category tests and the compiled facility callback fixture
+  pass. All seventeen destinations remain unique and fit the original prefab;
+  native B/return behavior remains unchanged. Actual Unity rendering is not
+  exercised by these tests.
+
 ## Unreleased flea-market stock list
 
 - The supplied NSO's FleaMarketData.SetupContentList loads metadata slot

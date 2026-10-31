@@ -81,8 +81,8 @@ pub struct MenuGroup {
 // One outdoor entry opens these categories; all destination lists fit the
 // original prefab without custom scrolling or additional outdoor entries.
 pub const GROUPS: &[MenuGroup] = &[
-  MenuGroup { facilities: &[0, 1, 2, 3, 9] },
-  MenuGroup { facilities: &[10, 11, 12, 13, 14, 15, 16] },
+  MenuGroup { facilities: &[0, 1, 2, 3, 9, 10] },
+  MenuGroup { facilities: &[11, 12, 13, 14, 15, 16] },
   MenuGroup { facilities: &[4, 5, 6, 7, 8] },
 ];
 
@@ -107,7 +107,9 @@ mod tests {
 
   #[test]
   fn short_categories_keep_every_destination_once() {
-    assert_eq!(GROUPS.iter().map(|group| group.facilities.len()).collect::<Vec<_>>(), [5, 7, 5]);
+    assert_eq!(GROUPS.iter().map(|group| group.facilities.len()).collect::<Vec<_>>(), [6, 6, 5]);
+    assert!(GROUPS[0].facilities.contains(&10), "the arena belongs to facilities");
+    assert!(!GROUPS[1].facilities.contains(&10), "do not duplicate the arena in activities");
     let mut actual: Vec<_> =
       GROUPS.iter().flat_map(|group| group.facilities.iter().copied()).collect();
     actual.sort_unstable();

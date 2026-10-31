@@ -293,7 +293,7 @@ class FacilityFixture(CollectorFixture):
     names = re.findall(r'Facility\s*\{\s*name: "([^"]+)"', profile)
     groups = [[int(value) for value in values.split(",")] for values in re.findall(
       r'MenuGroup\s*\{\s*facilities: &\[([^\]]+)\]', profile)]
-    assert groups == [[0, 1, 2, 3, 9], [10, 11, 12, 13, 14, 15, 16], [4, 5, 6, 7, 8]]
+    assert groups == [[0, 1, 2, 3, 9, 10], [11, 12, 13, 14, 15, 16], [4, 5, 6, 7, 8]]
     choices = [None] * len(binds)
     original = bytes(self.cpu.mem_read(self.sequence_class, 0x138 + 32 * 16))
     for category, indices in zip(entries, groups):

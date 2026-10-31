@@ -102,8 +102,8 @@ per point, custom experience bar or save-variable configuration.
 ## Facility, support and cooking extensions
 
 The outdoor HubMenu receives one facility entry, alongside the existing collection
-entry. It opens three categories: Facilities (five destinations), Activities
-(seven), and Shops (five). Categories are not additional outdoor entries; no list
+entry. It opens three categories: Facilities (six destinations, including the
+arena), Activities (six), and Shops (five). Categories are not additional outdoor entries; no list
 needs custom scrolling, a spare-row calculation or expanded prefab nodes.
 Categories use the original HubMenu.SubSystemMenu construction pattern:
 SortieSubMenuContent.Create (`0x024EB420`), BasicMenu construction and binding,
