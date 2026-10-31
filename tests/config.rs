@@ -74,6 +74,17 @@ fn automatic_polishing_defaults_to_alear_and_keeps_legacy_files() {
 }
 
 #[test]
+fn shared_stock_switch_defaults_on_and_retains_the_existing_preference() {
+  use fee_better_somniel::config::parse_settings;
+  assert!(parse_settings("draw_count=527\n").unwrap().gift_stock);
+  let old = parse_settings("draw_count=527\nrepeat_cooking=0\ngift_stock=0\n").unwrap();
+  assert!(!old.repeat_cooking && !old.gift_stock);
+  assert_eq!(old.draw_count, 527);
+  assert_eq!(parse_settings(&old.encode()).unwrap(), old);
+  assert_eq!(old.encode().matches("gift_stock=").count(), 1);
+}
+
+#[test]
 fn accepts_whitespace_and_safe_boundary_values() {
   for count in [2, 10, 300, 600, 1000] {
     assert_eq!(parse(&format!("# count\r\n draw_count = {count}\r\n")), Ok(count));

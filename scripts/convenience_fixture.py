@@ -95,7 +95,7 @@ class ConvenienceFixture(SettingsFixture):
     self.failure = ""
     self.active = False
 
-  def exercise_features(self, hooks, stop, stack, check_disabled):
+  def exercise_features(self, hooks, stop, stack, check_disabled, check_stock):
     self.active = True
     self.fishing_remaining, self.fishing_refills, self.fishing_decrements = 3, 0, 0
     self.integer(self.user + 0x28, 4)
@@ -126,6 +126,7 @@ class ConvenienceFixture(SettingsFixture):
     call(hooks[0x026FFF90], self.user)
     assert self.fishing_remaining == 2 and self.fishing_decrements == 1
     check_disabled()
+    check_stock(False)
     for key in keys:
       assert f"{key}=0\n".encode() in self.files[self.paths[0]]
     self.fishing_remaining = 0
@@ -140,8 +141,20 @@ class ConvenienceFixture(SettingsFixture):
     call(hooks[0x026FFF90], self.user)
     assert self.fishing_remaining == 1
     assert change(items[4], 1) == 4096
+    # One shared item switch restores gifts and both food paths together,
+    # including after reopening. Failed saving restores all previous patches.
+    assert change(items[2], 0) == 4096
+    check_stock(False)
+    reopened = call(self.factories[9])
+    assert self.read_string(self.pointer(reopened + 0x70)) == "关闭"
+    assert change(reopened, 1) == 4096
+    self.failure = "write"
+    assert change(items[2], 0) == 2048
+    self.failure = ""
+    assert self.read_string(self.pointer(items[2] + 0x70)) == "开启"
+    check_stock(True)
     self.active = False
-    print("compiled seven independent switches: persisted off/on, native fishing decrement, exhausted-use recovery and separate fast-fishing control passed")
+    print("compiled seven switches: shared gift/food gate/cost restoration, persistence, failed-save rollback and separate fishing controls passed")
 
   def exercise_new(self, callbacks, hooks, stop, stack):
     self.active = True

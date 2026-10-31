@@ -34,3 +34,11 @@ The synthetic Polish All row, its cloned GodItem class, list reordering, row-cou
 - Fishing: independent speed patches and native use-decrement control.
 - Strength training and Wyvern Ride: native result/reward flow, with current-difficulty SSS threshold for Wyvern.
 - Sommie: original interaction choices with shortened waits; ordinary-gift stock changes stay scoped to gift settlement.
+
+## Inventory-free food
+
+Sommie list inclusion already bypasses the stock branch at `0x01E546B4`. The valid-food BuildAttribute result at `0x02038900` now remains enabled at zero stock; its missing-data branch is untouched. NOP only the feeding coroutine's AddStock(-1) call at `0x01E54158`, then continue through the original scene/reaction/reward path.
+
+Cooking's FoodstuffMenu creates normal recipe ingredients and rare additions without stock filtering. Its BuildAttribute stock branch at `0x01E63640` is bypassed; missing recipe slots and the native one-addition selection behavior remain unchanged. PushA and GetSelectedFoodstuffs retain those selected definitions. NOP only SubInventory at `0x02D813D4` in the settlement loop, after the native Cook call has already calculated the result using the selected array. The special-ingredient flag test at `0x02610EB0` is not a consumption call and stays intact.
+
+The default-on Items Without Consumption setting controls ordinary gifts and both food conveniences together. Retain the existing `gift_stock` storage key and field to preserve previously saved on/off values, without separate food preferences. Disabling it restores all eight original gift/food stock gates and consumption calls. Repeat Cooking's activity quota remains separate. No global inventory method, inventory display, food effect, reward or save field is replaced.

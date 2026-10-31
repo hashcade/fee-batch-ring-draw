@@ -25,6 +25,7 @@ pub struct Settings {
   pub arena_count: u32,
   pub fishing_unlimited: bool,
   pub shop_stock: bool,
+  /// Shared gift, Sommie food and cooking stock switch; retain its existing key.
   pub gift_stock: bool,
   pub repeat_cooking: bool,
   pub fast_fishing: bool,

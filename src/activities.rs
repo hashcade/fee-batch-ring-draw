@@ -14,8 +14,15 @@ pub const PATCHES: &[(usize, u32, u32)] = &[
   (0x01E54F04, 0xD0022198, 0x140000C2),
   (0x01E55110, 0x54000B64, 0xD503201F),
   (0x01E5518C, 0x54000244, 0xD503201F),
-  (0x02D8158C, 0x52800021, 0x52800001),
+  // Sommie food: keep valid zero-stock choices selectable and skip only the
+  // feeding coroutine's stock decrement, not its reactions or rewards.
   (0x01E546B4, 0x5400026B, 0xD503201F),
+  (0x02038900, 0x1A88A500, 0x52800020),
+  (0x01E54158, 0x942576B6, 0xD503201F),
+  // Cooking ingredients and additions: native choices/effects, no stock cost.
+  (0x01E63640, 0x34000080, 0xD503201F),
+  (0x02D813D4, 0x97E23F3B, 0xD503201F),
+  (0x02D8158C, 0x52800021, 0x52800001),
   (0x026F2624, 0x540000E9, 0xD503201F),
   (0x026F26BC, 0x54FFFBAB, 0xD503201F),
   (0x026F275C, 0x54FFF6A5, 0xD503201F),
@@ -54,6 +61,10 @@ pub const TEXT_SIGNATURES: &[(usize, [u32; 4])] = &[
   (0x01E5518C, [0x54000244, 0xAA1303E0, 0xAA1F03E1, 0xF8018C1F]),
   (0x02D8158C, [0x52800021, 0xAA1F03E2, 0xA9007FFF, 0x97C3BD7A]),
   (0x01E546B4, [0x5400026B, 0xF0022228, 0xF9400A94, 0xF9410108]),
+  (0x02038900, [0x1A88A500, 0xA8C17BFD, 0xD65F03C0, 0x52800040]),
+  (0x01E54158, [0x942576B6, 0xAA1403E0, 0xAA1F03E1, 0x940784B7]),
+  (0x01E63640, [0x34000080, 0x52800020, 0xA8C17BFD, 0xD65F03C0]),
+  (0x02D813D4, [0x97E23F3B, 0xB9401A88, 0x910006B5, 0xEB28C2BF]),
   (0x026F2624, [0x540000E9, 0x3943A268, 0x340002A8, 0xA9424FF4]),
   (0x026F26BC, [0x54FFFBAB, 0x52A85908, 0x1E270108, 0x1E2703E0]),
   (0x026F275C, [0x54FFF6A5, 0xB9001A74, 0xB900727F, 0xAA1303E0]),
@@ -90,7 +101,8 @@ pub fn desired(settings: &crate::config::Settings) -> Vec<(usize, u32)> {
     .map(|&(offset, original, replacement)| {
       let feature = match offset {
         0x02D8158C => Some(Feature::RepeatCooking),
-        0x025245A8 | 0x02524E6C | 0x025245F8 => Some(Feature::GiftStock),
+        0x025245A8 | 0x02524E6C | 0x025245F8 | 0x01E546B4 | 0x02038900 | 0x01E54158
+        | 0x01E63640 | 0x02D813D4 => Some(Feature::GiftStock),
         0x026F2624 | 0x026F26BC | 0x026F275C | 0x026F2964 | 0x026F29D0 | 0x026F4714 => {
           Some(Feature::FastFishing)
         }

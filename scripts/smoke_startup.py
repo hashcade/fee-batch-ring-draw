@@ -23,6 +23,7 @@ from facility_fixture import FacilityFixture
 from shop_fixture import ShopFixture
 from support_fixture import SupportFixture
 from polishing_fixture import PolishingFixture
+from food_fixture import exercise_food, FOOD_PATCHES
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -75,7 +76,7 @@ def smoke(data: bytes, case: str) -> int:
     for address, original, replacement in re.findall(
       r"\((0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+),\s*(0x[0-9A-Fa-f]+)\)", activities)]
   switchable_addresses = {address for address, _, _ in patches
-    if address in (0x02D8158C, 0x025245A8, 0x02524E6C, 0x025245F8)
+    if address in (0x02D8158C, 0x025245A8, 0x02524E6C, 0x025245F8, *FOOD_PATCHES)
     or 0x026F0000 <= address < 0x02700000
     or 0x02780000 <= address < 0x027A0000
     or 0x02DC0000 <= address < 0x02DE0000}
@@ -394,7 +395,14 @@ def smoke(data: bytes, case: str) -> int:
         shop_game.exercise(shop_replacements, STOP, STACK + 0x20000 - 0x20, shop_profile, enabled=False)
         wyvern_game.exercise(replacements[wyvern_main], STOP, STACK + 0x20000 - 0x20, enabled=False)
         settings_game.active = True
-      settings_game.exercise_features(replacements, STOP, STACK + 0x20000 - 0x20, check_disabled)
+      def check_stock(enabled):
+        shared_addresses = (0x025245A8, 0x02524E6C, 0x025245F8, *FOOD_PATCHES)
+        for address, original, replacement in patches:
+          if address in shared_addresses:
+            assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == (replacement if enabled else original)
+        exercise_food({address: struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0]
+          for address in FOOD_PATCHES}, enabled)
+      settings_game.exercise_features(replacements, STOP, STACK + 0x20000 - 0x20, check_disabled, check_stock)
       print(f"{case}: compiled cooking choices preserve independent settings and context; automatic-support preferences persist independently")
     if case in ("supported", "facilities", "performance", "menus"):
       facility_game.exercise(replacements[next(iter(collector_hooks))], replacements[ring_menu], STOP, STACK + 0x20000 - 0x20, facility_profile)
@@ -419,6 +427,9 @@ def smoke(data: bytes, case: str) -> int:
         assert struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0] == expected_word
   else:
     assert not patch_calls, "unsupported executables must not be modified"
+  if case in ("supported", "convenience", "config_switches_off"):
+    exercise_food({address: struct.unpack("<I", cpu.mem_read(GAME + address, 4))[0]
+      for address in FOOD_PATCHES}, case != "config_switches_off")
   return len(hooks)
 
 

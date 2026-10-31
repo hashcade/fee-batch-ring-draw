@@ -115,7 +115,7 @@ pub fn feature_title(language: i32, feature: usize) -> &'static str {
     0 => [
       "釣り回数を消費しない",
       "ショップ在庫無限",
-      "贈り物を消費しない",
+      "アイテムを消費しない",
       "繰り返し料理",
       "高速釣り",
       "筋肉体操で即満点",
@@ -124,7 +124,7 @@ pub fn feature_title(language: i32, feature: usize) -> &'static str {
     2 | 5 => [
       "Pêche sans consommation",
       "Stocks illimités",
-      "Cadeaux sans consommation",
+      "Objets sans consommation",
       "Cuisine répétable",
       "Pêche rapide",
       "Musculation parfaite rapide",
@@ -133,7 +133,7 @@ pub fn feature_title(language: i32, feature: usize) -> &'static str {
     3 | 6 => [
       "Pesca sin gastar usos",
       "Existencias ilimitadas",
-      "Regalos sin consumo",
+      "Objetos sin consumo",
       "Cocina repetible",
       "Pesca rápida",
       "Ejercicio perfecto rápido",
@@ -142,7 +142,7 @@ pub fn feature_title(language: i32, feature: usize) -> &'static str {
     7 => [
       "Angeln ohne Verbrauch",
       "Unbegrenzte Ladenbestände",
-      "Geschenke ohne Verbrauch",
+      "Gegenstände ohne Verbrauch",
       "Wiederholt kochen",
       "Schnelles Angeln",
       "Schnelles perfektes Training",
@@ -151,7 +151,7 @@ pub fn feature_title(language: i32, feature: usize) -> &'static str {
     8 => [
       "Pesca senza consumare usi",
       "Scorte illimitate",
-      "Regali senza consumo",
+      "Oggetti senza consumo",
       "Cucina ripetibile",
       "Pesca rapida",
       "Esercizi perfetti rapidi",
@@ -160,7 +160,7 @@ pub fn feature_title(language: i32, feature: usize) -> &'static str {
     9 => [
       "釣魚次數不減",
       "商店庫存無限",
-      "贈送禮物不消耗",
+      "禮物/食材不消耗",
       "重複料理",
       "快速釣魚",
       "肌肉體操快速滿分",
@@ -169,7 +169,7 @@ pub fn feature_title(language: i32, feature: usize) -> &'static str {
     10 => [
       "钓鱼次数不减",
       "商店库存无限",
-      "赠送礼物不消耗",
+      "礼物/食材不消耗",
       "重复料理",
       "快速钓鱼",
       "肌肉体操快速满分",
@@ -178,7 +178,7 @@ pub fn feature_title(language: i32, feature: usize) -> &'static str {
     11 => [
       "낚시 횟수 감소 없음",
       "상점 재고 무제한",
-      "선물 소모 없음",
+      "아이템 소모 없음",
       "반복 요리",
       "빠른 낚시",
       "빠른 체력 단련 만점",
@@ -187,7 +187,7 @@ pub fn feature_title(language: i32, feature: usize) -> &'static str {
     _ => [
       "Nondecreasing Fishing Uses",
       "Unlimited Shop Stock",
-      "Inventory-free Gifts",
+      "Items Without Consumption",
       "Repeat Cooking",
       "Fast Fishing",
       "Fast Perfect Strength Training",

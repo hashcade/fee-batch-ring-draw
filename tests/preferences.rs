@@ -35,7 +35,7 @@ fn official_chinese_menu_names_and_order() {
       "钓鱼次数不减",
       "牵绊戒指精炼次数",
       "商店库存无限",
-      "赠送礼物不消耗",
+      "礼物/食材不消耗",
       "快速钓鱼",
       "肌肉体操快速满分",
       "飞龙射手快速SSS",
@@ -111,7 +111,7 @@ fn disabling_convenience_features_restores_only_their_native_instructions() {
     let changed = before.iter().zip(&after).filter(|(old, new)| old != new).count();
     let expected = match feature {
       Feature::RepeatCooking => 1,
-      Feature::GiftStock => 3,
+      Feature::GiftStock => 8,
       Feature::FastFishing => 6,
       Feature::FastTraining => 12,
       _ => 0, // Event hooks, not instruction patches.

@@ -114,12 +114,13 @@ def verify_game(path: Path) -> int:
     offset = int(address, 16)
     if text[offset:offset + len(expected)] != expected:
       raise ValueError(f"instruction mismatch at {address}")
-  polishing_fixture = (ROOT / "scripts/polishing_fixture.py").read_text(encoding="utf-8")
-  for address, body in re.findall(r'\((0x[0-9A-Fa-f]+), "([0-9a-f]+)"\)', polishing_fixture):
-    expected = bytes.fromhex(body)
-    offset = int(address, 16)
-    if text[offset:offset + len(expected)] != expected:
-      raise ValueError(f"polishing fixture native body mismatch at {address}")
+  for name in ("polishing", "food"):
+    fixture = (ROOT / f"scripts/{name}_fixture.py").read_text(encoding="utf-8")
+    for address, body in re.findall(r'\((0x[0-9A-Fa-f]+), "([0-9a-f]+)"\)', fixture):
+      expected = bytes.fromhex(body)
+      offset = int(address, 16)
+      if text[offset:offset + len(expected)] != expected:
+        raise ValueError(f"{name} fixture native body mismatch at {address}")
   return len(signatures)
 
 

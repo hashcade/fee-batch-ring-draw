@@ -168,7 +168,7 @@ class SettingsFixture(CollectorFixture):
     items = [call(callback) for callback in callbacks]
     assert [self.read_string(self.pointer(item + 0x68)) for item in items] == [
       "自动完成支援对话", "自动研磨", "研磨角色", "一般锻炼次数",
-      "钓鱼次数不减", "牵绊戒指精炼次数", "商店库存无限", "赠送礼物不消耗", "快速钓鱼",
+      "钓鱼次数不减", "牵绊戒指精炼次数", "商店库存无限", "礼物/食材不消耗", "快速钓鱼",
       "肌肉体操快速满分", "飞龙射手快速SSS", "重复料理", "料理厨师", "料理结果"]
     for kind, item in zip(order, items):
       hint = ""

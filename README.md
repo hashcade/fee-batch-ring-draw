@@ -15,8 +15,8 @@ Somniel quality-of-life improvements for **Fire Emblem Engage 2.0.0**, using **C
 - **Ordinary gifts:** give normal gifts at zero stock without consuming owned copies.
 - **Fishing:** independently enable faster fishing and nondecreasing fishing uses.
 - **Minigames:** quickly finish muscle training with perfect results and Wyvern Ride at the current difficulty's SSS threshold, retaining normal records and rewards.
-- **Cooking:** allow repeat cooking, select a recruited chef and a native outcome, and shorten preparation.
-- **Sommie:** shorten feeding and petting, and bypass food-list stock restrictions while retaining native preferences and reward rules.
+- **Cooking:** use ingredients and additions at zero stock without consuming owned copies, allow repeat cooking, select a recruited chef and a native outcome, and shorten preparation.
+- **Sommie:** shorten feeding and petting, and feed at zero stock without consuming owned food. Retain native preferences and reward rules.
 
 ## Installation
 
@@ -51,7 +51,7 @@ Open **Settings → Plugin Settings**. The fourteen preferences appear in one fl
 | Nondecreasing Fishing Uses | On | On / Off |
 | Batch Ring Count | 300 | 2–1000; step 10 |
 | Unlimited Shop Stock | On | On / Off |
-| Gifts Without Consumption | On | On / Off |
+| Items Without Consumption | On | On / Off |
 | Fast Fishing | On | On / Off |
 | Fast Perfect Strength Training | On | On / Off |
 | Fast SSS Wyvern Ride | On | On / Off |
@@ -62,6 +62,8 @@ Open **Settings → Plugin Settings**. The fourteen preferences appear in one fl
 Preferences save automatically in `sdmc:/fee-better-somniel.cfg`, independently of game-save variables. Without a valid file, defaults apply. Reopen the affected menu after changing a preference. A batch count of 10 does not add a duplicate ten-ring choice.
 
 Standard training changes the total quota, not the remaining counter; nondecreasing mode retains native spent counters. Fishing can restore one available use if the session was already exhausted. Other conveniences retain their existing behavior without additional switches.
+
+Items Without Consumption controls ordinary gifts, Sommie feeding, and cooking ingredients/additions together, and defaults to On. Turning it off restores their original stock checks and consumption. It does not affect battle items, shop prices, ring costs or Repeat Cooking's activity quota.
 
 Chef and Cooking Outcome default to the original rotation and roll. Recipe and recipient conditions remain unchanged. Turning automation off does not undo rewards or progress already obtained.
 

@@ -25,7 +25,7 @@ const ITEM_NAMES: [&[u8]; OPTION_COUNT] = [
   b"SomnielArenaCount\0",
   b"SomnielFishingUses\0",
   b"SomnielShopStock\0",
-  b"SomnielGiftStock\0",
+  b"SomnielItemStock\0",
   b"SomnielRepeatCooking\0",
   b"SomnielFastFishing\0",
   b"SomnielFastTraining\0",
